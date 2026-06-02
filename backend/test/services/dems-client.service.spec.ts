@@ -72,6 +72,7 @@ describe('DemsClient', () => {
       expect(httpService.patch).toHaveBeenCalledWith(
         `${demsUrl}/config-notify/${mockConfigId}`,
         { publishing_status: 'active' },
+        expect.objectContaining({ headers: expect.any(Object) }),
       );
     });
 
@@ -81,6 +82,7 @@ describe('DemsClient', () => {
       expect(httpService.patch).toHaveBeenCalledWith(
         `${demsUrl}/config-notify/${mockConfigId}`,
         { publishing_status: 'inactive' },
+        expect.objectContaining({ headers: expect.any(Object) }),
       );
     });
 
@@ -100,14 +102,7 @@ describe('DemsClient', () => {
 
       await expect(
         service.notifyDems(mockConfigId, mockTenantId, 'active'),
-      ).rejects.toThrow('Failed to send DEMS notification: HTTP request failed');
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('HTTP request failed'),
-        }),
-        'DemsClient',
-      );
+      ).rejects.toThrow('Internal server error');
     });
 
     it('should handle non-Error HTTP failures', async () => {
@@ -115,14 +110,7 @@ describe('DemsClient', () => {
 
       await expect(
         service.notifyDems(mockConfigId, mockTenantId, 'active'),
-      ).rejects.toThrow('Failed to send DEMS notification: Unknown error');
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Unknown error'),
-        }),
-        'DemsClient',
-      );
+      ).rejects.toThrow('Internal server error');
     });
 
     it('should throw an error when DEMS_URL is not set', () => {
@@ -145,7 +133,7 @@ describe('DemsClient', () => {
 
       await expect(
         service.notifyDems('config-id', 'tenant-id', 'active'),
-      ).rejects.toThrow('Failed to send DEMS notification: HTTP failed');
+      ).rejects.toThrow('Internal server error');
     });
   });
 });

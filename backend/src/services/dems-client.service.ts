@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { firstValueFrom } from 'rxjs';
+import { executeHttpRequest } from '../utils/api-helper';
 
 @Injectable()
 export class DemsClient {
@@ -29,33 +29,24 @@ export class DemsClient {
     publishingStatus: 'active' | 'inactive',
   ): Promise<void> {
     const demsUrl = this.configService.get<string>('DEMS_URL')!;
-    const url = `${demsUrl}/config-notify/${configId}`;
 
-    try {
-      this.logger.log(
-        `Sending HTTP notification to DEMS: PATCH ${url}`,
-        'DemsClient',
-      );
+    this.logger.log(
+      `Sending HTTP notification to DEMS: PATCH ${demsUrl}/config-notify/${configId}`,
+      'DemsClient',
+    );
 
-      await firstValueFrom(
-        this.httpService.patch(url, { publishing_status: publishingStatus }),
-      );
+    await executeHttpRequest(
+      this.httpService,
+      'PATCH',
+      demsUrl,
+      `/config-notify/${configId}`,
+      '',
+      { publishing_status: publishingStatus },
+    );
 
-      this.logger.log(
-        `Config activation notification (ID: ${configId}) sent to ${url}`,
-        'DemsClient',
-      );
-    } catch (error) {
-      const errorMessage = new Error(
-        `Failed to send DEMS notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-
-      this.logger.error(
-        errorMessage,
-        'DemsClient',
-      );
-      throw errorMessage;
-      
-    }
+    this.logger.log(
+      `Config activation notification (ID: ${configId}) sent to ${demsUrl}/config-notify/${configId}`,
+      'DemsClient',
+    );
   }
 }
