@@ -156,6 +156,7 @@ export class SimulationService {
       const hasMappings = config.mapping && config.mapping.length > 0;
 
       if (hasMappings) {
+        parsedPayload.TenantId = tenantId;
         const mappingValidationStage = this.stageValidateMappings(
           parsedPayload,
           config.mapping ?? [],
