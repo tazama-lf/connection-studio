@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ISuccess } from '@tazama-lf/tcs-lib';
-import { executeHttpRequest } from 'src/utils/api-helper';
+import { executeHttpRequest } from '../utils/api-helper';
 
 @Injectable()
 export class DeApiClient {
