@@ -7,6 +7,7 @@ import { ConfigWorkflowService } from './config-workflow.service';
 import { ConfigUtilsService } from './config-utils.service';
 import { TazamaDataModelModule } from '../tazama-data-model/tazama-data-model.module';
 import { AdminServiceClient } from '../services/admin-service-client.service';
+import { DemsClient } from '../services/dems-client.service';
 import { SftpModule } from '../sftp/sftp.module';
 import { NotificationModule } from '../notification/notification.module';
 import { NotifyModule } from '../notify/notify.module';
@@ -26,6 +27,7 @@ import { NotifyModule } from '../notify/notify.module';
     ConfigWorkflowService,
     ConfigUtilsService,
     AdminServiceClient,
+    DemsClient,
   ],
   exports: [
     ConfigService,

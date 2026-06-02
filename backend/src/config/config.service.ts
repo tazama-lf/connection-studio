@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
-import { NotifyService } from '../notify/notify.service';
+import { DemsClient } from '../services/dems-client.service';
 import { NotificationService } from '../notification/notification.service';
 import { ConfigWorkflowService } from './config-workflow.service';
 import { ConfigUtilsService } from './config-utils.service';
@@ -36,7 +36,7 @@ export class ConfigService {
     private readonly workflowService: ConfigWorkflowService,
     private readonly configUtils: ConfigUtilsService,
     private readonly sftpService: SftpService,
-    private readonly notifyService: NotifyService,
+    private readonly demsClient: DemsClient,
     private readonly notificationService: NotificationService,
     private readonly adminServiceClient: AdminServiceClient,
   ) {}
@@ -664,7 +664,7 @@ export class ConfigService {
     }
 
     try {
-      await this.notifyService.notifyDems(id.toString(), tenantId, publishingStatus);
+      await this.demsClient.notifyDems(id.toString(), tenantId, publishingStatus);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(
