@@ -54,95 +54,6 @@ describe('NotifyService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('notifyEnrichment', () => {
-    const mockId = 'endpoint-123';
-    const mockType = ConfigType.PUSH;
-    const mockToken = 'mock-jwt-token';
-    const deapiUrl = 'http://deapi:3001';
-
-    beforeEach(() => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'DEAPI_URL') return deapiUrl;
-        return undefined;
-      });
-      httpService.post.mockReturnValue(of({ data: {}, status: 200 } as any));
-    });
-
-    it('should POST to the correct URL with type query param', async () => {
-      await service.notifyEnrichment(mockId, mockType, mockToken);
-
-      expect(httpService.post).toHaveBeenCalledWith(
-        `${deapiUrl}/job-notify/${mockId}?type=${mockType}`,
-        null,
-        { headers: { Authorization: `Bearer ${mockToken}` } },
-      );
-    });
-
-    it('should not double-prefix Bearer if token already has it', async () => {
-      await service.notifyEnrichment(mockId, mockType, `Bearer ${mockToken}`);
-
-      expect(httpService.post).toHaveBeenCalledWith(expect.any(String), null, {
-        headers: { Authorization: `Bearer ${mockToken}` },
-      });
-    });
-
-    it('should send notification for PULL config type', async () => {
-      await service.notifyEnrichment(mockId, ConfigType.PULL, mockToken);
-
-      expect(httpService.post).toHaveBeenCalledWith(
-        `${deapiUrl}/job-notify/${mockId}?type=${ConfigType.PULL}`,
-        null,
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: expect.any(String),
-          }),
-        }),
-      );
-    });
-
-    it('should handle HTTP errors without throwing', async () => {
-      httpService.post.mockReturnValue(
-        throwError(() => new Error('HTTP request failed')),
-      );
-
-      await expect(
-        service.notifyEnrichment(mockId, mockType, mockToken),
-      ).resolves.not.toThrow();
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('HTTP request failed'),
-        }),
-        'NotifyService',
-      );
-    });
-
-    it('should handle non-Error thrown in notifyEnrichment', async () => {
-      httpService.post.mockReturnValue(throwError(() => 'plain string error'));
-
-      await service.notifyEnrichment(mockId, mockType, mockToken);
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Unknown error'),
-        }),
-        'NotifyService',
-      );
-    });
-
-    it('should fall back to empty base URL when DEAPI_URL is not set', async () => {
-      configService.get.mockReturnValue(undefined);
-
-      await service.notifyEnrichment(mockId, mockType, mockToken);
-
-      expect(httpService.post).toHaveBeenCalledWith(
-        `/job-notify/${mockId}?type=${mockType}`,
-        null,
-        expect.any(Object),
-      );
-    });
-  });
-
   describe('notifyDems', () => {
     const mockConfigId = 'config-123';
     const mockTenantId = 'tenant-456';
@@ -226,17 +137,6 @@ describe('NotifyService', () => {
   });
 
   describe('Error Handling', () => {
-    it('should not throw errors in notifyEnrichment even if HTTP fails', async () => {
-      configService.get.mockReturnValue('http://deapi:3001');
-      httpService.post.mockReturnValue(
-        throwError(() => new Error('HTTP failed')),
-      );
-
-      await expect(
-        service.notifyEnrichment('test-id', ConfigType.PUSH, 'mock-token'),
-      ).resolves.not.toThrow();
-    });
-
     it('should not throw errors in notifyDems even if HTTP fails', async () => {
       configService.get.mockReturnValue('http://dems:3002');
       httpService.patch.mockReturnValue(
