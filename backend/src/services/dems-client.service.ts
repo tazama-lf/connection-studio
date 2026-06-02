@@ -11,7 +11,16 @@ export class DemsClient {
     private readonly logger: LoggerService,
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
-  ) {}
+  ) {
+    const demsUrl = this.configService.get<string>('DEMS_URL');
+    if (!demsUrl) {
+      this.logger.warn(
+        'DEMS_URL is not configured. DEMS notifications will not be sent.',
+        'DemsClient',
+      );
+      throw new Error('DEMS_URL configuration is missing');
+    }
+  }
   /* c8 ignore stop */
 
   async notifyDems(
@@ -19,7 +28,7 @@ export class DemsClient {
     _tenantId: string,
     publishingStatus: 'active' | 'inactive',
   ): Promise<void> {
-    const demsUrl = this.configService.get<string>('DEMS_URL') ?? '';
+    const demsUrl = this.configService.get<string>('DEMS_URL')!;
     const url = `${demsUrl}/config-notify/${configId}`;
 
     try {

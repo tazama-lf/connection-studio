@@ -26,7 +26,7 @@ describe('DemsClient', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn(),
+            get: jest.fn().mockReturnValue('http://dems:3002'),
           },
         },
         {
@@ -100,7 +100,7 @@ describe('DemsClient', () => {
 
       await expect(
         service.notifyDems(mockConfigId, mockTenantId, 'active'),
-      ).resolves.not.toThrow();
+      ).rejects.toThrow('Failed to send DEMS notification: HTTP request failed');
 
       expect(loggerService.error).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -113,7 +113,9 @@ describe('DemsClient', () => {
     it('should handle non-Error HTTP failures', async () => {
       httpService.patch.mockReturnValue(throwError(() => 'plain string error'));
 
-      await service.notifyDems(mockConfigId, mockTenantId, 'active');
+      await expect(
+        service.notifyDems(mockConfigId, mockTenantId, 'active'),
+      ).rejects.toThrow('Failed to send DEMS notification: Unknown error');
 
       expect(loggerService.error).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -123,15 +125,14 @@ describe('DemsClient', () => {
       );
     });
 
-    it('should fall back to empty string when DEMS_URL is not set', async () => {
-      configService.get.mockReturnValue(undefined);
+    it('should throw an error when DEMS_URL is not set', () => {
+      const mockConfig = { get: jest.fn().mockReturnValue(undefined) } as any;
 
-      await service.notifyDems(mockConfigId, mockTenantId, 'active');
-
-      expect(httpService.patch).toHaveBeenCalledWith(
-        `/config-notify/${mockConfigId}`,
-        { publishing_status: 'active' },
+      expect(() => new DemsClient(loggerService, mockConfig, httpService)).toThrow(
+        'DEMS_URL configuration is missing',
       );
+
+      expect(httpService.patch).not.toHaveBeenCalled();
     });
   });
 
@@ -144,7 +145,7 @@ describe('DemsClient', () => {
 
       await expect(
         service.notifyDems('config-id', 'tenant-id', 'active'),
-      ).resolves.not.toThrow();
+      ).rejects.toThrow('Failed to send DEMS notification: HTTP failed');
     });
   });
 });
