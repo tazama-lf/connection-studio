@@ -73,24 +73,27 @@ export class TazamaAuthGuard implements CanActivate {
 
     const actorName = innerDecoded.name as string | undefined;
 
+    const allowedRoles = (process.env.ALLOWED_ROLES ?? '')
+      .split(',')
+      .map((role) => role.trim().toLowerCase())
+      .filter(Boolean);
+
     const realmAccess = innerDecoded.realm_access as
       | { roles?: string[] }
       | undefined;
-    const realmRoles = realmAccess?.roles;
-
-    const supportedRoles = new Set([
-      'editor',
-      'approver',
-      'publisher',
-      'exporter',
-    ]);
-
-    const actorRole = realmRoles?.find((role: string) =>
-      supportedRoles.has(role.toLowerCase()),
+    const realmRoles =
+      realmAccess?.roles?.map((role) => role.toLowerCase()) ?? [];
+    const matchedRoles = realmRoles.filter((role) =>
+      allowedRoles.includes(role),
     );
-    if (!actorRole) {
-      throw new UnauthorizedException('No supported RBAC role found in token');
+
+    if (matchedRoles.length === 0) {
+      this.logger.warn('Invalid credentials.');
+
+      throw new UnauthorizedException('Invalid credentials');
     }
+
+    const actorRole = matchedRoles[0];
 
     const sourceIP =
       request.ip ??
