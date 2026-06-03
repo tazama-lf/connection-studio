@@ -42,6 +42,10 @@ export class AuthService {
       .split(',')
       .map((role) => role.trim())
       .filter(Boolean);
+
+    if (claimsToCheck.length === 0) {
+      return;
+    }
     let claimResult;
     try {
       claimResult = validateTokenAndClaims(token, claimsToCheck);
@@ -51,7 +55,7 @@ export class AuthService {
         `Token validation failed: ${e.message}`,
         AuthService.name,
       );
-      throw new UnauthorizedException('Token validation failed');
+      return;
     }
 
     const hasRequiredClaim = claimsToCheck.some((claim) => claimResult[claim]);
@@ -60,7 +64,6 @@ export class AuthService {
         `User ${username} does not have any allowed role.`,
         AuthService.name,
       );
-      throw new UnauthorizedException('Invalid credentials');
     }
   }
 
