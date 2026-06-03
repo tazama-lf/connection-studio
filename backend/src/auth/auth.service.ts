@@ -8,7 +8,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
-import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
+import { TazamaToken, validateTokenAndClaims } from '@tazama-lf/auth-lib';
 
 @Injectable()
 export class AuthService {
@@ -58,12 +58,50 @@ export class AuthService {
       return;
     }
 
+    const decoded = jwt.decode(token) as TazamaToken;
+
+    let innerDecoded: Record<string, unknown> = decoded;
+    try {
+      const innerToken =
+        ((decoded as Record<string, unknown>).tokenString as
+          | string
+          | undefined) ?? token;
+      const innerParsed = jwt.decode(innerToken);
+      if (innerParsed && typeof innerParsed === 'object') {
+        innerDecoded = innerParsed;
+      }
+    } catch (error) {
+      this.loggerService.debug(
+        'Failed to decode inner token, using outer token',
+      );
+    }
+    const realmAccess = innerDecoded.realm_access as
+      | { roles?: string[] }
+      | undefined;
+
+    const realmRoles =
+      realmAccess?.roles?.map((role) => role.toLowerCase()) ?? [];
+
+    const invalidTrsRoles = realmRoles.filter((role) =>
+      role.startsWith('trs_'),
+    );
+
+    if (invalidTrsRoles.length > 0) {
+      this.loggerService.warn(
+        `User ${username} has unsupported roles: ${invalidTrsRoles.join(', ')}`,
+        AuthService.name,
+      );
+
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     const hasRequiredClaim = claimsToCheck.some((claim) => claimResult[claim]);
     if (!hasRequiredClaim) {
       this.loggerService.warn(
         `User ${username} does not have any allowed role.`,
         AuthService.name,
       );
+      throw new UnauthorizedException('Invalid credentials');
     }
   }
 
@@ -104,17 +142,49 @@ export class AuthService {
           response.data?.expires_in ?? response.data?.expiresIn ?? null,
       };
     } catch (error) {
-      if (error.response?.status === 401) {
-        this.loggerService.warn(`Invalid credentials for user ${username}`);
-        throw new UnauthorizedException('Invalid credentials');
+      if (error instanceof UnauthorizedException) {
+        throw error;
       }
-      this.loggerService.error(
-        `Auth service error during login: ${error.message}`,
-      );
-      throw new ServiceUnavailableException(
-        'Authentication service unavailable',
-      );
+
+      this.handleLoginError(error);
     }
+  }
+
+  private handleLoginError(error: unknown): never {
+    const axiosError = error as {
+      response?: {
+        status?: number;
+        data?: { message?: string; error?: string };
+      };
+      message?: string;
+    };
+    if (axiosError.response?.status === 429) {
+      const errorMessage =
+        axiosError.response.data?.message ??
+        axiosError.response.data?.error ??
+        'Account temporarily locked due to too many failed login attempts.';
+      this.loggerService.warn(
+        `Account locked (429): ${errorMessage}`,
+        AuthService.name,
+      );
+      throw new UnauthorizedException(errorMessage);
+    }
+    if (axiosError.response?.status === 401) {
+      const errorMessage =
+        axiosError.response.data?.message ??
+        axiosError.response.data?.error ??
+        'Invalid credentials';
+      this.loggerService.error(
+        `Authentication failed: ${errorMessage}`,
+        AuthService.name,
+      );
+      throw new UnauthorizedException(errorMessage);
+    }
+    this.loggerService.error(
+      `Auth service error during login: ${axiosError.message ?? 'Unknown error'}`,
+      AuthService.name,
+    );
+    throw new ServiceUnavailableException('Authentication service unavailable');
   }
 
   public isTokenExpired(token: string): boolean {

@@ -83,6 +83,19 @@ export class TazamaAuthGuard implements CanActivate {
       | undefined;
     const realmRoles =
       realmAccess?.roles?.map((role) => role.toLowerCase()) ?? [];
+
+    const invalidTrsRoles = realmRoles.filter((role) =>
+      role.startsWith('trs_'),
+    );
+
+    if (invalidTrsRoles.length > 0) {
+      this.logger.warn(
+        `Invalid credentials. Unsupported roles found: ${invalidTrsRoles.join(', ')}`,
+      );
+
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     const matchedRoles = realmRoles.filter((role) =>
       allowedRoles.includes(role),
     );

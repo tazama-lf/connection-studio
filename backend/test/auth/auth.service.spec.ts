@@ -22,6 +22,7 @@ describe('AuthService', () => {
   let httpService: HttpService;
   let configService: ConfigService;
   let loggerService: LoggerService;
+  const authLib = require('@tazama-lf/auth-lib');
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -62,6 +63,82 @@ describe('AuthService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('allows login when validateTokenAndClaims throws (non-fatal)', async () => {
+    process.env.ALLOWED_ROLES = 'admin';
+    jest
+      .spyOn(configService, 'get')
+      .mockReturnValue('http://localhost:3001/auth/login');
+    const tokenStr = jwt.sign({}, 'secret');
+    (httpService.post as jest.Mock).mockReturnValue(of({ data: tokenStr }));
+
+    jest.spyOn(authLib, 'validateTokenAndClaims').mockImplementation(() => {
+      throw new Error('validation error');
+    });
+
+    const result = await service.login('u', 'p');
+    expect(result.token).toBe(tokenStr);
+  });
+
+  it('denies login when token contains trs_ role', async () => {
+    process.env.ALLOWED_ROLES = 'admin';
+    jest
+      .spyOn(configService, 'get')
+      .mockReturnValue('http://localhost:3001/auth/login');
+    const tokenStr = jwt.sign(
+      { realm_access: { roles: ['trs_blocked'] } },
+      'secret',
+    );
+    (httpService.post as jest.Mock).mockReturnValue(of({ data: tokenStr }));
+
+    jest
+      .spyOn(authLib, 'validateTokenAndClaims')
+      .mockReturnValue({ admin: true });
+
+    await expect(service.login('u', 'p')).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(loggerService.warn).toHaveBeenCalledWith(
+      expect.stringContaining('unsupported roles'),
+      'AuthService',
+    );
+  });
+
+  it('handles 429 account locked and logs warn message', async () => {
+    jest
+      .spyOn(configService, 'get')
+      .mockReturnValue('http://localhost:3001/auth/login');
+
+    const error = {
+      response: { status: 429, data: { message: 'Too many attempts' } },
+      message: 'Too many attempts',
+    };
+    (httpService.post as jest.Mock).mockReturnValue(throwError(() => error));
+
+    await expect(service.login('u', 'p')).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(loggerService.warn).toHaveBeenCalledWith(
+      `Account locked (429): Too many attempts`,
+      'AuthService',
+    );
+  });
+
+  it('handles non-HTTP errors as ServiceUnavailable', async () => {
+    jest
+      .spyOn(configService, 'get')
+      .mockReturnValue('http://localhost:3001/auth/login');
+    const err = new Error('Network down');
+    (httpService.post as jest.Mock).mockReturnValue(throwError(() => err));
+
+    await expect(service.login('u', 'p')).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+    expect(loggerService.error).toHaveBeenCalledWith(
+      expect.stringContaining('Auth service error during login'),
+      'AuthService',
+    );
   });
 
   describe('login', () => {
@@ -211,24 +288,9 @@ describe('AuthService', () => {
         'Invalid credentials',
       );
 
-      expect(loggerService.warn).toHaveBeenCalledWith(
-        `Invalid credentials for user ${username}`,
-      );
-    });
-
-    it('should throw ServiceUnavailableException for network errors', async () => {
-      jest.spyOn(configService, 'get').mockReturnValue(authUrl);
-      const error = new Error('Network error');
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValue(throwError(() => error) as any);
-
-      await expect(service.login(username, password)).rejects.toThrow(
-        ServiceUnavailableException,
-      );
-
       expect(loggerService.error).toHaveBeenCalledWith(
-        'Auth service error during login: Network error',
+        'Authentication failed: Invalid credentials',
+        'AuthService',
       );
     });
 
@@ -248,6 +310,7 @@ describe('AuthService', () => {
 
       expect(loggerService.error).toHaveBeenCalledWith(
         'Auth service error during login: Internal Server Error',
+        'AuthService',
       );
     });
   });
