@@ -8,6 +8,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
+import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +18,51 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly loggerService: LoggerService,
   ) {}
+
+  private extractToken(data): string {
+    const token =
+      typeof data === 'string'
+        ? data
+        : (data?.token ?? data?.access_token ?? data?.jwt ?? data?.user?.token);
+
+    if (!token) {
+      this.loggerService.error(
+        'Auth service response missing token',
+        AuthService.name,
+      );
+      throw new ServiceUnavailableException(
+        'Authentication service unavailable',
+      );
+    }
+    return token;
+  }
+
+  private validateUserToken(token: string, username: string): void {
+    const claimsToCheck = (process.env.ALLOWED_ROLES ?? '')
+      .split(',')
+      .map((role) => role.trim())
+      .filter(Boolean);
+    let claimResult;
+    try {
+      claimResult = validateTokenAndClaims(token, claimsToCheck);
+    } catch (err) {
+      const e = err as Error;
+      this.loggerService.warn(
+        `Token validation failed: ${e.message}`,
+        AuthService.name,
+      );
+      throw new UnauthorizedException('Token validation failed');
+    }
+
+    const hasRequiredClaim = claimsToCheck.some((claim) => claimResult[claim]);
+    if (!hasRequiredClaim) {
+      this.loggerService.warn(
+        `User ${username} does not have any allowed role.`,
+        AuthService.name,
+      );
+      throw new UnauthorizedException('Invalid credentials');
+    }
+  }
 
   async login(
     username: string,
@@ -46,13 +92,8 @@ export class AuthService {
       }
       this.loggerService.log('Auth service responded', AuthService.name);
 
-      const token =
-        typeof response.data === 'string'
-          ? response.data
-          : (response.data?.token ??
-            response.data?.access_token ??
-            response.data?.jwt ??
-            response.data?.user?.token);
+      const token = this.extractToken(response.data);
+      this.validateUserToken(token, username);
       return {
         message: 'Login successful',
         token,
