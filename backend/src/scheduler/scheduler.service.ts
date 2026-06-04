@@ -88,6 +88,7 @@ export class SchedulerService {
     if (!allowedStatuses?.includes(schedule.status)) {
       throw new ForbiddenException(
         `Role '${userRole}' cannot act on resources in status '${schedule.status}'`,
+        SchedulerService.name,
       );
     }
 
@@ -209,6 +210,7 @@ export class SchedulerService {
       if (!allowedStatuses?.includes(status)) {
         throw new ForbiddenException(
           `Role '${userRole}' cannot act on resources in status '${status}'`,
+          SchedulerService.name,
         );
       }
 

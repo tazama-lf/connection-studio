@@ -680,19 +680,13 @@ describe('JobService', () => {
         mockUser,
       );
 
-      expect(result).toEqual({
-        ...mockPushJob,
-        schedule_name: mockSchedule.name,
-      });
+      expect(result).toEqual(mockPushJob);
       expect(adminServiceClient.findJobById).toHaveBeenCalledWith(
         mockJobId,
         'tcs_push_jobs',
         mockToken,
       );
-      expect(schedulerService.findOne).toHaveBeenCalledWith(
-        'schedule-123',
-        mockUser,
-      );
+      expect(schedulerService.findOne).not.toHaveBeenCalled();
     });
 
     it('should find a job without schedule_id', async () => {

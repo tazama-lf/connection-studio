@@ -315,12 +315,9 @@ export class JobService {
         throw new BadRequestException('id is required.');
       }
 
-      const tableName =
-        type === ConfigType.PUSH ? 'tcs_push_jobs' : 'tcs_pull_jobs';
-
       const record = await this.adminServiceClient.findJobById(
         id,
-        tableName,
+        type === ConfigType.PUSH ? 'tcs_push_jobs' : 'tcs_pull_jobs',
         user.token.tokenString,
       );
 
@@ -330,8 +327,7 @@ export class JobService {
         );
       }
 
-      if (!record.schedule_id) {
-        this.loggerService.log('Schedule ID not found');
+      if (type !== ConfigType.PULL || !record.schedule_id) {
         return record;
       }
 
@@ -340,7 +336,10 @@ export class JobService {
         user,
       );
 
-      return schedule ? { ...record, schedule_name: schedule.name } : record;
+      return {
+        ...record,
+        schedule_name: schedule?.name,
+      };
     } catch (err) {
       return this.handleError(err);
     }
@@ -375,6 +374,7 @@ export class JobService {
       if (!allowedStatuses?.includes(status)) {
         throw new ForbiddenException(
           `Role '${userRole}' cannot act on resources in status '${status}'`,
+          JobService.name,
         );
       }
 
@@ -528,7 +528,7 @@ export class JobService {
           await this.deApiClient.notifyJob(
             existingJobForSwitch!.id,
             user.token.tokenString,
-            ConfigType.PULL,
+            type,
           );
 
           await this.notificationService.sendWorkflowNotification(
