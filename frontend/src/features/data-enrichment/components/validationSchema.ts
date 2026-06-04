@@ -235,9 +235,9 @@ export const pullValidationSchema = yup.object({
 
             normalized = normalized.replace(/'/g, '"');
 
-            // eslint-disable-next-line @stylistic/quotes -- backslash+single-quote sequence requires double-quoted string literal
             normalized = normalized
-              .replace(/___ESCAPED_SINGLE___/g, "\\'")
+              // eslint-disable-next-line @stylistic/quotes -- backslash+single-quote sequence requires double-quoted string literal
+              .replace(/___ESCAPED_SINGLE___/g, `\\'`)
               .replace(/___ESCAPED_DOUBLE___/g, '\\"');
 
             return normalized;

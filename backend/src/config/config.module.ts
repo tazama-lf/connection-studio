@@ -7,9 +7,10 @@ import { ConfigWorkflowService } from './config-workflow.service';
 import { ConfigUtilsService } from './config-utils.service';
 import { TazamaDataModelModule } from '../tazama-data-model/tazama-data-model.module';
 import { AdminServiceClient } from '../services/admin-service-client.service';
+import { DemsClient } from '../services/dems-client.service';
 import { SftpModule } from '../sftp/sftp.module';
 import { NotificationModule } from '../notification/notification.module';
-import { NotifyModule } from '../notify/notify.module';
+import { LoggerModule } from '../logger-service/logger-service.module';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { NotifyModule } from '../notify/notify.module';
     TazamaDataModelModule,
     SftpModule,
     NotificationModule,
-    NotifyModule,
+    LoggerModule,
   ],
   controllers: [ConfigController],
   providers: [
@@ -26,6 +27,7 @@ import { NotifyModule } from '../notify/notify.module';
     ConfigWorkflowService,
     ConfigUtilsService,
     AdminServiceClient,
+    DemsClient,
   ],
   exports: [
     ConfigService,

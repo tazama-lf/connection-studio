@@ -13,10 +13,7 @@ export class ConfigRepository {
     configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'>,
     token: string,
   ): Promise<number> {
-    const result = await this.adminServiceClient.writeConfig(
-      configData as Record<string, unknown>,
-      token,
-    );
+    const result = await this.adminServiceClient.writeConfig(configData, token);
     if (!result.id) {
       throw new Error('Failed to create config: no ID returned');
     }
@@ -176,8 +173,6 @@ export class ConfigRepository {
   async getRelatedTransactions(
     token: string,
   ): Promise<{ related_transactions: string[] }> {
-    return await this.adminServiceClient.getRelatedTransactions(
-      token,
-    );
+    return await this.adminServiceClient.getRelatedTransactions(token);
   }
 }

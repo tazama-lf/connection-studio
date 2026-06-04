@@ -200,7 +200,11 @@ describe('SchedulerService', () => {
       adminServiceClient.createSchedule.mockRejectedValue('plain string error');
 
       await expect(
-        service.create(createScheduleDto as CreateScheduleJobDto, mockTenantId, mockToken),
+        service.create(
+          createScheduleDto as CreateScheduleJobDto,
+          mockTenantId,
+          mockToken,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalledWith(
@@ -246,9 +250,9 @@ describe('SchedulerService', () => {
         .spyOn(service['rbacService'], 'getTier2')
         .mockReturnValue({ allowedStatuses: [JobStatus.INPROGRESS] } as any);
 
-      await expect(
-        service.findOne(mockSchedule.id, mockUser),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.findOne(mockSchedule.id, mockUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -352,7 +356,11 @@ describe('SchedulerService', () => {
       });
       adminServiceClient.updateSchedule.mockResolvedValue(expectedResult);
 
-      const result = await service.updateSchedule(scheduleId, updateDto, mockUser);
+      const result = await service.updateSchedule(
+        scheduleId,
+        updateDto,
+        mockUser,
+      );
 
       expect(result).toEqual(expectedResult);
       expect(adminServiceClient.updateSchedule).toHaveBeenCalledWith(
@@ -374,7 +382,11 @@ describe('SchedulerService', () => {
       });
       adminServiceClient.updateSchedule.mockResolvedValue(expectedResult);
 
-      const result = await service.updateSchedule(scheduleId, updateDto, mockUser);
+      const result = await service.updateSchedule(
+        scheduleId,
+        updateDto,
+        mockUser,
+      );
 
       expect(result).toEqual(expectedResult);
       expect(adminServiceClient.updateSchedule).toHaveBeenCalledWith(
@@ -473,7 +485,11 @@ describe('SchedulerService', () => {
         message: 'Failed',
       });
 
-      const result = await service.updateSchedule(scheduleId, updateDto, mockUser);
+      const result = await service.updateSchedule(
+        scheduleId,
+        updateDto,
+        mockUser,
+      );
 
       expect(result.success).toBe(false);
       expect(adminServiceClient.updateScheduleByStatus).not.toHaveBeenCalled();
@@ -493,7 +509,11 @@ describe('SchedulerService', () => {
         message: 'ok',
       });
 
-      const result = await service.updateSchedule(scheduleId, updateDto, mockUser);
+      const result = await service.updateSchedule(
+        scheduleId,
+        updateDto,
+        mockUser,
+      );
 
       expect(result.success).toBe(true);
       expect(adminServiceClient.updateScheduleByStatus).toHaveBeenCalledWith(
@@ -514,12 +534,7 @@ describe('SchedulerService', () => {
       const mockSchedules = [mockSchedule];
       adminServiceClient.getScheduleByStatus.mockResolvedValue(mockSchedules);
 
-      const result = await service.findByStatus(
-        status,
-        page,
-        limit,
-        mockUser,
-      );
+      const result = await service.findByStatus(status, page, limit, mockUser);
 
       expect(result).toEqual(mockSchedules);
       expect(adminServiceClient.getScheduleByStatus).toHaveBeenCalledWith(
@@ -889,7 +904,12 @@ describe('SchedulerService', () => {
       adminServiceClient.findScheduleById.mockResolvedValue(null);
 
       await expect(
-        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+        service.updateStatus(
+          scheduleId,
+          mockTenantId,
+          JobStatus.REVIEW,
+          mockUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -898,7 +918,12 @@ describe('SchedulerService', () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(mockSchedule);
 
       await expect(
-        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, invalidUser as any),
+        service.updateStatus(
+          scheduleId,
+          mockTenantId,
+          JobStatus.REVIEW,
+          invalidUser as any,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -912,7 +937,12 @@ describe('SchedulerService', () => {
         .mockReturnValue({ allowed: false, reason: 'Tier2 blocked' } as any);
 
       await expect(
-        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+        service.updateStatus(
+          scheduleId,
+          mockTenantId,
+          JobStatus.REVIEW,
+          mockUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -926,7 +956,12 @@ describe('SchedulerService', () => {
         .mockReturnValue({ allowed: false } as any);
 
       await expect(
-        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+        service.updateStatus(
+          scheduleId,
+          mockTenantId,
+          JobStatus.REVIEW,
+          mockUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -943,7 +978,12 @@ describe('SchedulerService', () => {
         .mockReturnValue({ allowed: false, reason: 'Tier3 blocked' } as any);
 
       await expect(
-        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+        service.updateStatus(
+          scheduleId,
+          mockTenantId,
+          JobStatus.REVIEW,
+          mockUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -960,7 +1000,12 @@ describe('SchedulerService', () => {
         .mockReturnValue({ allowed: false } as any);
 
       await expect(
-        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+        service.updateStatus(
+          scheduleId,
+          mockTenantId,
+          JobStatus.REVIEW,
+          mockUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -991,10 +1036,17 @@ describe('SchedulerService', () => {
     });
 
     it('should handle non-Error thrown in updateStatus catch', async () => {
-      adminServiceClient.findScheduleById.mockRejectedValue('plain string error');
+      adminServiceClient.findScheduleById.mockRejectedValue(
+        'plain string error',
+      );
 
       await expect(
-        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+        service.updateStatus(
+          scheduleId,
+          mockTenantId,
+          JobStatus.REVIEW,
+          mockUser,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalledWith('plain string error');
@@ -1011,7 +1063,12 @@ describe('SchedulerService', () => {
       sftpService.readFile.mockRejectedValue('sftp plain error');
 
       await expect(
-        service.updateStatus(scheduleId, mockTenantId, JobStatus.DEPLOYED, publisherUser),
+        service.updateStatus(
+          scheduleId,
+          mockTenantId,
+          JobStatus.DEPLOYED,
+          publisherUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });

@@ -1,19 +1,17 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { TazamaDataModelRepository } from './tazama-data-model.repository';
 
-
 interface ErrorWithMessage {
   message: string;
   stack?: string;
 }
-
 
 @Injectable()
 export class TazamaDataModelService {
   private readonly logger = new Logger(TazamaDataModelService.name);
 
   /* c8 ignore start */
-  constructor(private readonly repository: TazamaDataModelRepository) { }
+  constructor(private readonly repository: TazamaDataModelRepository) {}
   /* c8 ignore stop */
 
   async getDataModelJson(

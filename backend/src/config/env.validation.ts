@@ -41,6 +41,9 @@ class EnvironmentVariables {
   @IsOptional()
   @IsNumberString()
   SESSION_TIMEOUT_MINUTES?: string;
+
+  @IsString()
+  DEAPI_URL: string;
 }
 export const validate = (
   config: Record<string, unknown>,

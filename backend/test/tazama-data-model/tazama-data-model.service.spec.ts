@@ -51,8 +51,12 @@ describe('TazamaDataModelService', () => {
 
       expect(result).toEqual(mockData);
       expect(repository.getDataModelJson).toHaveBeenCalledWith(tenantId, token);
-      expect(service['logger'].log).toHaveBeenCalledWith(`Getting data model JSON for tenant: ${tenantId}`);
-      expect(service['logger'].log).toHaveBeenCalledWith(`Successfully retrieved data model JSON for tenant: ${tenantId}`);
+      expect(service['logger'].log).toHaveBeenCalledWith(
+        `Getting data model JSON for tenant: ${tenantId}`,
+      );
+      expect(service['logger'].log).toHaveBeenCalledWith(
+        `Successfully retrieved data model JSON for tenant: ${tenantId}`,
+      );
     });
 
     it('should handle errors and throw BadRequestException', async () => {
@@ -60,12 +64,17 @@ describe('TazamaDataModelService', () => {
       const token = 'token123';
       const errorMessage = 'Database error';
 
-      jest.spyOn(repository, 'getDataModelJson').mockRejectedValue(new Error(errorMessage));
+      jest
+        .spyOn(repository, 'getDataModelJson')
+        .mockRejectedValue(new Error(errorMessage));
 
-      await expect(service.getDataModelJson(tenantId, token))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.getDataModelJson(tenantId, token)).rejects.toThrow(
+        BadRequestException,
+      );
 
-      expect(service['logger'].error).toHaveBeenCalledWith(`Failed to get data model JSON: ${errorMessage}`);
+      expect(service['logger'].error).toHaveBeenCalledWith(
+        `Failed to get data model JSON: ${errorMessage}`,
+      );
     });
 
     it('should handle unknown error without message', async () => {
@@ -74,10 +83,13 @@ describe('TazamaDataModelService', () => {
 
       jest.spyOn(repository, 'getDataModelJson').mockRejectedValue({});
 
-      await expect(service.getDataModelJson(tenantId, token))
-        .rejects.toThrow('Failed to get data model JSON: Unknown error');
+      await expect(service.getDataModelJson(tenantId, token)).rejects.toThrow(
+        'Failed to get data model JSON: Unknown error',
+      );
 
-      expect(service['logger'].error).toHaveBeenCalledWith('Failed to get data model JSON: Unknown error');
+      expect(service['logger'].error).toHaveBeenCalledWith(
+        'Failed to get data model JSON: Unknown error',
+      );
     });
   });
 
@@ -86,16 +98,31 @@ describe('TazamaDataModelService', () => {
       const tenantId = 'tenant123';
       const dataModelJson = { model: 'test' };
       const token = 'token123';
-      const mockResult = { tenant_id: tenantId, updated_at: '2023-01-01T00:00:00Z' };
+      const mockResult = {
+        tenant_id: tenantId,
+        updated_at: '2023-01-01T00:00:00Z',
+      };
 
       jest.spyOn(repository, 'putDataModelJson').mockResolvedValue(mockResult);
 
-      const result = await service.putDataModelJson(tenantId, dataModelJson, token);
+      const result = await service.putDataModelJson(
+        tenantId,
+        dataModelJson,
+        token,
+      );
 
       expect(result).toEqual(mockResult);
-      expect(repository.putDataModelJson).toHaveBeenCalledWith(tenantId, dataModelJson, token);
-      expect(service['logger'].log).toHaveBeenCalledWith(`Saving data model JSON for tenant: ${tenantId}`);
-      expect(service['logger'].log).toHaveBeenCalledWith(`Successfully saved data model JSON for tenant: ${tenantId}`);
+      expect(repository.putDataModelJson).toHaveBeenCalledWith(
+        tenantId,
+        dataModelJson,
+        token,
+      );
+      expect(service['logger'].log).toHaveBeenCalledWith(
+        `Saving data model JSON for tenant: ${tenantId}`,
+      );
+      expect(service['logger'].log).toHaveBeenCalledWith(
+        `Successfully saved data model JSON for tenant: ${tenantId}`,
+      );
     });
 
     it('should handle errors and throw BadRequestException', async () => {
@@ -104,12 +131,17 @@ describe('TazamaDataModelService', () => {
       const token = 'token123';
       const errorMessage = 'Save failed';
 
-      jest.spyOn(repository, 'putDataModelJson').mockRejectedValue(new Error(errorMessage));
+      jest
+        .spyOn(repository, 'putDataModelJson')
+        .mockRejectedValue(new Error(errorMessage));
 
-      await expect(service.putDataModelJson(tenantId, dataModelJson, token))
-        .rejects.toThrow(BadRequestException);
+      await expect(
+        service.putDataModelJson(tenantId, dataModelJson, token),
+      ).rejects.toThrow(BadRequestException);
 
-      expect(service['logger'].error).toHaveBeenCalledWith(`Failed to save data model JSON: ${errorMessage}`);
+      expect(service['logger'].error).toHaveBeenCalledWith(
+        `Failed to save data model JSON: ${errorMessage}`,
+      );
     });
 
     it('should handle unknown error without message', async () => {
@@ -119,10 +151,13 @@ describe('TazamaDataModelService', () => {
 
       jest.spyOn(repository, 'putDataModelJson').mockRejectedValue({});
 
-      await expect(service.putDataModelJson(tenantId, dataModelJson, token))
-        .rejects.toThrow('Failed to save data model JSON: Unknown error');
+      await expect(
+        service.putDataModelJson(tenantId, dataModelJson, token),
+      ).rejects.toThrow('Failed to save data model JSON: Unknown error');
 
-      expect(service['logger'].error).toHaveBeenCalledWith('Failed to save data model JSON: Unknown error');
+      expect(service['logger'].error).toHaveBeenCalledWith(
+        'Failed to save data model JSON: Unknown error',
+      );
     });
   });
 });

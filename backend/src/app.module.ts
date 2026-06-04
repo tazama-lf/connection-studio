@@ -9,7 +9,6 @@ import { ConfigModule } from './config/config.module';
 import { SimulationModule } from './simulation/simulation.module';
 import { TazamaDataModelModule } from './tazama-data-model/tazama-data-model.module';
 import { SftpModule } from './sftp/sftp.module';
-import { NotifyModule } from './notify/notify.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { JobModule } from './job/job.module';
 import { NotificationModule } from './notification/notification.module';
@@ -28,7 +27,6 @@ import { AuditLogModule } from './audit-log/audit-log.module';
     SimulationModule,
     TazamaDataModelModule,
     SftpModule,
-    NotifyModule,
     SchedulerModule,
     JobModule,
     NotificationModule,

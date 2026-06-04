@@ -539,9 +539,9 @@ describe('SftpService', () => {
       mockProducerSftp.exists.mockResolvedValue(true);
       mockProducerSftp.delete.mockRejectedValue({ code: 'ENOENT' });
 
-      await expect(service.deleteFile(mockFileName)).rejects.toMatchObject(
-        { code: 'ENOENT' },
-      );
+      await expect(service.deleteFile(mockFileName)).rejects.toMatchObject({
+        code: 'ENOENT',
+      });
 
       expect(loggerService.error).toHaveBeenCalledWith(
         expect.stringContaining('ENOENT'),

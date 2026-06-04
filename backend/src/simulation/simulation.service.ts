@@ -1073,9 +1073,9 @@ export class SimulationService {
       strictSchema.additionalProperties = true;
     }
 
-    strictSchema.properties &&= Object.keys(
-      strictSchema.properties as Record<string, unknown>,
-    ).reduce<Record<string, unknown>>((acc, key) => {
+    strictSchema.properties &&= Object.keys(strictSchema.properties).reduce<
+      Record<string, unknown>
+    >((acc, key) => {
       const updatedAcc = { ...acc };
       updatedAcc[key] = this.enforceStrictSchema(
         (strictSchema.properties as Record<string, unknown>)[key],

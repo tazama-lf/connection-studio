@@ -22,21 +22,21 @@ import { AuthenticatedUser } from '../auth/auth.types';
 import { DryRunService } from '../dry-run/dry-run.service';
 import { EventType } from '../enums/events.enum';
 import { NotificationService } from '../notification/notification.service';
-import { NotifyService } from '../notify/notify.service';
 import { SchedulerService } from '../scheduler/scheduler.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
-import { RbacService } from '../utils/rbac/rbacHelper';
 import {
   decrypt,
   encrypt,
   escapeRegex,
   validateFileType,
 } from '../utils/helpers';
+import { RbacService } from '../utils/rbac/rbacHelper';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
+import { DeApiClient } from '../services/deapi-client.service';
 
 @Injectable()
 export class JobService {
@@ -47,10 +47,10 @@ export class JobService {
     private readonly loggerService: LoggerService,
     private readonly dryRunService: DryRunService,
     private readonly sftpService: SftpService,
-    private readonly notifyService: NotifyService,
     private readonly adminServiceClient: AdminServiceClient,
     private readonly schedulerService: SchedulerService,
     private readonly notificationService: NotificationService,
+    private readonly deApiClient: DeApiClient,
   ) {}
   /* c8 ignore stop */
 
@@ -173,7 +173,11 @@ export class JobService {
       }
 
       if (status === JobStatus.DEPLOYED) {
-        await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
+        await this.deApiClient.notifyJob(
+          id,
+          user.token.tokenString,
+          ConfigType.PUSH,
+        );
       }
 
       return result;
@@ -228,7 +232,11 @@ export class JobService {
       );
 
       if (status === JobStatus.DEPLOYED) {
-        await this.notifyService.notifyEnrichment(newId, ConfigType.PULL);
+        await this.deApiClient.notifyJob(
+          newId,
+          user.token.tokenString,
+          ConfigType.PULL,
+        );
       }
 
       return result;
@@ -307,12 +315,9 @@ export class JobService {
         throw new BadRequestException('id is required.');
       }
 
-      const tableName =
-        type === ConfigType.PUSH ? 'tcs_push_jobs' : 'tcs_pull_jobs';
-
       const record = await this.adminServiceClient.findJobById(
         id,
-        tableName,
+        type === ConfigType.PUSH ? 'tcs_push_jobs' : 'tcs_pull_jobs',
         user.token.tokenString,
       );
 
@@ -322,8 +327,7 @@ export class JobService {
         );
       }
 
-      if (!record.schedule_id) {
-        this.loggerService.log('Schedule ID not found');
+      if (type !== ConfigType.PULL || !record.schedule_id) {
         return record;
       }
 
@@ -332,7 +336,10 @@ export class JobService {
         user,
       );
 
-      return schedule ? { ...record, schedule_name: schedule.name } : record;
+      return {
+        ...record,
+        schedule_name: schedule?.name,
+      };
     } catch (err) {
       return this.handleError(err);
     }
@@ -367,6 +374,7 @@ export class JobService {
       if (!allowedStatuses?.includes(status)) {
         throw new ForbiddenException(
           `Role '${userRole}' cannot act on resources in status '${status}'`,
+          JobService.name,
         );
       }
 
@@ -398,7 +406,7 @@ export class JobService {
         );
 
       if (success) {
-        await this.notifyService.notifyEnrichment(id, type);
+        await this.deApiClient.notifyJob(id, user.token.tokenString, type);
         await this.notificationService.sendWorkflowNotification(
           status === ScheduleStatus.ACTIVE
             ? EventType.PublisherActivate
@@ -517,9 +525,10 @@ export class JobService {
           const updatedJob = structuredClone(existingJobForSwitch)!;
           updatedJob.status = JobStatus.APPROVED;
 
-          await this.notifyService.notifyEnrichment(
+          await this.deApiClient.notifyJob(
             existingJobForSwitch!.id,
-            ConfigType.PULL,
+            user.token.tokenString,
+            type,
           );
 
           await this.notificationService.sendWorkflowNotification(
@@ -569,7 +578,7 @@ export class JobService {
 
         case JobStatus.DEPLOYED: {
           // Job already read from SFTP for publisher role
-          const fileData = existingJob as Job & { schedule_name?: string };
+          const fileData = existingJob;
 
           const deployPayload: Job & { schedule_name?: string } =
             structuredClone(fileData);

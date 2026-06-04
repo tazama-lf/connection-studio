@@ -46,7 +46,7 @@ import { Audit } from 'src/decorators/audit.decorator';
 @Controller('config')
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
-  constructor(private readonly configService: ConfigService) { }
+  constructor(private readonly configService: ConfigService) {}
   @Get('/api/status')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -206,19 +206,19 @@ export class ConfigController {
 
     switch (normalizedAction) {
       case 'submit':
-        actionDto = { action: 'submit', data: dto as SubmitForApprovalDto };
+        actionDto = { action: 'submit', data: dto };
         break;
       case 'approve':
-        actionDto = { action: 'approve', data: dto as ApprovalDto };
+        actionDto = { action: 'approve', data: dto };
         break;
       case 'reject':
         actionDto = { action: 'reject', data: dto as RejectionDto };
         break;
       case 'export':
-        actionDto = { action: 'export', data: dto as StatusTransitionDto };
+        actionDto = { action: 'export', data: dto };
         break;
       case 'deploy':
-        actionDto = { action: 'deploy', data: dto as DeploymentDto };
+        actionDto = { action: 'deploy', data: dto };
         break;
       default:
         throw new BadRequestException(`Unknown workflow action: ${action}`);
