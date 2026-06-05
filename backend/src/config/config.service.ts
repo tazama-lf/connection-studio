@@ -664,11 +664,11 @@ export class ConfigService {
     }
 
     try {
-      await this.notifyService.notifyDems(id.toString(), tenantId);
+      await this.demsClient.notifyDems(id.toString(), tenantId, publishingStatus, token);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to send NATS notification for config ${id}: ${errMsg}`,
+        `Failed to send request for publishing status update--> ${id}: ${errMsg}`,
       );
       throw new BadRequestException(`Failed to activate config: ${errMsg}`);
     }
@@ -684,6 +684,8 @@ export class ConfigService {
         `Publishing status changed to ${publishingStatus}`,
       );
     }
+
+    console.log("service end Updated publishing status for config ${id} to ${publishingStatus}");
 
     return {
       success: true,
