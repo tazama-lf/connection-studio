@@ -57,6 +57,7 @@ describe('DemsClient', () => {
     const mockConfigId = 'config-123';
     const mockTenantId = 'tenant-456';
     const demsUrl = 'http://dems:3002';
+    const token = 'mock-token';
 
     beforeEach(() => {
       configService.get.mockImplementation((key: string) => {
@@ -67,7 +68,7 @@ describe('DemsClient', () => {
     });
 
     it('should PATCH to the correct URL with active status', async () => {
-      await service.notifyDems(mockConfigId, mockTenantId, 'active');
+      await service.notifyDems(mockConfigId, mockTenantId, 'active', token);
 
       expect(httpService.patch).toHaveBeenCalledWith(
         `${demsUrl}/config-notify/${mockConfigId}`,
@@ -77,7 +78,7 @@ describe('DemsClient', () => {
     });
 
     it('should PATCH to the correct URL with inactive status', async () => {
-      await service.notifyDems(mockConfigId, mockTenantId, 'inactive');
+      await service.notifyDems(mockConfigId, mockTenantId, 'inactive', token);
 
       expect(httpService.patch).toHaveBeenCalledWith(
         `${demsUrl}/config-notify/${mockConfigId}`,
@@ -87,7 +88,7 @@ describe('DemsClient', () => {
     });
 
     it('should log success after patching', async () => {
-      await service.notifyDems(mockConfigId, mockTenantId, 'active');
+      await service.notifyDems(mockConfigId, mockTenantId, 'active', token);
 
       expect(loggerService.log).toHaveBeenCalledWith(
         expect.stringContaining(mockConfigId),
@@ -101,7 +102,7 @@ describe('DemsClient', () => {
       );
 
       await expect(
-        service.notifyDems(mockConfigId, mockTenantId, 'active'),
+        service.notifyDems(mockConfigId, mockTenantId, 'active', token),
       ).rejects.toThrow('Internal server error');
     });
 
@@ -109,7 +110,7 @@ describe('DemsClient', () => {
       httpService.patch.mockReturnValue(throwError(() => 'plain string error'));
 
       await expect(
-        service.notifyDems(mockConfigId, mockTenantId, 'active'),
+        service.notifyDems(mockConfigId, mockTenantId, 'active', token),
       ).rejects.toThrow('Internal server error');
     });
 
@@ -126,13 +127,14 @@ describe('DemsClient', () => {
 
   describe('Error Handling', () => {
     it('should not throw errors in notifyDems even if HTTP fails', async () => {
+      const token = 'mock-token';
       configService.get.mockReturnValue('http://dems:3002');
       httpService.patch.mockReturnValue(
         throwError(() => new Error('HTTP failed')),
       );
 
       await expect(
-        service.notifyDems('config-id', 'tenant-id', 'active'),
+        service.notifyDems('config-id', 'tenant-id', 'active', token),
       ).rejects.toThrow('Internal server error');
     });
   });
