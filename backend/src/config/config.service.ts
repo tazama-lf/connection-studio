@@ -664,7 +664,7 @@ export class ConfigService {
     }
 
     try {
-      await this.demsClient.notifyDems(id.toString(), tenantId, publishingStatus);
+      await this.demsClient.notifyDems(id.toString(), tenantId, publishingStatus, token);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(

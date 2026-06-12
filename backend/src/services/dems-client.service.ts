@@ -27,6 +27,7 @@ export class DemsClient {
     configId: string,
     _tenantId: string,
     publishingStatus: 'active' | 'inactive',
+    token: string,
   ): Promise<void> {
     const demsUrl = this.configService.get<string>('DEMS_URL')!;
 
@@ -40,7 +41,7 @@ export class DemsClient {
       'PATCH',
       demsUrl,
       `/config-notify/${configId}`,
-      '',
+      token,
       { publishing_status: publishingStatus },
     );
 
