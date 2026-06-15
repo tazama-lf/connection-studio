@@ -1,4 +1,4 @@
-import { XMLParser } from 'fast-xml-parser';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import {
   ArrowDownToLine,
   Code2,
@@ -31,7 +31,7 @@ interface PayloadEditorProps {
   onEndpointDataChange?: (data: EndpointFormData) => void;
   configId?: number; // Optional config ID for schema updates
   onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; // Callback for field adjustments
-  onSchemaChange?: (schema: any) => void; // Callback for current schema
+  onSchemaChange?: (schema: unknown) => void; // Callback for current schema
   existingSchemaFields?: SchemaField[] | InferredField[]; // Existing schema fields when editing (can be either format)
   isEditMode?: boolean; // Explicitly control whether to show Add/Remove field buttons
   tenantId?: string; // Tenant ID for endpoint preview
@@ -42,8 +42,8 @@ interface PayloadEditorProps {
     version: string;
     transactionType: string;
   }) => void; // Callback for validation errors
-  payloadError?: any; // External payload error from parent component
-  setPayloadError?: any; // Callback to set external payload error
+  payloadError?: string | null; // External payload error from parent component
+  setPayloadError: (error: string | null) => void; // Callback to set external payload error
 }
 interface EndpointFormData {
   version: string;
@@ -137,13 +137,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       payload: '',
     });
     const [showValidationErrors, setShowValidationErrors] = useState(false);
-    const capitalizeFirstLetter = (string: string): string =>
-      string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+    const capitalizeFirstLetter = (s: string): string =>
+      s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
     const safeJsonParse = (
       jsonString: string,
-    ): { success: boolean; data?: any; error?: string } => {
+    ): { success: boolean; data?: unknown; error?: string } => {
       try {
-        const parsed = JSON.parse(jsonString ?? '{}');
+        const parsed : unknown = JSON.parse(jsonString || '{}');
         return { success: true, data: parsed };
       } catch (error) {
         return { success: false, error: 'Invalid JSON format' };
@@ -174,7 +174,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           if (!value || value.trim() === '') {
             return true;
           }
-          return /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/.test(value);
+          const regex= /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/
+          return regex.test(value);
         },
       );
     const validateVersion = (version: string): string => {
@@ -264,7 +265,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           const parser = new DOMParser();
           const xmlDoc = parser.parseFromString(payloadValue, 'text/xml');
           const parseError = xmlDoc.getElementsByTagName('parsererror');
-          if (parseError.length > 0) {
+          const result = XMLValidator.validate(payloadValue) && validateInput(payloadValue);
+          if (parseError.length > 0 || !result) {
             return {
               isValid: false,
               message: 'Invalid XML format',
@@ -413,6 +415,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         }
       }
     }, [inferredFields, onSchemaChange]);
+
+
     const handleGenerateFields = (): void => {
       if (!value.trim()) {
         setFieldGenerationError('Please enter a payload first.');
@@ -475,6 +479,37 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         setIsGeneratingFields(false);
       }
     };
+
+
+    const validateInput = (input: string) => {
+      if (typeof input !== 'string' || !input.trim()) {
+        return false;
+      }
+
+      // Reject XML declarations / processing instructions
+      if (/<\?[\s\S]*?\?>/.test(input)) {
+        return false;
+      }
+
+      // Reject comments
+      if (/<!--[\s\S]*?-->/.test(input)) {
+        return false;
+      }
+
+      // Reject DOCTYPE
+      if (/<!DOCTYPE/i.test(input)) {
+        return false;
+      }
+
+      // Reject CDATA
+      if (/<!\[CDATA\[/i.test(input)) {
+        return false;
+      }
+
+      return /^\s*<([A-Za-z_][A-Za-z0-9_-]*)>[\s\S]*<\/\1>\s*$/.test(input);
+    };
+
+
     const handleEndpointDataChange = (
       field: keyof EndpointFormData,
       newValue: string,
@@ -603,10 +638,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         reader.readAsText(file);
       }
     };
+
+
+
     const generateSchemaFromPayload = (
       payload: string,
       contentType: string,
-    ): any => {
+    ): SchemaField[] | null => {
       if (contentType === 'application/json') {
         try {
           const parsed = JSON.parse(payload);
@@ -627,6 +665,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             attributeNamePrefix: '',
           });
           const jsonResult = xmlparser.parse(payload);
+          
           return generateJSONSchema(jsonResult);
         } catch (e) {
           throw new Error('Invalid XML format');
@@ -634,7 +673,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       }
       return null;
     };
-    const generateJSONSchema = (obj: any, path = ''): SchemaField[] => {
+
+
+    const generateJSONSchema = (obj: unknown, path = ''): SchemaField[] => {
       const schema: SchemaField[] = [];
       if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
         Object.entries(obj).forEach(([key, value]) => {
@@ -787,21 +828,15 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     </CdtTrfTxInf>
   </FIToFICstmrCdtTrf>
 </Document>`;
-    const FormattedJsonSection = (): React.JSX.Element => {
+    const FormattedJsonSection: React.FC = () => {
       const parseResult = safeJsonParse(value);
       if (parseResult.success && parseResult.data) {
         return (
           <ReactJson
             src={parseResult.data}
-            onEdit={(e) => {
-              onChange(JSON.stringify(e.updated_src, null, 2));
-            }}
-            onAdd={(e) => {
-              onChange(JSON.stringify(e.updated_src, null, 2));
-            }}
-            onDelete={(e) => {
-              onChange(JSON.stringify(e.updated_src, null, 2));
-            }}
+            onEdit={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
+            onAdd={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
+            onDelete={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
             theme="rjv-default"
             name={false}
             displayDataTypes={false}
@@ -836,14 +871,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     };
     return (
       <div className="space-y-4">
-        {}
+        { }
         <div className="">
           <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900 mb-4">
             <Settings2 className="text-blue-500" size={16} /> Endpoint
             Configuration
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {}
+            { }
             <div>
               <label
                 htmlFor="version"
@@ -872,13 +907,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="1.0.0"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${
-                      isReadOnly
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : fieldErrors.version
-                          ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                          : 'bg-white border-gray-300'
-                    }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${isReadOnly
+                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : fieldErrors.version
+                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                        : 'bg-white border-gray-300'
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -889,7 +923,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="msgFam"
@@ -914,13 +948,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="iso-20022"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : fieldErrors.eventType
-                          ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                          : 'bg-white border-gray-300'
-                    }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : fieldErrors.eventType
+                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                        : 'bg-white border-gray-300'
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -931,7 +964,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="transaction-type"
@@ -959,13 +992,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="e.g., pacs.008, pain.001"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : fieldErrors.transactionType
-                          ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                          : 'bg-white border-gray-300'
-                    }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : fieldErrors.transactionType
+                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                        : 'bg-white border-gray-300'
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -976,7 +1008,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="content-type"
@@ -993,11 +1025,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     onChange={(e) => {
                       handleEndpointDataChange('contentType', e.target.value);
                     }}
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : 'bg-white border-gray-300'
-                    }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'bg-white border-gray-300'
+                      }`}
                     disabled={isReadOnly}
                   >
                     <option value="application/json">application/json</option>
@@ -1006,7 +1037,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 );
               })()}
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="related-transaction"
@@ -1026,11 +1057,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                         e.target.value,
                       );
                     }}
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : 'bg-white border-gray-300'
-                    }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'bg-white border-gray-300'
+                      }`}
                     disabled={isReadOnly}
                   >
                     <option value="">-- Select Related Transaction --</option>
@@ -1044,9 +1074,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               })()}
             </div>
           </div>
-          {}
-          {}
-          {}
+          { }
+          { }
+          { }
           {endpointData.transactionType && (
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start gap-3">
@@ -1069,7 +1099,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   <h4 className="text-sm font-medium text-blue-900 mb-2">
                     Endpoint Path Preview
                   </h4>
-                  {}
+                  { }
                   <div className="bg-white border border-blue-200 rounded px-3 py-2 font-mono text-sm text-gray-900">
                     /{tenantId}/{endpointData.version || 'v1'}/
                     {endpointData.msgFam ? `${endpointData.msgFam}/` : ''}
@@ -1208,27 +1238,25 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   </div>
                 </div>
               )}
-            {}
+            { }
             {!readOnly &&
               !isEditMode &&
               (payloadValidationMessage || fieldErrors.payload) && (
                 <div
-                  className={`p-3 border rounded-md mb-3 mt-5 ${
-                    fieldErrors.payload
-                      ? 'bg-red-50 border-red-200'
-                      : isPayloadValid
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-yellow-50 border-yellow-200'
-                  }`}
+                  className={`p-3 border rounded-md mb-3 mt-5 ${fieldErrors.payload
+                    ? 'bg-red-50 border-red-200'
+                    : isPayloadValid
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-yellow-50 border-yellow-200'
+                    }`}
                 >
                   <p
-                    className={`text-sm ${
-                      fieldErrors.payload
-                        ? 'text-red-700'
-                        : isPayloadValid
-                          ? 'text-green-700'
-                          : 'text-yellow-700'
-                    }`}
+                    className={`text-sm ${fieldErrors.payload
+                      ? 'text-red-700'
+                      : isPayloadValid
+                        ? 'text-green-700'
+                        : 'text-yellow-700'
+                      }`}
                   >
                     {fieldErrors.payload || payloadValidationMessage}
                   </p>
@@ -1236,11 +1264,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               )}
           </div>
         )}
-        {}
+        { }
         {!isEditMode && (shouldCreateNew || isCloning) && (
           <>
             <div className="flex gap-5 w-full">
-              {}
+              { }
               <div className="flex-1">
                 <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
                   <Terminal className="text-blue-500" size={16} /> Raw Input
@@ -1249,6 +1277,18 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   <textarea
                     value={value}
                     onChange={(e) => {
+                      // if (endpointData.contentType === 'application/xml') {
+                      //   const result = validateInput(e.target.value)
+                      //   console.log("RESULT++++++++++++", result)
+                      //   if (!result) {
+                      //     setIsPayloadValid(false);
+                      //     setPayloadValidationMessage('Invalid XML format');
+                      //     setFieldErrors((prev) => ({
+                      //       ...prev,
+                      //       payload: 'Invalid XML format',
+                      //     }));
+                      //   }
+                      // }
                       onChange(e.target.value);
                     }}
                     className="w-full h-[400px] p-4 font-mono text-sm bg-white focus:outline-none border rounded-md resize-none scrollbar-hide"
@@ -1258,7 +1298,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   />
                 </div>
               </div>
-              {}
+              { }
               {endpointData.contentType === 'application/json' && (
                 <div className="flex-1">
                   <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
@@ -1266,19 +1306,19 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     Preview
                   </h4>
                   <div className="border rounded-md relative bg-white p-4 h-[400px] overflow-auto">
-                    {FormattedJsonSection()}
+                    <FormattedJsonSection />
                   </div>
                 </div>
               )}
             </div>
-            {}
+            { }
             <div className="my-6">
               {fieldGenerationError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
                   {fieldGenerationError}
                 </div>
               )}
-              {}
+              { }
               {value && isPayloadValid && (
                 <div className="text-center mb-4">
                   <Button
@@ -1308,7 +1348,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             </div>
           </>
         )}
-        {}
+        { }
         {isEditMode && !readOnly && (
           <div className="my-5 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
@@ -1339,7 +1379,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             </div>
           </div>
         )}
-        {}
+        { }
         {showInferredFields && (
           <div className="mt-6 space-y-4">
             {(isEditMode || readOnly || inferredFields.length > 0) && (
@@ -1360,12 +1400,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </div>
             )}
-            {}
+            { }
             {inferredFields.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                {}
-                {}
-                {}
+                { }
+                { }
+                { }
                 {!readOnly && isEditMode && (
                   <div className="mt-4">
                     {!showAddFieldForm ? (
@@ -1396,7 +1436,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                           Add Your First Field
                         </h4>
                         <div className="space-y-3">
-                          {}
+                          { }
                           <div>
                             <label
                               htmlFor="empty-field-path"
@@ -1421,7 +1461,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Use dots for nested fields (parent.child)
                             </p>
                           </div>
-                          {}
+                          { }
                           <div>
                             <label
                               htmlFor="empty-field-type"
@@ -1447,7 +1487,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               <option value="Array">Array</option>
                             </select>
                           </div>
-                          {}
+                          { }
                           <div className="flex items-center">
                             <input
                               id="empty-field-required"
@@ -1468,7 +1508,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Required field
                             </label>
                           </div>
-                          {}
+                          { }
                           <div className="flex justify-center space-x-2 mt-4">
                             <button
                               onClick={() => {
@@ -1499,7 +1539,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               </div>
             ) : (
               <>
-                {}
+                { }
                 <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-3">
@@ -1517,7 +1557,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     </div>
                   </div>
                 </div>
-                {}
+                { }
                 {!readOnly && isEditMode && (
                   <div className="mb-4">
                     {!showAddFieldForm ? (
@@ -1545,7 +1585,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     ) : (
                       <div className="p-3 border border-gray-200 rounded bg-gray-50">
                         <div className="grid grid-cols-12 gap-2 items-center">
-                          {}
+                          { }
                           <div className="col-span-5">
                             <input
                               type="text"
@@ -1560,7 +1600,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           </div>
-                          {}
+                          { }
                           <div className="col-span-2">
                             <select
                               value={newField.type}
@@ -1579,7 +1619,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               <option value="Array">Array</option>
                             </select>
                           </div>
-                          {}
+                          { }
                           <div className="col-span-2 flex items-center">
                             <input
                               type="checkbox"
@@ -1596,7 +1636,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Required
                             </label>
                           </div>
-                          {}
+                          { }
                           <div className="col-span-3 flex justify-end gap-1">
                             <button
                               onClick={() => {
@@ -1624,7 +1664,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     )}
                   </div>
                 )}
-                {}
+                { }
                 <div className="border border-gray-200 rounded-lg">
                   <div
                     className="space-y-2 p-2"
@@ -1640,7 +1680,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                         <div className="flex gap-3 items-center w-full">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center">
-                              {}
+                              { }
                               <div
                                 className="flex items-center w-full"
                                 style={{ paddingLeft: `${field.level * 24}px` }}
@@ -1716,8 +1756,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </>
             )}
-            {}
-            {}
+            { }
+            { }
           </div>
         )}
       </div>
