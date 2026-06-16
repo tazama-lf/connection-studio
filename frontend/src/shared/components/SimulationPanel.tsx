@@ -92,7 +92,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
       const payloadType = contentType === 'application/json' ? 'json' : 'xml';
 
       const xmlparser = new XMLParser({
-        ignoreAttributes: false,
+        ignoreAttributes: true,
         attributeNamePrefix: '',
       });
       const jsonResult = xmlparser.parse(testPayload);

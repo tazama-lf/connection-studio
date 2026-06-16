@@ -832,7 +832,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const [currentStep, setCurrentStep] = useState<
     'payload' | 'mapping' | 'functions' | 'simulation' | 'deploy'
   >('payload');
-  const [payload, setPayload] = useState('');
+  const [payload, setPayload] = useState<Record<string, unknown> | string | null>(null);
 
   const [isMappingValid, setIsMappingValid] = useState(false);
   const [isSimulationSuccess, setIsSimulationSuccess] = useState(false);
@@ -956,7 +956,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               );
             } else if (config.schema) {
               // Otherwise, show the schema (user will need to replace with actual payload for editing)
-              setPayload(JSON.stringify(config.schema, null, 2));
+              setPayload(config.schema);
             }
 
             // Initialize currentMappings with existing mappings for consistency
@@ -1383,8 +1383,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     if (endpointData.contentType === 'application/json') {
       try {
         if (typeof payload === 'string') {
-          const trimmedPayload = payload.trim();
-          parsedPayload = JSON.parse(trimmedPayload);
+          parsedPayload = JSON.parse(payload);
         } else {
           parsedPayload = payload;
         }
@@ -1457,7 +1456,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         );
       }
 
-      if (!existingConfig?.schema && payload.trim()) {
+      if (!existingConfig?.schema && payload) {
         try {
         } catch (error) {
           finalSchema = existingConfig?.schema;

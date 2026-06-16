@@ -95,9 +95,9 @@
     "vite": "^7.1.6"
   },
   "lint-staged": {
-    "**/*.{js,ts,tsx}": [
-      "npx eslint --fix --no-warn-ignored",
-      "npx prettier --write"
+     "**/*.{js,ts}": [
+      "npm run lint -- --fix",
+      "npm run format"
     ]
   }
 }

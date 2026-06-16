@@ -25,8 +25,8 @@ import type {
 } from '../../features/config/services/configApi';
 import { Button } from './Button';
 interface PayloadEditorProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: Record<string, unknown> | null;
+  onChange: (value: Record<string, unknown> | string | null) => void;
   endpointData?: EndpointFormData;
   onEndpointDataChange?: (data: EndpointFormData) => void;
   configId?: number; // Optional config ID for schema updates
@@ -140,13 +140,29 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const capitalizeFirstLetter = (s: string): string =>
       s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
     const safeJsonParse = (
-      jsonString: string,
+      value: Record<string, unknown> | string | null,
     ): { success: boolean; data?: unknown; error?: string } => {
       try {
-        const parsed : unknown = JSON.parse(jsonString || '{}');
-        return { success: true, data: parsed };
-      } catch (error) {
-        return { success: false, error: 'Invalid JSON format' };
+        if (!value) {
+          return { success: true, data: {} };
+        }
+
+        if (typeof value === 'string') {
+          return {
+            success: true,
+            data: JSON.parse(value),
+          };
+        }
+
+        return {
+          success: true,
+          data: value,
+        };
+      } catch {
+        return {
+          success: false,
+          error: 'Invalid JSON format',
+        };
       }
     };
     const versionSchema = yup
@@ -174,7 +190,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           if (!value || value.trim() === '') {
             return true;
           }
-          const regex= /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/
+          const regex = /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/
           return regex.test(value);
         },
       );
@@ -239,7 +255,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       [endpointData.version, endpointData.transactionType, endpointData.msgFam],
     );
     const validatePayloadContent = (
-      payloadValue: string,
+      payloadValue: Record<string, unknown> | null,
       contentType: string,
     ): { isValid: boolean; message: string; error: string } => {
       if (!payloadValue) {
@@ -247,25 +263,42 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       }
       if (contentType === 'application/json') {
         try {
-          JSON.parse(payloadValue);
+          if (typeof payloadValue === 'string') {
+            const parsed = JSON.parse(payloadValue);
+
+            if (
+              parsed === null ||
+              Array.isArray(parsed) ||
+              typeof parsed !== 'object'
+            ) {
+              throw new Error();
+            }
+          } else if (
+            payloadValue === null ||
+            Array.isArray(payloadValue) ||
+            typeof payloadValue !== 'object'
+          ) {
+            throw new Error();
+          }
+
           return {
             isValid: true,
             message: 'Valid JSON format detected',
             error: '',
           };
-        } catch (e) {
+        } catch {
           return {
             isValid: false,
             message: 'Invalid JSON format',
-            error: 'Invalid JSON format',
+            error: 'Invalid JSON formats',
           };
         }
       } else if (contentType === 'application/xml') {
         try {
           const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(payloadValue, 'text/xml');
+          const xmlDoc = parser.parseFromString(payloadValue.toString(), 'text/xml');
           const parseError = xmlDoc.getElementsByTagName('parsererror');
-          const result = XMLValidator.validate(payloadValue) && validateInput(payloadValue);
+          const result = XMLValidator.validate(payloadValue.toString()) && validateInput(payloadValue.toString());
           if (parseError.length > 0 || !result) {
             return {
               isValid: false,
@@ -418,7 +451,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
 
     const handleGenerateFields = (): void => {
-      if (!value.trim()) {
+      if (!value) {
         setFieldGenerationError('Please enter a payload first.');
         return;
       }
@@ -540,7 +573,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         }));
       }
       if (field === 'contentType') {
-        const payloadValidation = validatePayloadContent(value ?? '', newValue);
+        const payloadValidation = validatePayloadContent(value, newValue);
         setIsPayloadValid(payloadValidation.isValid);
         setPayloadValidationMessage(payloadValidation.message);
         setFieldErrors((prev) => ({
@@ -549,8 +582,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         }));
       }
     };
+
     const validatePayload = (
-      payloadValue: string,
+      payloadValue: Record<string, unknown> | null,
       contentType: string,
     ): void => {
       const validation = validatePayloadContent(payloadValue, contentType);
@@ -562,6 +596,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     useEffect(() => {
       validatePayload(value, endpointData.contentType);
     }, [value, endpointData.contentType]);
+
     useEffect(() => {
       setFieldErrors({
         version: '',
@@ -605,8 +640,20 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           let contentValidationError = '';
           if (isJsonExpected) {
             try {
-              JSON.parse(content);
-            } catch (error) {
+              const parsed = JSON.parse(content);
+              if (
+                parsed === null ||
+                Array.isArray(parsed) ||
+                typeof parsed !== 'object'
+              ) {
+                contentValidationError =
+                  'Invalid JSON file: Expected a JSON object at the root level.';
+              } else {
+                setFieldErrors((prev) => ({ ...prev, payload: '' }));
+                onChange(JSON.stringify(parsed, null, 2));
+                return;
+              }
+            } catch {
               contentValidationError =
                 'Invalid JSON file: The uploaded file contains invalid JSON format.';
             }
@@ -615,9 +662,23 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               const parser = new DOMParser();
               const xmlDoc = parser.parseFromString(content, 'text/xml');
               const parseError = xmlDoc.getElementsByTagName('parsererror');
-              if (parseError.length > 0) {
+
+              const isValidXml =
+                parseError.length === 0 &&
+                XMLValidator.validate(content) &&
+                validateInput(content);
+
+              if (!isValidXml) {
                 contentValidationError =
                   'Invalid XML file: The uploaded file contains invalid XML format.';
+              } else {
+                const parser = new XMLParser({
+                  ignoreAttributes: true,
+                });
+
+                const parsedXml = parser.parse(content);
+
+                onChange(parsedXml);
               }
             } catch (error) {
               contentValidationError =
@@ -633,7 +694,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             return;
           }
           setFieldErrors((prev) => ({ ...prev, payload: '' }));
-          onChange(content);
         };
         reader.readAsText(file);
       }
@@ -642,12 +702,21 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
 
     const generateSchemaFromPayload = (
-      payload: string,
+      payload: Record<string, unknown>,
       contentType: string,
     ): SchemaField[] | null => {
       if (contentType === 'application/json') {
         try {
-          const parsed = JSON.parse(payload);
+          const parsed = JSON.parse(payload.toString());
+
+          if (
+            parsed === null ||
+            typeof parsed !== 'object' ||
+            Array.isArray(parsed)
+          ) {
+            throw new Error();
+          }
+
           return generateJSONSchema(parsed);
         } catch (e) {
           throw new Error('Invalid JSON format');
@@ -655,17 +724,16 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       } else if (contentType === 'application/xml') {
         try {
           const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(payload, 'text/xml');
+          const xmlDoc = parser.parseFromString(payload.toString(), 'text/xml');
           const parseError = xmlDoc.getElementsByTagName('parsererror');
           if (parseError.length > 0) {
             throw new Error('XML parsing error');
           }
           const xmlparser = new XMLParser({
-            ignoreAttributes: false,
-            attributeNamePrefix: '',
+            ignoreAttributes: true,
           });
-          const jsonResult = xmlparser.parse(payload);
-          
+          const jsonResult = xmlparser.parse(payload.toString());
+
           return generateJSONSchema(jsonResult);
         } catch (e) {
           throw new Error('Invalid XML format');
@@ -834,9 +902,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         return (
           <ReactJson
             src={parseResult.data}
-            onEdit={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
-            onAdd={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
-            onDelete={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
+            onEdit={(e) => onChange(JSON.parse(e.updated_src.toString()))}
+            onAdd={(e) => onChange(JSON.parse(e.updated_src.toString()))}
+            onDelete={(e) => onChange(JSON.parse(e.updated_src.toString()))}
             theme="rjv-default"
             name={false}
             displayDataTypes={false}
@@ -1138,7 +1206,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       onClick={() => {
                         onChange(
                           endpointData.contentType === 'application/json'
-                            ? sampleJsonPayload
+                            ? JSON.parse(sampleJsonPayload)
                             : sampleXmlPayload,
                         );
                       }}
@@ -1159,7 +1227,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     icon={<XCircle size={16} />}
                     className="cursor-pointer"
                     onClick={() => {
-                      onChange('');
+                      onChange(null);
                     }}
                   >
                     Clear
@@ -1275,20 +1343,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </h4>
                 <div className=" rounded-md relative bg-white">
                   <textarea
-                    value={value}
+                    value={
+                      value
+                        ? typeof value === 'string'
+                          ? value
+                          : JSON.stringify(value, null, 2)
+                        : ''
+                    }
                     onChange={(e) => {
-                      // if (endpointData.contentType === 'application/xml') {
-                      //   const result = validateInput(e.target.value)
-                      //   console.log("RESULT++++++++++++", result)
-                      //   if (!result) {
-                      //     setIsPayloadValid(false);
-                      //     setPayloadValidationMessage('Invalid XML format');
-                      //     setFieldErrors((prev) => ({
-                      //       ...prev,
-                      //       payload: 'Invalid XML format',
-                      //     }));
-                      //   }
-                      // }
                       onChange(e.target.value);
                     }}
                     className="w-full h-[400px] p-4 font-mono text-sm bg-white focus:outline-none border rounded-md resize-none scrollbar-hide"
@@ -1327,7 +1389,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     onClick={() => {
                       handleGenerateFields();
                     }}
-                    disabled={isGeneratingFields || !value.trim() || readOnly}
+                    disabled={isGeneratingFields || !value || readOnly}
                     icon={<SparklesIcon size={16} />}
                   >
                     {isGeneratingFields
@@ -1340,7 +1402,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               )}
               <div className="text-center">
                 <p className="text-sm text-gray-600">
-                  {value.trim()
+                  {value
                     ? 'Click "Generate Fields" to create schema fields from your payload above.'
                     : 'Enter a payload above, then click "Generate Fields" to create schema fields.'}
                 </p>

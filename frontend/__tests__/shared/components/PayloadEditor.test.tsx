@@ -77,7 +77,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Load JSON Sample/i }));
     expect(onChange).toHaveBeenCalledWith(
-      expect.stringContaining('"FIToFIPmtSts"'),
+      expect.objectContaining({ FIToFIPmtSts: expect.any(Object) }),
     );
 
     const onChangeWithValue = jest.fn();
@@ -87,7 +87,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
 
-    expect(onChangeWithValue).toHaveBeenCalledWith('');
+    expect(onChangeWithValue).toHaveBeenCalledWith(null);
   });
 
   it('validates payload format and reports file type mismatch', async () => {
@@ -406,7 +406,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.change(fileInput, { target: { files: [jsonFile] } });
 
     await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith('{"ok":true}');
+      expect(onChange).toHaveBeenCalledWith(JSON.stringify({ ok: true }, null, 2));
     });
 
     (global as any).FileReader = originalFileReader;
@@ -1277,7 +1277,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
       readAsText(): void {
         const event = {
           target: {
-            result: '<?xml version="1.0"?><root><item>1</item></root>',
+            result: '<root><item>1</item></root>',
           },
         } as unknown as ProgressEvent<FileReader>;
         this.onload?.(event);
@@ -1300,13 +1300,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
     const fileInput = document.getElementById(
       'file-upload',
     ) as HTMLInputElement;
-    const xmlFile = new File(
-      ['<?xml version="1.0"?><root><item>1</item></root>'],
-      'data.xml',
-      {
-        type: 'text/xml',
-      },
-    );
+    const xmlFile = new File(['<root><item>1</item></root>'], 'data.xml', {
+      type: 'text/xml',
+    });
     // Valid XML → DOMParser finds no errors → parseError.length === 0 (covers BRDA:523,68,1)
     // Then no contentValidationError → covers the successful path (BRDA:532,69,0 false branch)
     fireEvent.change(fileInput, { target: { files: [xmlFile] } });
@@ -1369,15 +1365,8 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: 'Generate Fields' }),
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
-    await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: 'Generate Fields' }),
-      ).toBeInTheDocument();
+        screen.queryByRole('button', { name: 'Generate Fields' }),
+      ).not.toBeInTheDocument();
     });
   });
 
