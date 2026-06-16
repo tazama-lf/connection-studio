@@ -551,8 +551,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 <div
                   key={config.name}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedConfiguration === config.name
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-gray-400'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-300 hover:border-gray-400'
                     }`}
                   onClick={() => {
                     setSelectedConfiguration(config.name);
@@ -592,8 +592,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                     <div
                       key={param.name}
                       className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedOptionalParams.includes(param.name)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
                         }`}
                       onClick={() => {
                         handleOptionalParamToggle(param.name);
@@ -696,7 +696,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const [currentStep, setCurrentStep] = useState<
     'payload' | 'mapping' | 'functions' | 'simulation' | 'deploy'
   >('payload');
-  const [payload, setPayload] = useState('');
+  const [payload, setPayload] = useState<Record<string, unknown> | string | null>(null);
 
   const [isMappingValid, setIsMappingValid] = useState(false);
   const [isSimulationSuccess, setIsSimulationSuccess] = useState(false);
@@ -816,7 +816,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               setPayload(config.payload);
             } else if (config.schema) {
               // Otherwise, show the schema (user will need to replace with actual payload for editing)
-              setPayload(JSON.stringify(config.schema, null, 2));
+              setPayload(config.schema);
             }
 
             // Initialize currentMappings with existing mappings for consistency
@@ -1231,8 +1231,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     if (endpointData.contentType === 'application/json') {
       try {
         if (typeof payload === 'string') {
-          const trimmedPayload = payload.trim();
-          parsedPayload = JSON.parse(trimmedPayload);
+          parsedPayload = JSON.parse(payload);
         } else {
           parsedPayload = payload;
         }
@@ -1305,7 +1304,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         );
       }
 
-      if (!existingConfig?.schema && payload.trim()) {
+      if (!existingConfig?.schema && payload) {
         try {
         } catch (error) {
           finalSchema = existingConfig?.schema;
@@ -1844,8 +1843,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             <div
                               key={index}
                               className={`p-4 rounded-lg border flex justify-between items-center ${unmappedParams?.length > 0
-                                  ? 'bg-red-50 border-red-200'
-                                  : 'bg-gray-50 border-gray-200'
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-gray-50 border-gray-200'
                                 }`}
                             >
                               <div className="flex-1">
