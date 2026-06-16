@@ -902,9 +902,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         return (
           <ReactJson
             src={parseResult.data}
-            onEdit={(e) => onChange(JSON.parse(e.updated_src.toString()))}
-            onAdd={(e) => onChange(JSON.parse(e.updated_src.toString()))}
-            onDelete={(e) => onChange(JSON.parse(e.updated_src.toString()))}
+            onEdit={(e) => onChange(e.updated_src as Record<string, unknown>)}
+            onAdd={(e) => onChange(e.updated_src as Record<string, unknown>)}
+            onDelete={(e) => onChange(e.updated_src as Record<string, unknown>)}
             theme="rjv-default"
             name={false}
             displayDataTypes={false}
