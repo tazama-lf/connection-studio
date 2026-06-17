@@ -139,31 +139,19 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const [showValidationErrors, setShowValidationErrors] = useState(false);
     const capitalizeFirstLetter = (s: string): string =>
       s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+
+
     const safeJsonParse = (
       value: Record<string, unknown> | string | null,
     ): { success: boolean; data?: unknown; error?: string } => {
-      try {
-        if (!value) {
-          return { success: true, data: {} };
-        }
-
-        if (typeof value === 'string') {
-          return {
-            success: true,
-            data: JSON.parse(value),
-          };
-        }
-
-        return {
-          success: true,
-          data: value,
-        };
-      } catch {
-        return {
-          success: false,
-          error: 'Invalid JSON format',
-        };
+      if (!value) {
+        return { success: true, data: {} };
       }
+
+      return {
+        success: true,
+        data: value,
+      };
     };
     const versionSchema = yup
       .string()
