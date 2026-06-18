@@ -710,7 +710,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     ): SchemaField[] | null => {
       if (contentType === 'application/json') {
         try {
-          const parsed = JSON.parse(payload.toString());
+          const parsed = typeof payload === 'string' ? JSON.parse(payload) : JSON.parse(JSON.stringify(payload));
 
           if (
             parsed === null ||
