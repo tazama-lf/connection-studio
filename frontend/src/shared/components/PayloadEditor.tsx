@@ -142,7 +142,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
 
     const safeJsonParse = (
-      value: Record<string, unknown> | string | null,
+      value: Record<string, unknown> | null,
     ): { success: boolean; data?: unknown; error?: string } => {
       if (!value) {
         return { success: true, data: {} };
