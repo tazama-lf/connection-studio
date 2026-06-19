@@ -676,7 +676,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   'Invalid XML file: The uploaded file contains invalid XML format.';
               } else {
                 const parser = new XMLParser({
-                  ignoreAttributes: true,
+                  ignoreAttributes: false,
+                  attributeNamePrefix: '',
                 });
 
                 const parsedXml = parser.parse(content);
@@ -733,7 +734,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             throw new Error('XML parsing error');
           }
           const xmlparser = new XMLParser({
-            ignoreAttributes: true,
+            ignoreAttributes: false,
+            attributeNamePrefix: '',
           });
           const jsonResult = xmlparser.parse(payload.toString());
 
