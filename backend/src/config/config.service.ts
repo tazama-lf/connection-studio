@@ -11,6 +11,8 @@ import { DemsClient } from '../services/dems-client.service';
 import { NotificationService } from '../notification/notification.service';
 import { ConfigWorkflowService } from './config-workflow.service';
 import { ConfigUtilsService } from './config-utils.service';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 import { SftpService } from '../sftp/sftp.service';
 import { RbacService } from '../utils/rbac/rbacHelper';
 import {
@@ -25,11 +27,17 @@ import { WorkflowActionDto, SftpConfigDataDto } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { AdminServiceClient } from '../services/admin-service-client.service';
+import { validatePayloadContent } from '../utils/helpers';
 
 @Injectable()
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
   private readonly rbacService = new RbacService();
+  private readonly ajv: Ajv = (() => {
+    const a = new Ajv({ allErrors: true, strict: false });
+    addFormats(a);
+    return a;
+  })();
 
   constructor(
     private readonly configRepository: ConfigRepository,
@@ -132,7 +140,21 @@ export class ConfigService {
     };
     try {
       const { version } = dto;
-      const msgFam = dto.msgFam ?? 'unknown';
+      const contentType = dto.contentType ?? ContentType.JSON;
+      const parsedPayload: unknown = dto.payload;
+
+      const payloadValidation = validatePayloadContent(
+        dto.payload,
+        contentType,
+      );
+      if (!payloadValidation.isValid) {
+        return {
+          success: false,
+          message: payloadValidation.message,
+        };
+      }
+
+      const msgFam = dto.msgFam || 'unknown';
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           msgFam,
@@ -163,12 +185,12 @@ export class ConfigService {
       );
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: dto.msgFam ?? '',
+        msgFam: dto.msgFam || '',
         transactionType: dto.transactionType,
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
-        payload: dto.payload,
+        payload: parsedPayload as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
         mapping: dto.mapping,
         functions: dto.functions,
@@ -205,7 +227,7 @@ export class ConfigService {
         error.stack,
       );
 
-      const msgFam = dto.msgFam ?? 'unknown';
+      const msgFam = dto.msgFam || 'unknown';
       const { transactionType } = dto;
       const { version } = dto;
 
@@ -675,7 +697,12 @@ export class ConfigService {
     }
 
     try {
-      await this.demsClient.notifyDems(id.toString(), tenantId, publishingStatus, token);
+      await this.demsClient.notifyDems(
+        id.toString(),
+        tenantId,
+        publishingStatus,
+        token,
+      );
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(
