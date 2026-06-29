@@ -1,3 +1,6 @@
+import { sampleJsonPayload, sampleXmlPayload } from '@shared/constants';
+import type { EndpointFormData, InferredField, PayloadEditorRef } from '@shared/types';
+import { capitalizeFirstLetter, convertSchemaFieldsToInferredFields, generateSchemaFromPayload, safeJsonParse, validateEventType, validateInput, validatePayloadContent, validateTransactionType, validateVersion } from '@utils/common/helper';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import {
   ArrowDownToLine,
@@ -11,58 +14,41 @@ import {
   XCircle,
 } from 'lucide-react';
 import React, {
-  useEffect,
-  useState,
   forwardRef,
+  useEffect,
   useImperativeHandle,
+  useState,
 } from 'react';
-import { configApi } from '../../features/config/services/configApi';
 import ReactJson from 'react-json-view';
-import * as yup from 'yup';
 import type {
   FieldAdjustment,
   SchemaField,
 } from '../../features/config/services/configApi';
+import { configApi } from '../../features/config/services/configApi';
 import { Button } from './Button';
+
 interface PayloadEditorProps {
   value: Record<string, unknown> | null;
   onChange: (value: Record<string, unknown> | string | null) => void;
   endpointData?: EndpointFormData;
   onEndpointDataChange?: (data: EndpointFormData) => void;
-  configId?: number; // Optional config ID for schema updates
-  onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; // Callback for field adjustments
-  onSchemaChange?: (schema: unknown) => void; // Callback for current schema
-  existingSchemaFields?: SchemaField[] | InferredField[]; // Existing schema fields when editing (can be either format)
-  isEditMode?: boolean; // Explicitly control whether to show Add/Remove field buttons
-  tenantId?: string; // Tenant ID for endpoint preview
-  readOnly?: boolean; // When true, disable all editing functionality
-  isCloning?: boolean; // When true, allow editing even for existing configs
-  shouldCreateNew?: boolean; // When true, treat as creating a new config even if editing existing one
+  configId?: number;
+  onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; 
+  onSchemaChange?: (schema: unknown) => void;
+  existingSchemaFields?: SchemaField[] | InferredField[]; 
+  isEditMode?: boolean; 
+  tenantId?: string; 
+  readOnly?: boolean;
+  isCloning?: boolean; 
+  shouldCreateNew?: boolean; 
   onValidationErrorsChange?: (errors: {
     version: string;
     transactionType: string;
-  }) => void; // Callback for validation errors
-  payloadError?: string | null; // External payload error from parent component
-  setPayloadError: (error: string | null) => void; // Callback to set external payload error
+  }) => void; 
+  payloadError?: string | null; 
+  setPayloadError: (error: string | null) => void;
 }
-interface EndpointFormData {
-  version: string;
-  transactionType: string;
-  description: string;
-  contentType: string;
-  msgFam?: string;
-  relatedTransaction?: string;
-}
-interface InferredField {
-  path: string;
-  type: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
-  parent?: string;
-  level: number;
-  required: boolean;
-}
-export interface PayloadEditorRef {
-  validateAllFields: () => boolean;
-}
+
 
 export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
   (
@@ -75,8 +61,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       onFieldAdjustmentsChange,
       onSchemaChange,
       existingSchemaFields,
-      isEditMode = false, // Default to false - only true when explicitly editing existing config
-      tenantId = 'tenant-id', // Default placeholder if not provided
+      isEditMode = false, 
+      tenantId = 'tenant-id', 
       readOnly = false,
       isCloning = false,
       shouldCreateNew = true,
@@ -137,96 +123,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       payload: '',
     });
     const [showValidationErrors, setShowValidationErrors] = useState(false);
-    const capitalizeFirstLetter = (s: string): string =>
-      s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
-
-    const safeJsonParse = (
-      value: Record<string, unknown> | string | null,
-    ): { success: boolean; data?: unknown; error?: string } => {
-
-      if (!value) {
-        return { success: true, data: {} };
-      }
-
-      if (typeof value === 'string') {
-        try {
-          return {
-            success: true,
-            data: JSON.parse(value),
-          };
-        } catch {
-          return {
-            success: false,
-            error: 'Invalid JSON',
-          };
-        }
-      }
-
-      return {
-        success: true,
-        data: value,
-      };
-    };
-    const versionSchema = yup
-      .string()
-      .required('Version is required')
-      .matches(
-        /^v?\d+\.\d+\.\d+$/,
-        'Version must follow semantic versioning format (e.g: 1.0.0 or v1.0.0)',
-      );
-    const transactionTypeSchema = yup
-      .string()
-      .required('Transaction Type is required')
-      .matches(
-        /^[a-z_][a-z0-9_]*$/,
-        'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, or underscores',
-      );
-
-    const eventTypeSchema = yup
-      .string()
-      .notRequired() // Optional field
-      .test(
-        'format',
-        'Event Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
-        (value) => {
-          if (!value || value.trim() === '') {
-            return true;
-          }
-          const regex = /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/
-          return regex.test(value);
-        },
-      );
-    const validateVersion = (version: string): string => {
-      try {
-        versionSchema.validateSync(version);
-        return '';
-      } catch (err) {
-        return err instanceof yup.ValidationError
-          ? err.message
-          : 'Invalid version format';
-      }
-    };
-    const validateTransactionType = (transactionType: string): string => {
-      try {
-        transactionTypeSchema.validateSync(transactionType);
-        return '';
-      } catch (err) {
-        return err instanceof yup.ValidationError
-          ? err.message
-          : 'Invalid transaction type format';
-      }
-    };
-    const validateEventType = (eventType: string): string => {
-      try {
-        eventTypeSchema.validateSync(eventType);
-        return '';
-      } catch (err) {
-        return err instanceof yup.ValidationError
-          ? err.message
-          : 'Invalid event type format';
-      }
-    };
     const validateAllFields = () => {
       const versionError = validateVersion(endpointData.version);
       const transactionTypeError = validateTransactionType(
@@ -249,7 +146,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       }
       return !versionError && !transactionTypeError && !eventTypeError;
     };
-    // Expose validation function through ref
+
     useImperativeHandle(
       ref,
       () => ({
@@ -257,74 +154,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       }),
       [endpointData.version, endpointData.transactionType, endpointData.msgFam],
     );
-    const validatePayloadContent = (
-      payloadValue: Record<string, unknown> | null,
-      contentType: string,
-    ): { isValid: boolean; message: string; error: string } => {
-      if (!payloadValue) {
-        return { isValid: true, message: '', error: '' };
-      }
-      if (contentType === 'application/json') {
-        try {
-          if (typeof payloadValue === 'string') {
-            const parsed = JSON.parse(payloadValue);
 
-            if (
-              parsed === null ||
-              Array.isArray(parsed) ||
-              typeof parsed !== 'object'
-            ) {
-              throw new Error();
-            }
-          } else if (
-            payloadValue === null ||
-            Array.isArray(payloadValue) ||
-            typeof payloadValue !== 'object'
-          ) {
-            throw new Error();
-          }
-
-          return {
-            isValid: true,
-            message: 'Valid JSON format detected',
-            error: '',
-          };
-        } catch {
-          return {
-            isValid: false,
-            message: 'Invalid JSON format',
-            error: 'Invalid JSON formats',
-          };
-        }
-      } else if (contentType === 'application/xml') {
-        try {
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(payloadValue.toString(), 'text/xml');
-          const parseError = xmlDoc.getElementsByTagName('parsererror');
-          const result = XMLValidator.validate(payloadValue.toString()) && validateInput(payloadValue.toString());
-          if (parseError.length > 0 || !result) {
-            return {
-              isValid: false,
-              message: 'Invalid XML format',
-              error: 'Invalid XML format',
-            };
-          } else {
-            return {
-              isValid: true,
-              message: 'Valid XML format detected',
-              error: '',
-            };
-          }
-        } catch (e) {
-          return {
-            isValid: false,
-            message: 'Invalid XML format',
-            error: 'Invalid XML format',
-          };
-        }
-      }
-      return { isValid: false, message: '', error: 'Unsupported content type' };
-    };
     const handleAddField = () => {
       if (!newField.path.trim()) {
         return;
@@ -334,7 +164,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         (f) => f.path === newField.path.trim(),
       );
       if (existsAlready) {
-        return; // Don't add duplicates
+        return;
       }
       const level = (newField.path.match(/\./g) ?? []).length;
       const pathParts = newField.path.split('.');
@@ -357,44 +187,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       });
       setShowAddFieldForm(false);
     };
-    const convertSchemaFieldsToInferredFields = (
-      schemaFields: SchemaField[],
-    ): InferredField[] => {
-      const convertFields = (fields: SchemaField[]): InferredField[] => {
-        const inferredFields: InferredField[] = [];
-        fields.forEach((field) => {
-          const dotCount = (field.path.match(/\./g) ?? []).length;
-          const level = dotCount;
-          if (field.type === 'array' && field.children) {
-          }
-          const inferredField: InferredField = {
-            path: field.path,
-            type: capitalizeFirstLetter(field.type) as InferredField['type'],
-            level,
-            parent: field.path.includes('.')
-              ? field.path.includes('.0.')
-                ? field.path.substring(0, field.path.lastIndexOf('.0.') + 2)
-                : field.path.substring(0, field.path.lastIndexOf('.'))
-              : undefined,
-            required: field.isRequired,
-          };
-          inferredFields.push(inferredField);
-          if (field.children && field.children.length > 0) {
-            const childFields = convertFields(field.children);
-            if (field.type === 'array' && field.arrayElementType === 'object') {
-            }
-            inferredFields.push(...childFields);
-          }
-        });
-        return inferredFields;
-      };
-      return convertFields(schemaFields);
-    };
+
     useEffect(() => {
       if (initialEndpointData) {
         setEndpointData(initialEndpointData);
       }
     }, [initialEndpointData]);
+
+
     useEffect(() => {
       if (hasUserEditedRef.current) return;
       if (existingSchemaFields && existingSchemaFields.length > 0) {
@@ -424,10 +224,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         setShowInferredFields(true);
         setInferredFields([]);
       }
-    }, [existingSchemaFields, configId]); // Removed hasUserMadeEdits dependency
+    }, [existingSchemaFields, configId]);
+
     useEffect(() => {
       setShowInferredFields(true);
-    }, []); // Only run once on component mount
+    }, []);
+
     useEffect(() => {
       if (onFieldAdjustmentsChange && inferredFields.length > 0) {
         const fieldAdjustments = inferredFields.map((field) => ({
@@ -443,6 +245,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         onFieldAdjustmentsChange(fieldAdjustments);
       }
     }, [inferredFields, onFieldAdjustmentsChange]);
+    
     useEffect(() => {
       if (onSchemaChange) {
         if (inferredFields.length > 0) {
@@ -471,11 +274,51 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         if (schema) {
           const convertSchemaToFields = (
             schemaFields: SchemaField[],
+            payload?: unknown,
             level = 0,
             parentPath = '',
           ): InferredField[] => {
             const fields: InferredField[] = [];
+
             schemaFields.forEach((field) => {
+              const currentValue =
+                payload && typeof payload === 'object'
+                  ? (payload as Record<string, unknown>)[
+                  field.path.split('.').pop() as string
+                  ]
+                  : undefined;
+
+              if (field.type === 'array' && Array.isArray(currentValue)) {
+                currentValue.forEach((item, index) => {
+                  const arrayPath = `${field.path}[${index}]`;
+
+                  fields.push({
+                    path: arrayPath,
+                    type: 'Array',
+                    level,
+                    parent:
+                      parentPath ||
+                      (arrayPath.includes('.')
+                        ? arrayPath.substring(0, arrayPath.lastIndexOf('.'))
+                        : undefined),
+                    required: field.isRequired,
+                  });
+
+                  if (field.children) {
+                    fields.push(
+                      ...convertSchemaToFields(
+                        field.children,
+                        item,
+                        level + 1,
+                        arrayPath,
+                      ),
+                    );
+                  }
+                });
+
+                return;
+              }
+
               fields.push({
                 path: field.path,
                 type: capitalizeFirstLetter(
@@ -489,19 +332,23 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     : undefined),
                 required: field.isRequired,
               });
+
               if (field.children) {
                 fields.push(
                   ...convertSchemaToFields(
                     field.children,
+                    currentValue,
                     level + 1,
                     field.path,
                   ),
                 );
               }
             });
+
             return fields;
           };
           const fields = convertSchemaToFields(schema);
+
           setInferredFields(fields);
           setShowInferredFields(true);
         } else {
@@ -514,35 +361,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       } finally {
         setIsGeneratingFields(false);
       }
-    };
-
-
-    const validateInput = (input: string) => {
-      if (typeof input !== 'string' || !input.trim()) {
-        return false;
-      }
-
-      // Reject XML declarations / processing instructions
-      if (/<\?[\s\S]*?\?>/.test(input)) {
-        return false;
-      }
-
-      // Reject comments
-      if (/<!--[\s\S]*?-->/.test(input)) {
-        return false;
-      }
-
-      // Reject DOCTYPE
-      if (/<!DOCTYPE/i.test(input)) {
-        return false;
-      }
-
-      // Reject CDATA
-      if (/<!\[CDATA\[/i.test(input)) {
-        return false;
-      }
-
-      return /^\s*<([A-Za-z_][A-Za-z0-9_-]*)>[\s\S]*<\/\1>\s*$/.test(input);
     };
 
 
@@ -612,6 +430,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       endpointData.transactionType,
       endpointData.msgFam,
     ]);
+
     const handleFileUpload = (
       event: React.ChangeEvent<HTMLInputElement>,
     ): void => {
@@ -703,204 +522,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       }
     };
 
-
-
-    const generateSchemaFromPayload = (
-      payload: Record<string, unknown>,
-      contentType: string,
-    ): SchemaField[] | null => {
-      if (contentType === 'application/json') {
-        try {
-          const parsed = typeof payload === 'string' ? JSON.parse(payload) : JSON.parse(JSON.stringify(payload));
-
-          if (
-            parsed === null ||
-            typeof parsed !== 'object' ||
-            Array.isArray(parsed)
-          ) {
-            throw new Error();
-          }
-
-          return generateJSONSchema(parsed);
-        } catch (e) {
-          throw new Error('Invalid JSON format');
-        }
-      } else if (contentType === 'application/xml') {
-        try {
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(payload.toString(), 'text/xml');
-          const parseError = xmlDoc.getElementsByTagName('parsererror');
-          if (parseError.length > 0) {
-            throw new Error('XML parsing error');
-          }
-          const xmlparser = new XMLParser({
-            ignoreAttributes: false,
-            attributeNamePrefix: '',
-          });
-          const jsonResult = xmlparser.parse(payload.toString());
-
-          return generateJSONSchema(jsonResult);
-        } catch (e) {
-          throw new Error('Invalid XML format');
-        }
-      }
-      return null;
-    };
-
-
-    const generateJSONSchema = (obj: unknown, path = ''): SchemaField[] => {
-      const schema: SchemaField[] = [];
-      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-        Object.entries(obj).forEach(([key, value]) => {
-          const fieldPath = path ? `${path}.${key}` : key;
-          let fieldType: string;
-          if (Array.isArray(value)) {
-            fieldType = 'array';
-          } else if (value && typeof value === 'object') {
-            fieldType = 'object';
-          } else {
-            fieldType = typeof value;
-          }
-          const field: SchemaField = {
-            name: key,
-            path: fieldPath,
-            type: fieldType as
-              | 'string'
-              | 'number'
-              | 'boolean'
-              | 'object'
-              | 'array',
-            isRequired: true,
-          };
-          if (
-            typeof value === 'object' &&
-            value !== null &&
-            !Array.isArray(value)
-          ) {
-            field.children = generateJSONSchema(value, fieldPath);
-          } else if (Array.isArray(value) && value.length > 0) {
-            const firstElement = value[0];
-            if (
-              typeof firstElement === 'object' &&
-              firstElement !== null &&
-              !Array.isArray(firstElement)
-            ) {
-              field.path = `${fieldPath}[0]`;
-              field.children = generateJSONSchema(
-                firstElement,
-                `${fieldPath}[0]`,
-              );
-              field.arrayElementType = 'object';
-            } else if (Array.isArray(firstElement)) {
-              field.children = [];
-              field.arrayElementType = 'array';
-            } else {
-              field.arrayElementType = typeof firstElement;
-            }
-          }
-          schema.push(field);
-        });
-      }
-      return schema;
-    };
-    const sampleJsonPayload = `{
-  "FIToFIPmtSts": {
-    "GrpHdr": {
-      "MsgId": "msg_id",
-      "CreDtTm": "2023-02-03T09:53:58.069Z"
-    },
-    "TxInfAndSts": {
-      "OrgnlInstrId": "5d158d92f70142a6ac7ffba30ac6c2db",
-      "OrgnlEndToEndId": "End_To_End_Id",
-      "TxSts": "ACCC",
-      "ChrgsInf": [
-        {
-          "Amt": {
-            "Amt": 3000.07,
-            "Ccy": "USD"
-          },
-          "Agt": {
-            "FinInstnId": {
-              "ClrSysMmbId": {
-                "MmbId": "typolog028"
-              }
-            }
-          }
-        },
-        {
-          "Amt": {
-            "Amt": 153.57,
-            "Ccy": "USD"
-          },
-          "Agt": {
-            "FinInstnId": {
-              "ClrSysMmbId": {
-                "MmbId": "typolog028"
-              }
-            }
-          }
-        },
-        {
-          "Amt": {
-            "Amt": 35,
-            "Ccy": "USD"
-          },
-          "Agt": {
-            "FinInstnId": {
-              "ClrSysMmbId": {
-                "MmbId": "dfsp002"
-              }
-            }
-          }
-        }
-      ],
-      "AccptncDtTm": "2023-02-03T09:53:58.069Z",
-      "InstgAgt": {
-        "FinInstnId": {
-          "ClrSysMmbId": {
-            "MmbId": "typolog028"
-          }
-        }
-      },
-      "InstdAgt": {
-        "FinInstnId": {
-          "ClrSysMmbId": {
-            "MmbId": "dfsp002"
-          }
-        }
-      }
-    }
-  }
-}`;
-    const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
-<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
-  <FIToFICstmrCdtTrf>
-    <GrpHdr>
-      <MsgId>TXN12345</MsgId>
-      <CreDtTm>2023-10-15T10:30:00</CreDtTm>
-      <NbOfTxs>1</NbOfTxs>
-    </GrpHdr>
-    <CdtTrfTxInf>
-      <PmtId>
-        <InstrId>INSTR001</InstrId>
-        <EndToEndId>E2E001</EndToEndId>
-      </PmtId>
-      <IntrBkSttlmAmt Ccy="USD">100.00</IntrBkSttlmAmt>
-      <Dbtr>
-        <Nm>John Doe</Nm>
-        <Id>
-          <PrvtId>CUST123</PrvtId>
-        </Id>
-      </Dbtr>
-      <Cdtr>
-        <Nm>Jane Smith</Nm>
-        <Id>
-          <PrvtId>CUST456</PrvtId>
-        </Id>
-      </Cdtr>
-    </CdtTrfTxInf>
-  </FIToFICstmrCdtTrf>
-</Document>`;
     const FormattedJsonSection: React.FC = () => {
       const parseResult = safeJsonParse(value);
       if (parseResult.success && parseResult.data) {
