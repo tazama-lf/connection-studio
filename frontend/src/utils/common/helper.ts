@@ -369,8 +369,16 @@ export const validatePayloadContent = (
   payloadValue: unknown,
   contentType: string,
 ): { isValid: boolean; message: string; error: string } => {
-  if (!payloadValue) {
-    return { isValid: true, message: '', error: '' };
+  if (
+    payloadValue === undefined ||
+    payloadValue === null ||
+    payloadValue === ''
+  ) {
+    return {
+      isValid: false,
+      message: 'Payload is required',
+      error: 'Payload is required',
+    };
   }
   if (contentType === JSON_CONTENT_TYPE) {
     try {
