@@ -1167,7 +1167,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
   it('allows valid key presses on Event Type input (alphanumeric)', () => {
     renderEditor();
-    const eventTypeInput = screen.getByLabelText('Event Type');
+    const eventTypeInput = screen.getByLabelText('Event Type *');
     // 'a' matches [a-zA-Z0-9_\-/] — condition FALSE → no preventDefault
     // Covers BRDA:917,114,1
     fireEvent.keyPress(eventTypeInput, { key: 'a', charCode: 97 });
@@ -1704,7 +1704,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
       isValid = Boolean(ref.current?.validateAllFields());
     });
 
-    expect(isValid).toBe(true);
+    expect(isValid).toBe(false);
   });
 
   it('skips existingSchemaFields useEffect when user has manually edited fields', async () => {
