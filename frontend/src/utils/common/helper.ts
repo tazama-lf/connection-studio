@@ -14,7 +14,7 @@ const ARRAY_PARENT_SUFFIX_LENGTH = 2;
 const DEFAULT_LEVEL = 0;
 const NEXT_LEVEL = 1;
 const XML_ROOT_TAG_PATTERN =
-  /^\s*<(?:[A-Za-z_][A-Za-z0-9_-]*)>[\s\S]*<\/(?:[A-Za-z_][A-Za-z0-9_-]*)>\s*$/;
+  /^\s*<(?<root>[A-Za-z_][A-Za-z0-9_-]*)(?:\s[^>]*)?>[\s\S]*<\/\k<root>>\s*$/;
 const JSON_CONTENT_TYPE = 'application/json';
 const XML_CONTENT_TYPE = 'application/xml';
 
@@ -412,7 +412,27 @@ export const validatePayloadContent = (
         };
       }
       const xmlStr = payloadValue;
-      // attempt to parse using XMLParser to validate structure
+
+      // Use DOMParser to detect well-formedness (parsererror presence)
+      try {
+        const xmlDoc = new DOMParser().parseFromString(xmlStr, 'text/xml');
+        const parseError = xmlDoc.getElementsByTagName('parsererror');
+        if (parseError.length > 0) {
+          return {
+            isValid: false,
+            message: 'Invalid XML format',
+            error: 'Invalid XML format',
+          };
+        }
+      } catch (err) {
+        return {
+          isValid: false,
+          message: 'Invalid XML format',
+          error: 'Invalid XML format',
+        };
+      }
+
+      // Additional safety checks
       const parser = new XMLParser({ ignoreAttributes: false });
       const parsed: unknown = parser.parse(xmlStr);
       const result = isRecord(parsed) && validateInput(xmlStr);
