@@ -1,43 +1,36 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
-  BadRequestException,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
-import { ConfigRepository } from './config.repository';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
-import { DemsClient } from '../services/dems-client.service';
+import { AuthenticatedUser } from '../auth/auth.types';
+import { EventType } from '../enums/events.enum';
 import { NotificationService } from '../notification/notification.service';
-import { ConfigWorkflowService } from './config-workflow.service';
-import { ConfigUtilsService } from './config-utils.service';
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
+import { AdminServiceClient } from '../services/admin-service-client.service';
+import { DemsClient } from '../services/dems-client.service';
 import { SftpService } from '../sftp/sftp.service';
+import { validatePayloadContent } from '../utils/helpers';
 import { RbacService } from '../utils/rbac/rbacHelper';
+import { ConfigUtilsService } from './config-utils.service';
+import { ConfigWorkflowService } from './config-workflow.service';
 import {
   Config,
-  CreateConfigDto,
   ConfigResponseDto,
-  ContentType,
   ConfigStatus,
+  ContentType,
+  CreateConfigDto,
   WorkflowAction,
 } from './config.interfaces';
-import { WorkflowActionDto, SftpConfigDataDto } from './dto';
-import { EventType } from '../enums/events.enum';
-import { AuthenticatedUser } from '../auth/auth.types';
-import { AdminServiceClient } from '../services/admin-service-client.service';
-import { validatePayloadContent } from '../utils/helpers';
+import { ConfigRepository } from './config.repository';
+import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 
 @Injectable()
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
   private readonly rbacService = new RbacService();
-  private readonly ajv: Ajv = (() => {
-    const a = new Ajv({ allErrors: true, strict: false });
-    addFormats(a);
-    return a;
-  })();
 
   constructor(
     private readonly configRepository: ConfigRepository,
