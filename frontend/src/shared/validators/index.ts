@@ -2,14 +2,11 @@ import * as yup from 'yup';
 
 export const eventTypeSchema = yup
   .string()
-  .notRequired() // Optional field
+  .required('Event Type is required')
   .test(
     'format',
     'Event Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
     (value) => {
-      if (!value || value.trim() === '') {
-        return true;
-      }
       const regex = /^[a-zA-Z0-9]+(?:[_/-][a-zA-Z0-9]+)*$/;
       return regex.test(value);
     },

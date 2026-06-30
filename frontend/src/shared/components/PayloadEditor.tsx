@@ -623,7 +623,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 htmlFor="msgFam"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Event Type
+                Event Type *
               </label>
               {(() => {
                 const isReadOnly = readOnly || (!isCloning && !!configId);
