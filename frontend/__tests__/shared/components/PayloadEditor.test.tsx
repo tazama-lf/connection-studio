@@ -6,7 +6,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 import {
@@ -60,13 +59,12 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.change(screen.getByLabelText(/Version/i), {
       target: { value: ' v1.2.3 ' },
     });
-    // also set transaction type so the endpoint preview is rendered
     fireEvent.change(screen.getByLabelText(/Transaction Type/i), {
       target: { value: 'pacs.008' },
     });
 
-    
-    
+
+
 
     await waitFor(() => {
       expect(
@@ -205,20 +203,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
     expect(onChange).toHaveBeenCalledWith(
       expect.stringContaining('<?xml version="1.0"'),
     );
-  });
-
-  it('dismisses payload error banner', () => {
-    const setPayloadError = jest.fn();
-    renderEditor({
-      payloadError: 'External payload error',
-      setPayloadError,
-      value: '',
-    });
-
-    expect(screen.getByText('External payload error')).toBeInTheDocument();
-    fireEvent.click(screen.getByTitle('Dismiss error'));
-
-    expect(setPayloadError).toHaveBeenCalledWith(null);
   });
 
   it('converts schema fields and cascades required changes to child fields', async () => {
@@ -510,13 +494,10 @@ describe('shared/components/PayloadEditor.tsx', () => {
     );
     expect(invalidEls.length).toBeGreaterThan(0);
 
-    // The component may either show the fallback hint or render the preview
-    // (react-json-view) depending on parsing behavior; accept either.
-    const enterEls = screen.queryAllByText((_, node) =>
+     const enterEls = screen.queryAllByText((_, node) =>
       /Enter valid JSON to see preview/i.test(node?.textContent || ''),
     );
     if (enterEls.length === 0) {
-      // allow react-json-view or raw preview content to be present instead
       const rjv = screen.queryByTestId('react-json-view');
       const rawPreview = screen.queryByText(/\"\{ bad-json/i);
       expect(rjv || rawPreview).toBeTruthy();
@@ -1131,36 +1112,26 @@ describe('shared/components/PayloadEditor.tsx', () => {
   });
 
   it('handles empty state for schema generation functions', () => {
-    // These functions are complex and have many branches.
-    // This test is a placeholder to acknowledge their complexity and the difficulty
-    // in achieving 100% coverage without highly specific and complex inputs.
-    // Lines 633-726 are part of generateJSONSchema and generateXMLSchema.
     expect(true).toBe(true);
   });
 
   it('handles new field state update', () => {
     renderEditor({ isEditMode: true });
 
-    // Without inferredFields, the button is labelled "Add Your First Field"
     fireEvent.click(
       screen.getByRole('button', { name: 'Add Your First Field' }),
     );
 
-    // Change new field path to trigger setNewField (line 1542)
     fireEvent.change(screen.getByLabelText(/Field Path/i), {
       target: { value: 'new_field' },
     });
     expect(screen.getByDisplayValue('new_field')).toBeInTheDocument();
   });
 
-  // --- New coverage tests ---
 
   it('allows valid key presses on version input (v at position 0 covers both onKeyPress branches)', () => {
     renderEditor();
     const versionInput = screen.getByLabelText(/Version/i);
-    // Pressing 'v' on an empty input is allowed (char === 'v' && currentValue.length === 0)
-    // This makes the outer && condition evaluate to false → no preventDefault
-    // Covers BRDA:876,106,1 and BRDA:878,108,1
     fireEvent.keyPress(versionInput, { key: 'v', charCode: 118 });
     expect(versionInput).toBeInTheDocument();
   });
@@ -1168,8 +1139,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
   it('allows valid key presses on Event Type input (alphanumeric)', () => {
     renderEditor();
     const eventTypeInput = screen.getByLabelText('Event Type');
-    // 'a' matches [a-zA-Z0-9_\-/] — condition FALSE → no preventDefault
-    // Covers BRDA:917,114,1
     fireEvent.keyPress(eventTypeInput, { key: 'a', charCode: 97 });
     fireEvent.keyPress(eventTypeInput, { key: '1', charCode: 49 });
     fireEvent.keyPress(eventTypeInput, { key: '_', charCode: 95 });
@@ -1179,8 +1148,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
   it('allows valid key presses on Transaction Type input (alphanumeric)', () => {
     renderEditor();
     const txTypeInput = screen.getByLabelText(/Transaction Type/i);
-    // 'a' matches [a-zA-Z0-9_-] — condition FALSE → no preventDefault
-    // Covers BRDA:957,120,1
     fireEvent.keyPress(txTypeInput, { key: 'a', charCode: 97 });
     fireEvent.keyPress(txTypeInput, { key: '5', charCode: 53 });
     expect(txTypeInput).toBeInTheDocument();
@@ -1196,11 +1163,8 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Add Your First Field' }),
     );
-    // Do NOT change the path — it defaults to '' (empty)
-    // Click Add without filling in a path → triggers !newField.path.trim() early return
     fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
 
-    // The form should still be shown (no field was added)
     await waitFor(() => {
       expect(screen.getByLabelText(/Field Path/i)).toBeInTheDocument();
     });
@@ -1219,9 +1183,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.change(screen.getByLabelText(/Field Path/i), {
       target: { value: 'myfield' },
     });
-    // 'myfield' has no dots → match(/\./g) returns null → ?? [] gives []
-    // pathParts.length === 1 → parent = undefined
-    // Covers BRDA:263,21,1 and BRDA:266,22,1
     fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
 
     await waitFor(() => {
@@ -1234,9 +1195,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     const fileInput = document.getElementById(
       'file-upload',
     ) as HTMLInputElement;
-    // Fire change event with no files — covers BRDA:486,60,1 (if (file) = false)
     fireEvent.change(fileInput, { target: { files: [] } });
-    // No error should appear
     expect(document.getElementById('file-upload')).toBeInTheDocument();
   });
 
@@ -1254,9 +1213,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
     const fileInput = document.getElementById(
       'file-upload',
     ) as HTMLInputElement;
-    // Upload a .json file when XML is expected → mismatch
-    // isJsonFile=true → actualFormat='JSON' (covers BRDA:495,64,0)
-    // isJsonExpected=false → expectedFormat='XML (.xml)' (covers BRDA:494,63,1)
     const jsonFile = new File(['{"x":1}'], 'payload.json', {
       type: 'application/json',
     });
@@ -1281,8 +1237,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
     const fileInput = document.getElementById(
       'file-upload',
     ) as HTMLInputElement;
-    // Upload a .csv file (neither .json nor .xml) to JSON-expected → mismatch
-    // isJsonFile=false, isXmlFile=false → actualFormat='unknown' (covers BRDA:497,65,1)
     const csvFile = new File(['col1,col2'], 'data.csv', { type: 'text/csv' });
     fireEvent.change(fileInput, { target: { files: [csvFile] } });
 
@@ -1325,8 +1279,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
     const xmlFile = new File(['<root><item>1</item></root>'], 'data.xml', {
       type: 'text/xml',
     });
-    // Valid XML → DOMParser finds no errors → parseError.length === 0 (covers BRDA:523,68,1)
-    // Then no contentValidationError → covers the successful path (BRDA:532,69,0 false branch)
     fireEvent.change(fileInput, { target: { files: [xmlFile] } });
 
     await waitFor(() => {
@@ -1337,8 +1289,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
   });
 
   it('renders section via isCloning=true when shouldCreateNew=false (covers isCloning OR branch)', async () => {
-    // shouldCreateNew=false but isCloning=true → shouldCreateNew || isCloning is still true
-    // Covers BRDA:1043,129,2 and BRDA:1198,144,2
     renderEditor({
       shouldCreateNew: false,
       isCloning: true,
@@ -1797,5 +1747,206 @@ describe('shared/components/PayloadEditor.tsx', () => {
         .getAllByDisplayValue('dup.field')
         .filter((el) => el.hasAttribute('readonly')),
     ).toHaveLength(1);
+  });
+
+
+  it('shows payloadError banner and dismisses it via close button (line 915)', async () => {
+    const setPayloadError = jest.fn();
+
+    renderEditor({
+      value: 'plain-text',
+      payloadError: 'Something went wrong',
+      setPayloadError,
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'text/plain',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    });
+
+    const dismissBtn = screen.getByTitle('Dismiss error');
+    fireEvent.click(dismissBtn);
+
+    await waitFor(() => {
+      expect(setPayloadError).toHaveBeenCalledWith(null);
+    });
+  });
+
+  it('uploads a JSON file with array root and shows root-level error (line 471)', async () => {
+    const originalFileReader = global.FileReader;
+
+    class MockArrayJsonFileReader {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      readAsText(): void {
+        const event = {
+          target: { result: '[1, 2, 3]' },
+        } as unknown as ProgressEvent<FileReader>;
+        this.onload?.(event);
+      }
+    }
+
+    (global as any).FileReader = MockArrayJsonFileReader as any;
+    const onChange = jest.fn();
+
+    renderEditor({
+      onChange,
+      endpointData: {
+        version: '',
+        transactionType: '',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    const fileInput = document.getElementById(
+      'file-upload',
+    ) as HTMLInputElement;
+    const jsonFile = new File(['[1, 2, 3]'], 'array.json', {
+      type: 'application/json',
+    });
+    fireEvent.change(fileInput, { target: { files: [jsonFile] } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /Invalid JSON file: Expected a JSON object at the root level\./i,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    (global as any).FileReader = originalFileReader;
+  });
+
+  it('uploads a JSON file with null root and shows root-level error (line 471 null branch)', async () => {
+    const originalFileReader = global.FileReader;
+
+    class MockNullJsonFileReader {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      readAsText(): void {
+        const event = {
+          target: { result: 'null' },
+        } as unknown as ProgressEvent<FileReader>;
+        this.onload?.(event);
+      }
+    }
+
+    (global as any).FileReader = MockNullJsonFileReader as any;
+    const onChange = jest.fn();
+
+    renderEditor({
+      onChange,
+      endpointData: {
+        version: '',
+        transactionType: '',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    const fileInput = document.getElementById(
+      'file-upload',
+    ) as HTMLInputElement;
+    const jsonFile = new File(['null'], 'null.json', {
+      type: 'application/json',
+    });
+    fireEvent.change(fileInput, { target: { files: [jsonFile] } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /Invalid JSON file: Expected a JSON object at the root level\./i,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    (global as any).FileReader = originalFileReader;
+  });
+
+  it('XML file upload throws during XMLParser.parse and triggers catch block (line 507)', async () => {
+    const originalFileReader = global.FileReader;
+    const { XMLParser: ActualXMLParser } = await import('fast-xml-parser');
+
+    class MockXmlFileReader {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      readAsText(): void {
+        const event = {
+          target: { result: '<root>ok</root>' },
+        } as unknown as ProgressEvent<FileReader>;
+        this.onload?.(event);
+      }
+    }
+
+    (global as any).FileReader = MockXmlFileReader as any;
+
+    const parseSpy = jest
+      .spyOn(ActualXMLParser.prototype, 'parse')
+      .mockImplementation(() => {
+        throw new Error('parse failed');
+      });
+
+    renderEditor({
+      endpointData: {
+        version: '',
+        transactionType: '',
+        description: '',
+        contentType: 'application/xml',
+        msgFam: '',
+      },
+    });
+
+    const fileInput = document.getElementById(
+      'file-upload',
+    ) as HTMLInputElement;
+    const xmlFile = new File(['<root>ok</root>'], 'data.xml', {
+      type: 'text/xml',
+    });
+    fireEvent.change(fileInput, { target: { files: [xmlFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Invalid XML file/i)).toBeInTheDocument();
+    });
+
+    parseSpy.mockRestore();
+    (global as any).FileReader = originalFileReader;
+  });
+
+  it('compact add-field form required checkbox toggles newField.required (line 1317)', async () => {
+    renderEditor({
+      isEditMode: true,
+      configId: 1317,
+      existingSchemaFields: [
+        {
+          path: 'base',
+          type: 'String',
+          level: 0,
+          required: false,
+        } as any,
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('base')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    const compactCheckbox = checkboxes[
+      checkboxes.length - 1
+    ] as HTMLInputElement;
+
+    expect(compactCheckbox.checked).toBe(false);
+
+    fireEvent.change(compactCheckbox, { target: { checked: true } });
+
+    expect(compactCheckbox.checked).toBe(true);
   });
 });
