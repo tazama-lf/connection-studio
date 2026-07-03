@@ -70,11 +70,11 @@ jobs:
         run: |
           VERSION=$(jq -r '.version' package.json)
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "❌ Could not read version from package.json"
+            echo "Could not read version from package.json"
             exit 1
           fi
           if [[ "$VERSION" == *-* ]]; then
-            echo "❌ Stable package-rule.yml triggered but version '$VERSION' is a prerelease."
+            echo "Stable package-rule.yml triggered but version '$VERSION' is a prerelease."
             echo "   Merge to main should be blocked by version-check.yml - investigate branch protection."
             exit 1
           fi
@@ -138,11 +138,11 @@ jobs:
 
           # Validate substitutions actually occurred - fail fast if template changed upstream
           if ! grep -q "ENV RULE_NAME=\"${RULE_NUM}\"" "${RULE_DIR}/Dockerfile"; then
-            echo "❌ Failed to update RULE_NAME in Dockerfile - template may have changed"
+            echo "Failed to update RULE_NAME in Dockerfile - template may have changed"
             exit 1
           fi
           if ! grep -q "ENV APM_SERVICE_NAME=rule-${RULE_NUM}" "${RULE_DIR}/Dockerfile"; then
-            echo "❌ Failed to update APM_SERVICE_NAME in Dockerfile - template may have changed"
+            echo "Failed to update APM_SERVICE_NAME in Dockerfile - template may have changed"
             exit 1
           fi
 
