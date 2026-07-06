@@ -1,9 +1,11 @@
 import { plainToClass } from 'class-transformer';
 import {
   IsEnum,
+  IsNotEmpty,
   IsString,
   IsNumberString,
   IsOptional,
+  Length,
   validateSync,
 } from 'class-validator';
 enum NodeEnv {
@@ -36,6 +38,8 @@ class EnvironmentVariables {
   CONFIGURATION_DATABASE_PASSWORD: string;
 
   @IsString()
+  @IsNotEmpty({ message: 'ENCRYPTION_KEY is required' })
+  @Length(32, 32, { message: 'ENCRYPTION_KEY must be exactly 32 bytes' })
   ENCRYPTION_KEY: string;
 
   @IsOptional()
