@@ -1,5 +1,3 @@
-import { encrypt, decrypt } from '../../src/utils/helpers';
-
 describe('utils/helpers — deferred key validation', () => {
   const originalKey = process.env.ENCRYPTION_KEY;
   const originalIv = process.env.IV_LENGTH;
@@ -17,12 +15,16 @@ describe('utils/helpers — deferred key validation', () => {
     }
   });
 
-  it('imports without throwing when ENCRYPTION_KEY is unset', () => {
-    expect(true).toBe(true);
+  it('does not throw at import time when ENCRYPTION_KEY is unset', () => {
+    delete process.env.ENCRYPTION_KEY;
+    jest.isolateModules(() => {
+      expect(() => require('../../src/utils/helpers')).not.toThrow();
+    });
   });
 
   it('throws only when encrypt is called with no ENCRYPTION_KEY', () => {
     delete process.env.ENCRYPTION_KEY;
+    process.env.IV_LENGTH = '16';
     jest.resetModules();
     const fresh = require('../../src/utils/helpers') as {
       encrypt: (t: string) => string;
