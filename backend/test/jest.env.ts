@@ -1,4 +1,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'node:path';
 
-dotenv.config({ path: path.resolve(__dirname, '..', '.env.test') });
+dotenv.config({
+  path: path.resolve(__dirname, '..', '.env.test'),
+  override: true,
+});
