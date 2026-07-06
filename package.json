@@ -7,7 +7,7 @@
     "backend:build": "cd backend && npm ci && npm run build",
     "prepare": "husky",
     "lint:eslint": "npm run backend:lint:eslint && npm run frontend:lint:eslint",
-    "backend:lint:eslint": "cd backend && npm ci && npx prisma generate && npm run lint",
+    "backend:lint:eslint": "cd backend && npm ci && npm run lint",
     "frontend:lint:eslint": "cd frontend && npm ci && npm run lint"
   },
   "devDependencies": {
