@@ -13,18 +13,26 @@ interface DecodedUserInfo {
   tenantDetails: string[];
 }
 
-const { ENCRYPTION_KEY, IV_LENGTH } = process.env;
+let cachedKey: Buffer | null = null;
 
-const key = Buffer.from(ENCRYPTION_KEY!, 'utf8');
-
-if (key.length !== 32) {
-  throw new Error('ENCRYPTION_KEY must be 32 bytes for aes-256-cbc');
+function getKey(): Buffer {
+  if (cachedKey) return cachedKey;
+  const raw = process.env.ENCRYPTION_KEY;
+  if (!raw) {
+    throw new Error('ENCRYPTION_KEY is not set');
+  }
+  const buf = Buffer.from(raw, 'utf8');
+  if (buf.length !== 32) {
+    throw new Error('ENCRYPTION_KEY must be 32 bytes for aes-256-cbc');
+  }
+  cachedKey = buf;
+  return cachedKey;
 }
 
 export function encrypt(text: string): string {
   try {
-    const iv = crypto.randomBytes(parseInt(IV_LENGTH!, 10));
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    const iv = crypto.randomBytes(parseInt(process.env.IV_LENGTH!, 10));
+    const cipher = crypto.createCipheriv('aes-256-cbc', getKey(), iv);
 
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -46,7 +54,7 @@ export function decrypt(text: string): string {
 
   try {
     const iv = Buffer.from(ivHex, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', getKey(), iv);
 
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted = decipher.final('utf8');
