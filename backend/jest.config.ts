@@ -21,8 +21,9 @@ const config: Config.InitialOptions = {
     '^.+\\.ts$': 'ts-jest',
   },
 
-  // Load .env before all tests
-  setupFiles: ['dotenv/config'],
+  // Load committed .env.test so the suite is reproducible from a clean checkout.
+  // (Do not fall back to .env — that hides missing test-env config.)
+  setupFiles: ['<rootDir>/test/jest.env.ts'],
 
   // Only if you create this file (optional):
   // setupFilesAfterEnv: ['<rootDir>/src/config/jest.setup.ts'],
