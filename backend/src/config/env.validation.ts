@@ -1,6 +1,8 @@
 import { plainToClass } from 'class-transformer';
 import {
+  IsByteLength,
   IsEnum,
+  IsNotEmpty,
   IsString,
   IsNumberString,
   IsOptional,
@@ -36,6 +38,8 @@ class EnvironmentVariables {
   CONFIGURATION_DATABASE_PASSWORD: string;
 
   @IsString()
+  @IsNotEmpty({ message: 'ENCRYPTION_KEY is required' })
+  @IsByteLength(32, 32, { message: 'ENCRYPTION_KEY must be exactly 32 bytes' })
   ENCRYPTION_KEY: string;
 
   @IsOptional()
