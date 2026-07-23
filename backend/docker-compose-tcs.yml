@@ -1,0 +1,46 @@
+services:
+  sftp:
+    image: atmoz/sftp
+    container_name: tazama-sftp-1
+    restart: unless-stopped
+    ports:
+      - 2222:22
+    volumes:
+      - sftp_data:/home/user/upload
+    command: user:password:1001
+    env_file:
+      - ./.env
+    networks:
+      - tazama_default
+
+  connection-studio-backend:
+    container_name: connection-studio-backend
+    build:
+      context: .
+    env_file:
+      - ./.env
+    depends_on:
+      - sftp
+    networks:
+      - tazama_default
+
+  connection-studio-frontend:
+    container_name: connection-studio-frontend
+    build:
+      context: ./../frontend
+    env_file:
+      - ./../frontend/.env
+    ports:
+      - 5173:5173
+    depends_on:
+      - connection-studio-backend
+    networks:
+      - tazama_default
+
+volumes:
+  sftp_data:
+
+networks:
+  tazama_default:
+    external: true
+    name: tazama_default

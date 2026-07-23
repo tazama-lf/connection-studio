@@ -1,0 +1,65 @@
+import { plainToClass } from 'class-transformer';
+import {
+  IsByteLength,
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  IsNumberString,
+  IsOptional,
+  validateSync,
+} from 'class-validator';
+enum NodeEnv {
+  DEVELOPMENT = 'development',
+  PRODUCTION = 'production',
+  TEST = 'test',
+  DEV = 'dev',
+  PROD = 'prod',
+}
+class EnvironmentVariables {
+  @IsEnum(NodeEnv)
+  NODE_ENV: NodeEnv = NodeEnv.DEVELOPMENT;
+  @IsNumberString()
+  MAX_CPU: string;
+  @IsString()
+  FUNCTION_NAME: string;
+  @IsString()
+  TAZAMA_AUTH_URL: string;
+  @IsString()
+  AUTH_PUBLIC_KEY_PATH: string;
+  @IsString()
+  CERT_PATH_PUBLIC: string;
+  @IsString()
+  CONFIGURATION_DATABASE_URL: string;
+  @IsString()
+  CONFIGURATION_DATABASE: string;
+  @IsString()
+  CONFIGURATION_DATABASE_USER: string;
+  @IsString()
+  CONFIGURATION_DATABASE_PASSWORD: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'ENCRYPTION_KEY is required' })
+  @IsByteLength(32, 32, { message: 'ENCRYPTION_KEY must be exactly 32 bytes' })
+  ENCRYPTION_KEY: string;
+
+  @IsOptional()
+  @IsNumberString()
+  SESSION_TIMEOUT_MINUTES?: string;
+
+  @IsString()
+  DEAPI_URL: string;
+}
+export const validate = (
+  config: Record<string, unknown>,
+): EnvironmentVariables => {
+  const validatedConfig = plainToClass(EnvironmentVariables, config, {
+    enableImplicitConversion: true,
+  });
+  const errors = validateSync(validatedConfig, {
+    skipMissingProperties: true,
+  });
+  if (errors.length > 0) {
+    throw new Error(errors.toString());
+  }
+  return validatedConfig;
+};

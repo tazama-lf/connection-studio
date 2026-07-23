@@ -1,0 +1,1883 @@
+import { Backdrop } from '@mui/material';
+import {
+  ArrowRightIcon,
+  ChevronRightIcon,
+  DatabaseIcon,
+  Edit3,
+  FileText,
+  Info,
+  PlusIcon,
+  Shuffle,
+  XIcon,
+} from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import ReactJson from 'react-json-view';
+import {
+  configApi,
+  type FieldMapping,
+} from '../../features/config/services/configApi';
+import {
+  dataModelApi,
+  type DestinationFieldsData,
+} from '../../features/data-model';
+import { Button } from './Button';
+
+interface MappingUtilityProps {
+  onMappingChange: (isValid: boolean) => void;
+  onMappingDataChange?: (mappingData: MappingData) => void;
+  onCurrentMappingsChange?: (mappings: FieldMapping[]) => void;
+  sourceSchema?:
+    | Array<{
+        name: string;
+        path: string;
+        type: string;
+        isRequired: boolean;
+      }>
+    | any; // Accept both array format and JSON schema object
+  templateType?: string;
+  configId?: number; // ID of the configuration to add mappings to
+  existingMappings?: FieldMapping[]; // Existing mappings from backend
+  readOnly?: boolean; // When true, disable all editing functionality
+}
+
+interface MappingData {
+  sourceFields: Array<{
+    path: string;
+    type: string;
+    isRequired: boolean;
+  }>;
+  destinationFields: Array<{
+    path: string;
+    type: string;
+    isRequired: boolean;
+  }>;
+  transformation: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
+  constants: Record<string, any>;
+}
+interface TreeNode {
+  id: string;
+  name: string;
+  children?: TreeNode[];
+  type?: string;
+  path: string[];
+}
+export const MappingUtility: React.FC<MappingUtilityProps> = ({
+  onMappingChange,
+  onMappingDataChange,
+  onCurrentMappingsChange,
+  sourceSchema,
+  configId,
+  existingMappings = [],
+  readOnly = false,
+}) => {
+  // Generate unique component instance ID for debugging
+  const componentId = useMemo(
+    () =>
+      `MappingUtility-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    [],
+  );
+
+  // Ref to track if API fetch is in progress (prevent race conditions)
+  const isFetchingRef = useRef(false);
+
+  // Ref to track if the user has made local changes (add/remove).
+  // When true, incoming existingMappings prop updates are ignored so the
+  // parent cannot accidentally re-populate mappings that were just removed.
+  const hasLocalChangesRef = useRef(false);
+
+  // State for managing mappings
+  const [mappingError, setMappingError] = useState<string | null>(null);
+  const [currentMappings, setCurrentMappings] =
+    useState<FieldMapping[]>(existingMappings);
+
+  // State for dynamic destination tree from API
+  const [destinationTree, setDestinationTree] = useState<TreeNode[]>([]);
+  const [loadingDestinations, setLoadingDestinations] = useState(true);
+  const [destinationError, setDestinationError] = useState<string | null>(null);
+
+  const [showEditFieldsModal, setShowEditFieldsModal] = useState(false);
+  const [editableDestinationJson, setEditableDestinationJson] =
+    useState<DestinationFieldsData | null>(null);
+  const [tempEditedJson, setTempEditedJson] =
+    useState<DestinationFieldsData | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [savingDestinationJson, setSavingDestinationJson] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (hasLocalChangesRef.current) return;
+    setCurrentMappings(existingMappings);
+    validateMappings(existingMappings);
+  }, [existingMappings]);
+
+  // Fetch current mappings from backend on component mount if configId is available.
+  // Also reset the local-changes flag so switching to a different config works correctly.
+  useEffect(() => {
+    hasLocalChangesRef.current = false;
+    if (configId) {
+      fetchCurrentMappings();
+    }
+  }, [configId]);
+
+  // Expose current mappings to parent component whenever they change
+  useEffect(() => {
+    if (onCurrentMappingsChange) {
+      onCurrentMappingsChange(currentMappings);
+    }
+  }, [currentMappings]); // Removed onCurrentMappingsChange from deps to prevent infinite loop
+
+  // Function to fetch current config and refresh mappings
+  const fetchCurrentMappings = async () => {
+    if (!configId) {
+      return;
+    }
+
+    try {
+      const response = await configApi.getConfig(configId);
+
+      if (response.success && response.config) {
+        const mappings = response.config.mapping || [];
+
+        // Ensure all mappings have transformation field set
+        const mappingsWithTransformation = mappings.map(
+          (mapping: FieldMapping) => {
+            // If transformation is already set, keep it
+            if (mapping.transformation) {
+              return mapping;
+            }
+
+            // Infer transformation based on mapping structure
+            let inferredTransformation = 'NONE';
+
+            if (mapping.constantValue !== undefined) {
+              inferredTransformation = 'CONSTANT';
+            } else if (
+              Array.isArray(mapping.source) &&
+              mapping.source.length > 1
+            ) {
+              // Multiple sources - check for CONCAT or SUM
+              if (mapping.separator || mapping.delimiter) {
+                inferredTransformation = 'CONCATENATE';
+              } else if (mapping.operator === 'SUM') {
+                inferredTransformation = 'SUM';
+              } else {
+                inferredTransformation = 'CONCAT'; // Default for multiple sources
+              }
+            } else if (
+              Array.isArray(mapping.destination) &&
+              mapping.destination.length > 1
+            ) {
+              // Multiple destinations - SPLIT
+              inferredTransformation = 'SPLIT';
+            }
+
+            return {
+              ...mapping,
+              transformation: inferredTransformation,
+            };
+          },
+        );
+
+        setCurrentMappings(mappingsWithTransformation);
+        validateMappings(mappingsWithTransformation);
+      }
+    } catch (error) {
+      // Error fetching config
+    }
+  };
+
+  const convertJsonToTreeNodes = (
+    json: any,
+    parentPath: string[] = [],
+  ): TreeNode[] => {
+    const dataModelNodes: TreeNode[] = [];
+    const dataCacheNodes: TreeNode[] = [];
+
+    Object.entries(json).forEach(([key, value]) => {
+      const path = [...parentPath, key];
+      const id = path.join('.');
+
+      let nodeType: string;
+      let children: TreeNode[] | undefined;
+
+      if (value === null) {
+        nodeType = 'string';
+      } else if (typeof value === 'string') {
+        nodeType = 'string';
+      } else if (typeof value === 'number') {
+        nodeType = 'number';
+      } else if (typeof value === 'boolean') {
+        nodeType = 'boolean';
+      } else if (typeof value === 'object' && value !== null) {
+        if (Object.keys(value).length === 0) {
+          nodeType = 'object';
+        } else {
+          nodeType = 'object';
+          children = convertJsonToTreeNodesRecursive(value, path);
+        }
+      } else {
+        nodeType = 'string';
+      }
+
+      const node: TreeNode = {
+        id,
+        name: key,
+        path,
+        type: nodeType,
+      };
+
+      if (children && children.length > 0) {
+        node.children = children;
+      }
+
+      if (key === 'redis') {
+        dataCacheNodes.push(node);
+      } else {
+        dataModelNodes.push(node);
+      }
+    });
+
+    const sections: TreeNode[] = [];
+
+    if (dataModelNodes.length > 0) {
+      sections.push({
+        id: 'dataModel',
+        name: 'Data Model',
+        path: ['dataModel'],
+        type: 'section',
+        children: dataModelNodes,
+      });
+    }
+
+    if (dataCacheNodes.length > 0) {
+      sections.push({
+        id: 'dataCache',
+        name: 'Data Cache',
+        path: ['dataCache'],
+        type: 'section',
+        children: dataCacheNodes,
+      });
+    }
+
+    return sections;
+  };
+
+  const convertJsonToTreeNodesRecursive = (
+    json: any,
+    parentPath: string[] = [],
+  ): TreeNode[] => {
+    const nodes: TreeNode[] = [];
+
+    Object.entries(json).forEach(([key, value]) => {
+      const path = [...parentPath, key];
+      const id = path.join('.');
+
+      let nodeType: string;
+      let children: TreeNode[] | undefined;
+
+      if (value === null) {
+        nodeType = 'string';
+      } else if (typeof value === 'string') {
+        nodeType = 'string';
+      } else if (typeof value === 'number') {
+        nodeType = 'number';
+      } else if (typeof value === 'boolean') {
+        nodeType = 'boolean';
+      } else if (typeof value === 'object' && value !== null) {
+        if (Object.keys(value).length === 0) {
+          nodeType = 'object';
+        } else {
+          nodeType = 'object';
+          children = convertJsonToTreeNodesRecursive(value, path);
+        }
+      } else {
+        nodeType = 'string';
+      }
+
+      const node: TreeNode = {
+        id,
+        name: key,
+        path,
+        type: nodeType,
+      };
+
+      if (children && children.length > 0) {
+        node.children = children;
+      }
+
+      nodes.push(node);
+    });
+
+    return nodes;
+  };
+
+  const fetchDestinationOptions = async () => {
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    try {
+      isFetchingRef.current = true;
+      setLoadingDestinations(true);
+      setDestinationError(null);
+
+      const response = await dataModelApi.getDestinationFieldsJson();
+
+      if (response.success && response.data) {
+        setEditableDestinationJson(response.data);
+      } else {
+        throw new Error(
+          response.message ?? 'Failed to fetch destination fields',
+        );
+      }
+    } catch (error) {
+      setDestinationError(
+        'Failed to load destination fields. Please try again.',
+      );
+      setDestinationTree([]);
+      setEditableDestinationJson(null);
+    } finally {
+      setLoadingDestinations(false);
+      isFetchingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    fetchDestinationOptions();
+  }, []);
+
+  useEffect(() => {
+    if (editableDestinationJson) {
+      try {
+        const treeNodes = convertJsonToTreeNodes(editableDestinationJson);
+        setDestinationTree(treeNodes);
+      } catch (error) {
+        // Error during tree conversion
+      }
+    }
+  }, [editableDestinationJson, componentId]);
+
+  const removeMappingFromBackend = async (index: number) => {
+    try {
+      const response = await configApi.removeMapping(configId!, index);
+
+      if (response.success) {
+        hasLocalChangesRef.current = true;
+        const updatedMappings = currentMappings.filter((_, i) => i !== index);
+        setCurrentMappings(updatedMappings);
+        validateMappings(updatedMappings);
+
+        if (onCurrentMappingsChange) {
+          onCurrentMappingsChange(updatedMappings);
+        }
+      } else {
+        setMappingError(`Failed to remove mapping: ${response.message}`);
+      }
+    } catch (error) {
+      setMappingError('Failed to remove mapping. Please try again.');
+    }
+  };
+
+  const buildSourceTreeFromSchema = (
+    schema: any,
+    parentPath: string[] = [],
+  ): TreeNode[] => {
+    if (!schema) return [];
+
+    const nodes: TreeNode[] = [];
+
+    // Handle JSON schema properties
+    if (schema.properties && typeof schema.properties === 'object') {
+      Object.entries(schema.properties).forEach(
+        ([key, value]: [string, any]) => {
+          const path = parentPath.length > 0 ? [...parentPath, key] : [key];
+          const id = path.join('.');
+
+          const node: TreeNode = {
+            id,
+            name: key,
+            path,
+            type: value.type ?? 'string',
+          };
+
+          if (value.properties) {
+            node.children = buildSourceTreeFromSchema(value, path);
+          } else if (value.items?.properties) {
+            // Handle array items with properties
+            node.children = buildSourceTreeFromSchema(value.items, path);
+          }
+
+          nodes.push(node);
+        },
+      );
+    }
+
+    return nodes;
+  };
+
+  // Convert array format to tree structure (fallback for different schema formats)
+  const buildSourceTreeFromArray = (schemaArray: any[]): TreeNode[] => {
+    if (!schemaArray || !Array.isArray(schemaArray)) return [];
+
+    const nodeMap = new Map<string, TreeNode>();
+    const rootNodes: TreeNode[] = [];
+
+    // First pass: create all nodes AND their parent nodes
+    schemaArray.forEach((field) => {
+      const originalPath = field.path ?? field.name ?? 'unknown';
+
+      // Remove [0] notation to get clean path, but remember which paths are arrays
+      const cleanPath = originalPath.replace(/\[0\]/g, '');
+      const pathParts = cleanPath.split('.').filter((p: string) => p); // Remove empty parts
+
+      // Track which parts of the path represent arrays
+      const arrayPaths = new Set<string>();
+      let tempPath = '';
+      originalPath.split('.').forEach((part: string) => {
+        if (part.includes('[0]')) {
+          const cleanPart = part.replace('[0]', '');
+          tempPath = tempPath ? `${tempPath}.${cleanPart}` : cleanPart;
+          arrayPaths.add(tempPath);
+        } else {
+          tempPath = tempPath ? `${tempPath}.${part}` : part;
+        }
+      });
+
+      // Create all parent nodes in the path if they don't exist
+      let currentPath = '';
+      pathParts.forEach((part: string, index: number) => {
+        currentPath = currentPath ? `${currentPath}.${part}` : part;
+
+        // Skip if this node already exists
+        if (nodeMap.has(currentPath)) return;
+
+        const isArrayContainer = arrayPaths.has(currentPath);
+        const nodeName = part;
+        const isLastPart = index === pathParts.length - 1;
+        const fieldType = isArrayContainer
+          ? 'array'
+          : isLastPart
+            ? (field.type?.toLowerCase() ?? 'object')
+            : 'object';
+
+        const node: TreeNode = {
+          id: currentPath,
+          name: nodeName,
+          path: [currentPath],
+          type: fieldType,
+          children: [],
+        };
+
+        nodeMap.set(currentPath, node);
+      });
+    });
+
+    // Add hardcoded TenantId field at root level if not already present
+    if (!nodeMap.has('TenantId')) {
+      const tenantIdNode: TreeNode = {
+        id: 'TenantId',
+        name: 'TenantId',
+        path: ['TenantId'],
+        type: 'string',
+        children: [],
+      };
+      nodeMap.set('TenantId', tenantIdNode);
+    }
+
+    // Second pass: build parent-child relationships
+
+    nodeMap.forEach((node, nodeId) => {
+      let parentPath = '';
+
+      // Find parent by removing the last segment
+      const lastDotIndex = nodeId.lastIndexOf('.');
+      if (lastDotIndex > 0) {
+        parentPath = nodeId.substring(0, lastDotIndex);
+      }
+
+      if (parentPath && nodeMap.has(parentPath)) {
+        const parentNode = nodeMap.get(parentPath)!;
+        parentNode.children ||= [];
+        parentNode.children.push(node);
+      } else {
+        // Root node - only add if not already in rootNodes
+        const alreadyInRoot = rootNodes.some((n) => n.id === nodeId);
+        if (!alreadyInRoot) {
+          rootNodes.push(node);
+        }
+      }
+    });
+
+    return rootNodes;
+  }; // Generate source tree from the provided schema (memoized to prevent recalculation)
+  const sourceTree: TreeNode[] = useMemo(() => {
+    if (!sourceSchema) {
+      return [
+        {
+          id: 'payload',
+          name: 'Generated Fields',
+          path: ['payload'],
+          children: [
+            {
+              id: 'payload.noFields',
+              name: 'No fields generated yet - Click "Generate Fields" first',
+              path: ['payload', 'noFields'],
+              type: 'info',
+            },
+          ],
+        },
+      ];
+    }
+
+    let rawNodes: TreeNode[] = [];
+
+    // If sourceSchema is an array (from our interface)
+    if (Array.isArray(sourceSchema)) {
+      rawNodes = buildSourceTreeFromArray(sourceSchema);
+    } else if (sourceSchema.properties || sourceSchema.type === 'object') {
+      // If sourceSchema is a JSON schema object
+      rawNodes = buildSourceTreeFromSchema(sourceSchema);
+    } else {
+      // Fallback
+      rawNodes = [
+        {
+          id: 'schema',
+          name: 'Schema Data',
+          path: ['schema'],
+          children: Object.keys(sourceSchema).map((key) => ({
+            id: `schema.${key}`,
+            name: key,
+            path: ['schema', key],
+            type: typeof sourceSchema[key] === 'string' ? 'string' : 'object',
+          })),
+        },
+      ];
+    }
+    const messageStructureNodes = rawNodes.filter(
+      (node) => node.id !== 'TenantId',
+    );
+    const systemReservedNodes = rawNodes.filter(
+      (node) => node.id === 'TenantId',
+    );
+
+    const sections: TreeNode[] = [];
+
+    if (messageStructureNodes.length > 0) {
+      sections.push({
+        id: 'messageStructure',
+        name: 'Message Structure',
+        path: ['messageStructure'],
+        type: 'section',
+        children: messageStructureNodes,
+      });
+    }
+
+    if (systemReservedNodes.length > 0) {
+      sections.push({
+        id: 'systemReserved',
+        name: 'System Reserved',
+        path: ['systemReserved'],
+        type: 'section',
+        children: systemReservedNodes,
+      });
+    }
+
+    return sections.length > 0 ? sections : rawNodes;
+  }, [sourceSchema]);
+
+  const [expandedSourceNodes, setExpandedSourceNodes] = useState<string[]>([]);
+  const [expandedDestNodes, setExpandedDestNodes] = useState<string[]>([]);
+  const [showAddMapping, setShowAddMapping] = useState(false);
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [selectedDestinations, setSelectedDestinations] = useState<string[]>(
+    [],
+  );
+  const [selectedTransformation, setSelectedTransformation] = useState<
+    'concatenate' | 'sum' | 'split' | 'none' | 'constant'
+  >('none');
+  const [delimiter, setDelimiter] = useState<string>('');
+  const [prefix, setPrefix] = useState<string>('');
+
+  // Helper function to check if current selection is valid for the transformation type
+  const isCurrentMappingValid = () => {
+    const getFieldType = (fieldPath: string): string | undefined => {
+      if (Array.isArray(sourceSchema)) {
+        const field = sourceSchema.find((f) => {
+          const cleanPath = (f.path ?? f.name ?? '').replace(
+            /\[(\d+)\]/g,
+            '.$1',
+          );
+          return cleanPath === fieldPath || f.path === fieldPath;
+        });
+        return field?.type?.toLowerCase();
+      }
+      return undefined;
+    };
+
+    if (selectedTransformation === 'concatenate') {
+      if (selectedSources.length < 2 || selectedDestinations.length !== 1) {
+        return false;
+      }
+      const allStrings = selectedSources.every((src) => {
+        const type = getFieldType(src);
+        return !type || type === 'string' || type === 'text';
+      });
+
+      return allStrings;
+    } else if (selectedTransformation === 'split') {
+      if (selectedSources.length !== 1 || selectedDestinations.length < 2) {
+        return false;
+      }
+      const sourceType = getFieldType(selectedSources[0]);
+      const sourceIsString =
+        !sourceType || sourceType === 'string' || sourceType === 'text';
+
+      return sourceIsString;
+    } else if (selectedTransformation === 'none') {
+      if (selectedSources.length !== 1 || selectedDestinations.length !== 1) {
+        return false;
+      }
+      return true;
+    } else if (selectedTransformation === 'constant') {
+      return selectedDestinations.length === 1;
+    }
+    return selectedSources.length > 0 && selectedDestinations.length > 0;
+  };
+
+  const validateMappings = (newMappings: FieldMapping[]) => {
+    const isValid = newMappings.every(
+      (mapping) => mapping.source || mapping.constantValue !== undefined,
+    );
+    onMappingChange(isValid);
+  };
+  const addNewMapping = () => {
+    setSelectedSources([]);
+    setSelectedDestinations([]);
+    setSelectedTransformation('none');
+    setDelimiter(''); // Reset delimiter to empty
+    setPrefix(''); // Reset prefix to default
+    setMappingError(null); // Clear any previous errors
+    setShowAddMapping(true);
+  };
+
+  const toggleSourceNode = (nodeId: string) => {
+    if (expandedSourceNodes.includes(nodeId)) {
+      setExpandedSourceNodes(expandedSourceNodes.filter((id) => id !== nodeId));
+    } else {
+      setExpandedSourceNodes([...expandedSourceNodes, nodeId]);
+    }
+  };
+  const toggleDestNode = (nodeId: string) => {
+    if (expandedDestNodes.includes(nodeId)) {
+      setExpandedDestNodes(expandedDestNodes.filter((id) => id !== nodeId));
+    } else {
+      setExpandedDestNodes([...expandedDestNodes, nodeId]);
+    }
+  };
+  const handleSourceSelect = (path: string[]) => {
+    // Path is stored as clean path without [0], but we need to check if we need to add it back
+    // For fields that are inside arrays, we need to reconstruct the original path with [0]
+    const pathStr = path[0] || path.join('.');
+
+    // Check if this path needs [0] notation by looking at the original schema
+    let finalPath = pathStr;
+    if (Array.isArray(sourceSchema)) {
+      const matchingField = sourceSchema.find((f) => {
+        const cleanFieldPath = (f.path ?? f.name ?? '').replace(/\[0\]/g, '');
+        return cleanFieldPath === pathStr;
+      });
+
+      if (matchingField?.path?.includes('[0]')) {
+        // Use the original path with [0] notation
+        finalPath = matchingField.path.replace(/\[0\]/g, '.0');
+      }
+    }
+
+    if (selectedSources.includes(finalPath)) {
+      setSelectedSources(selectedSources.filter((p) => p !== finalPath));
+    } else {
+      setSelectedSources([...selectedSources, finalPath]);
+    }
+  };
+  const handleDestinationSelect = (
+    path: string[],
+    type: 'database' | 'redis' | 'model',
+  ) => {
+    // Toggle selection for destinations
+    const pathStr = path.join('.');
+
+    if (selectedDestinations.includes(pathStr)) {
+      setSelectedDestinations(
+        selectedDestinations.filter((p) => p !== pathStr),
+      );
+    } else {
+      setSelectedDestinations([...selectedDestinations, pathStr]);
+    }
+  };
+  const handleSaveMapping = async () => {
+    // Check if any selected destination is already used in existing mappings
+    const usedDestinations = new Set<string>();
+    currentMappings.forEach((mapping) => {
+      // Collect all destinations from existing mappings
+      // Note: destination can be either string or string[] (for SPLIT)
+      if (mapping.destination) {
+        if (Array.isArray(mapping.destination)) {
+          mapping.destination.forEach((dest) => {
+            if (dest) usedDestinations.add(dest);
+          });
+        } else {
+          usedDestinations.add(mapping.destination);
+        }
+      }
+    });
+
+    // Check if any of the selected destinations are already used
+    const alreadyUsedDestinations = selectedDestinations.filter((dest) =>
+      usedDestinations.has(dest),
+    );
+    if (alreadyUsedDestinations.length > 0) {
+      setMappingError(
+        `The following destination are already mapped: (${alreadyUsedDestinations.join(', ')})`,
+      );
+      return;
+    }
+
+    // Check for duplicate mappings first
+    const isDuplicate = currentMappings.some((existingMapping) => {
+      // For constant mappings, check constant value and destination
+      if (selectedTransformation === 'constant') {
+        return (
+          existingMapping.transformation === 'CONSTANT' &&
+          existingMapping.constantValue === selectedSources[0] &&
+          existingMapping.destination === selectedDestinations[0]
+        );
+      }
+
+      // For other mappings, check source, destination, and transformation
+      const existingSource = Array.isArray(existingMapping.source)
+        ? existingMapping.source.filter(
+            (s): s is string => s != null && s !== '',
+          ) // Filter out null/undefined/empty
+        : [existingMapping.source].filter(
+            (s): s is string => s != null && s !== '',
+          );
+      const existingDestination = Array.isArray(existingMapping.destination)
+        ? existingMapping.destination.filter(
+            (d): d is string => d != null && d !== '',
+          ) // Filter out null/undefined/empty
+        : [existingMapping.destination].filter(
+            (d): d is string => d != null && d !== '',
+          );
+
+      const currentSource = selectedSources.filter((s) => s);
+      const currentDestination = selectedDestinations.filter((d) => d);
+
+      // Check if sources match (order doesn't matter for comparison)
+      const sourcesMatch =
+        existingSource.length === currentSource.length &&
+        existingSource.every((src) => currentSource.includes(src)) &&
+        currentSource.every((src) => existingSource.includes(src));
+
+      // Check if destinations match
+      const destinationsMatch =
+        existingDestination.length === currentDestination.length &&
+        existingDestination.every((dest) =>
+          currentDestination.includes(dest),
+        ) &&
+        currentDestination.every((dest) => existingDestination.includes(dest));
+
+      // Check transformation type
+      const transformationMatch =
+        existingMapping.transformation === selectedTransformation.toUpperCase();
+
+      return sourcesMatch && destinationsMatch && transformationMatch;
+    });
+
+    if (isDuplicate) {
+      setMappingError(
+        'This mapping already exists. Please create a different mapping.',
+      );
+      return;
+    }
+
+    // Convert constant value
+    const constantValue =
+      selectedTransformation === 'constant' ? selectedSources[0] : undefined;
+
+    // Create AddMappingRequest object for API
+    const mappingRequest = {
+      source:
+        selectedTransformation === 'concatenate' ||
+        selectedTransformation === 'sum'
+          ? selectedSources // Array for CONCAT/SUM
+          : selectedTransformation === 'constant'
+            ? selectedSources[0] // Constant value
+            : selectedSources[0], // Single source for SPLIT/DIRECT
+      destination:
+        selectedTransformation === 'split'
+          ? selectedDestinations // Array for SPLIT
+          : selectedDestinations[0], // Single destination
+      delimiter:
+        selectedTransformation === 'split' ||
+        selectedTransformation === 'concatenate'
+          ? (delimiter ?? ' ')
+          : undefined,
+      constantValue,
+      prefix: prefix.trim() || undefined,
+    };
+
+    // Call API to save mapping directly
+    try {
+      const response = await configApi.addMapping(configId!, mappingRequest);
+
+      if (response.success) {
+        // Create FieldMapping object for local state (includes transformation info)
+
+        const newFieldMapping: FieldMapping = {
+          source:
+            selectedTransformation === 'concatenate' ||
+            selectedTransformation === 'sum'
+              ? selectedSources // Array for CONCAT/SUM
+              : selectedTransformation === 'constant'
+                ? selectedSources[0] // Constant value
+                : selectedSources[0], // Single source for SPLIT/DIRECT
+          destination:
+            selectedTransformation === 'split'
+              ? selectedDestinations // Array for SPLIT
+              : selectedDestinations[0], // Single destination
+          delimiter:
+            selectedTransformation === 'split' ? (delimiter ?? ' ') : undefined,
+          separator:
+            selectedTransformation === 'concatenate'
+              ? (delimiter ?? ' ')
+              : undefined,
+          constantValue,
+          transformation: selectedTransformation.toUpperCase(),
+          operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
+          prefix: prefix.trim() || undefined,
+        };
+
+        // Update local state only after successful API call
+        hasLocalChangesRef.current = true;
+        const updatedMappings = [...currentMappings, newFieldMapping];
+        setCurrentMappings(updatedMappings);
+        validateMappings(updatedMappings);
+
+        // Notify parent component
+        if (onCurrentMappingsChange) {
+          onCurrentMappingsChange(updatedMappings);
+        }
+
+        // Close modal
+        setShowAddMapping(false);
+      } else {
+        setMappingError(`Failed to save mapping: ${response.message}`);
+      }
+    } catch (error) {
+      setMappingError('Failed to save mapping. Please try again.');
+    }
+  };
+
+  const renderTree = (
+    nodes: TreeNode[],
+    expanded: string[],
+    toggleFn: (id: string) => void,
+    onSelect: (
+      path: string[],
+      type?: any,
+      expanded?: string[],
+      selectedPaths?: string[],
+    ) => void,
+    selectedPaths: string[] = [],
+    type: 'source' | 'destination' | 'redis' = 'source',
+    depth = 0,
+  ) => (
+    <div className="space-y-1" data-id="element-176">
+      {nodes.map((node, index) => {
+        const hasChildren = node.children && node.children.length > 0;
+        const isExpanded = expanded.includes(node.id);
+        const isSection = node.type === 'section';
+
+        const fieldPath = isSection ? node.path : node.path;
+        const isSelected =
+          !isSection &&
+          selectedPaths
+            .map((path) => path.replace(/\.0\./g, '.'))
+            .includes(node.path.join('.'));
+
+        const nodeType = node.id.startsWith('redis') ? 'redis' : type;
+        const isRedis = node.id === 'redis';
+
+        if (isSection) {
+          return (
+            <div key={node.id} data-id="element-section">
+              <div className={`mb-2 ${index > 0 ? 'mt-4' : ''}`}>
+                <div className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                  {node.name}
+                </div>
+              </div>
+              {hasChildren &&
+                renderTree(
+                  node.children ?? [],
+                  expanded,
+                  toggleFn,
+                  onSelect,
+                  selectedPaths,
+                  node.id === 'dataCache' ? 'redis' : type,
+                  0,
+                )}
+            </div>
+          );
+        }
+
+        return (
+          <div key={node.id} data-id="element-177">
+            <div
+              className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`}
+              style={{ paddingLeft: `${depth * 20 + 4}px` }}
+              data-id="element-178"
+            >
+              {hasChildren ? (
+                <button
+                  onClick={() => {
+                    toggleFn(node.id);
+                  }}
+                  className="p-1 text-gray-500 hover:text-gray-700"
+                  data-id="element-179"
+                >
+                  <ChevronRightIcon
+                    size={16}
+                    className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                    data-id="element-180"
+                  />
+                </button>
+              ) : (
+                <span className="w-6" data-id="element-181"></span>
+              )}
+              {/* Only allow selection for leaf nodes (no children, not object/array) */}
+              {!hasChildren &&
+              node.type !== 'object' &&
+              node.type !== 'array' ? (
+                <button
+                  onClick={() => {
+                    onSelect(
+                      node.path,
+                      nodeType === 'redis' ? 'redis' : 'database',
+                      expanded,
+                      selectedPaths,
+                    );
+                  }}
+                  className="text-left flex-1 text-sm hover:text-blue-700"
+                  data-id="element-185"
+                >
+                  {node.name}
+                  {node.type && (
+                    <span
+                      className="ml-2 text-xs text-gray-500"
+                      data-id="element-186"
+                    >
+                      ({node.type})
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <span
+                  className="text-left flex-1 text-sm cursor-not-allowed select-none"
+                  title="Select a field, not an object or array"
+                  data-id="element-185"
+                >
+                  {node.name}
+                  {node.type && (
+                    <span
+                      className="ml-2 text-xs text-gray-500"
+                      data-id="element-186"
+                    >
+                      ({node.type})
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+            {hasChildren &&
+              isExpanded &&
+              renderTree(
+                node.children ?? [],
+                expanded,
+                toggleFn,
+                onSelect,
+                selectedPaths,
+                nodeType,
+                depth + 1,
+              )}
+          </div>
+        );
+      })}
+    </div>
+  );
+  const renderAddMappingModal = () => {
+    if (!showAddMapping) return null;
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        data-id="element-188"
+      >
+        {/* Enhanced blurred backdrop */}
+        {/* <div className="absolute inset-0 backdrop-blur-sm backdrop-saturate-150" onClick={() => setShowAddMapping(false)}></div> */}
+        <Backdrop
+          sx={(theme) => ({
+            zIndex: theme.zIndex.drawer + 1,
+            overflow: 'hidden',
+          })}
+          open={true}
+        >
+          <div
+            className="bg-white rounded-lg w-full max-w-6xl p-6 max-h-[90vh] overflow-auto relative z-10 "
+            data-id="element-189"
+          >
+            <div
+              className="flex justify-between items-center mb-6"
+              data-id="element-190"
+            >
+              <h3
+                className="text-lg font-medium text-gray-900"
+                data-id="element-191"
+              >
+                Add New Mapping
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddMapping(false);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+                data-id="element-192"
+              >
+                <XIcon size={20} data-id="element-193" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-6" data-id="element-194">
+              {/* Source Selection */}
+              {selectedTransformation !== 'constant' && (
+                <div className="space-y-4" data-id="element-195">
+                  <h4
+                    className="font-medium text-gray-700 flex items-center gap-2"
+                    data-id="element-196"
+                  >
+                    <FileText size={18} style={{ color: '#2b7fff' }} />
+                    Source Fields
+                  </h4>
+                  <div
+                    className="border border-gray-200 rounded-md p-3 h-96 overflow-auto"
+                    data-id="element-197"
+                  >
+                    {renderTree(
+                      sourceTree,
+                      expandedSourceNodes,
+                      toggleSourceNode,
+                      handleSourceSelect,
+                      selectedSources,
+                      'source',
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600" data-id="element-199">
+                    <span className="font-bold">Selected:</span>{' '}
+                    {selectedSources.join(', ') ?? 'None'}
+                  </div>
+                </div>
+              )}
+
+              {/* Constant Value Input */}
+              {selectedTransformation === 'constant' && (
+                <div className="space-y-4" data-id="element-constant-1">
+                  <h4
+                    className="font-medium text-gray-700"
+                    data-id="element-constant-2"
+                  >
+                    Constant Value
+                  </h4>
+                  <div
+                    className="border border-gray-200 rounded-md p-3"
+                    data-id="element-constant-3"
+                  >
+                    <label
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                      data-id="element-constant-4"
+                    >
+                      Enter Constant Value:
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedSources[0] ?? ''}
+                      onChange={(e) => {
+                        setSelectedSources([e.target.value]);
+                      }}
+                      placeholder="Enter a constant value (string, number, etc.)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div
+                      className="mt-2 text-sm text-gray-500"
+                      data-id="element-constant-5"
+                    >
+                      This value will be mapped directly to the destination
+                      field
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Transformation */}
+              <div className="space-y-4" data-id="element-200">
+                <h4
+                  className="font-medium text-gray-700 flex items-center gap-2"
+                  data-id="element-201"
+                >
+                  <Shuffle size={18} style={{ color: '#2b7fff' }} />
+                  Transformation
+                </h4>
+                <div
+                  className="border border-gray-200 rounded-md p-3 h-96 overflow-auto flex flex-col"
+                  data-id="element-202"
+                >
+                  <div className="mb-4" data-id="element-203">
+                    <label
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                      data-id="element-204"
+                    >
+                      Select Transformation Function
+                    </label>
+                    <select
+                      value={selectedTransformation}
+                      onChange={(e) => {
+                        setSelectedTransformation(
+                          e.target.value as
+                            | 'concatenate'
+                            | 'sum'
+                            | 'split'
+                            | 'none'
+                            | 'constant',
+                        );
+                      }}
+                      className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      data-id="element-205"
+                    >
+                      <option value="none" data-id="element-206">
+                        None (Direct Mapping)
+                      </option>
+                      <option value="concatenate" data-id="element-207">
+                        Concatenate
+                      </option>
+                      <option value="split" data-id="element-209">
+                        Split
+                      </option>
+                      <option
+                        value="constant"
+                        data-id="element-constant-option"
+                      >
+                        Constant Value
+                      </option>
+                    </select>
+                  </div>
+                  {(selectedTransformation === 'split' ||
+                    selectedTransformation === 'concatenate') && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {selectedTransformation === 'split'
+                          ? 'Split Delimiter'
+                          : 'Concatenate Delimiter'}
+                      </label>
+                      <input
+                        type="text"
+                        value={delimiter}
+                        onChange={(e) => {
+                          setDelimiter(e.target.value.slice(0, 1));
+                        }}
+                        placeholder=""
+                        className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {selectedTransformation === 'split'
+                          ? 'Split using character (default: space)'
+                          : 'Join using character (default: space)'}
+                      </p>
+                    </div>
+                  )}
+                  <div
+                    className="flex-1 flex items-end justify-center"
+                    data-id="element-210"
+                  >
+                    {selectedTransformation === 'concatenate' && (
+                      <div
+                        className="text-center p-4 bg-gray-50 rounded-md"
+                        data-id="element-211"
+                      >
+                        <h5
+                          className="font-medium text-gray-700 mb-2"
+                          data-id="element-212"
+                        >
+                          Concatenate
+                        </h5>
+                        <p
+                          className="text-sm text-gray-600"
+                          data-id="element-213"
+                        >
+                          Combines multiple source fields into a single string.
+                          <br data-id="element-214" />
+                          <br data-id="element-215" />
+                          Example: "John" + " " + "Doe" → "John Doe"
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransformation === 'split' && (
+                      <div
+                        className="text-center p-4 bg-gray-50 rounded-md"
+                        data-id="element-221"
+                      >
+                        <h5
+                          className="font-medium text-gray-700 mb-2"
+                          data-id="element-222"
+                        >
+                          Split
+                        </h5>
+                        <p
+                          className="text-sm text-gray-600"
+                          data-id="element-223"
+                        >
+                          Divides a single source field into multiple
+                          destination fields.
+                          <br data-id="element-224" />
+                          <br data-id="element-225" />
+                          Example: "John Doe" → "John" and "Doe"
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransformation === 'none' && (
+                      <div
+                        className="text-center p-4 bg-gray-50 rounded-md"
+                        data-id="element-226"
+                      >
+                        <h5
+                          className="font-medium text-gray-700 mb-2"
+                          data-id="element-227"
+                        >
+                          Direct Mapping
+                        </h5>
+                        <p
+                          className="text-sm text-gray-600"
+                          data-id="element-228"
+                        >
+                          Maps source fields directly to destination fields
+                          without transformation.
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransformation === 'constant' && (
+                      <div
+                        className="text-center p-4 bg-gray-50 rounded-md"
+                        data-id="element-229"
+                      >
+                        <h5
+                          className="font-medium text-gray-700 mb-2"
+                          data-id="element-230"
+                        >
+                          Constant Value
+                        </h5>
+                        <p
+                          className="text-sm text-gray-600"
+                          data-id="element-231"
+                        >
+                          Maps a fixed constant value to the destination field,
+                          ignoring any source data.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* Destination Selection */}
+              <div className="space-y-4" data-id="element-229">
+                <div className="flex items-center justify-between">
+                  <h4
+                    className="font-medium text-gray-700 flex items-center gap-2"
+                    data-id="element-230"
+                  >
+                    <DatabaseIcon size={18} style={{ color: '#2b7fff' }} />
+                    Destination
+                  </h4>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setTempEditedJson(editableDestinationJson);
+                      setValidationError(null);
+                      setShowEditFieldsModal(true);
+                    }}
+                    icon={<Edit3 size={14} />}
+                    className="!py-1 !px-2 text-xs"
+                    disabled={readOnly}
+                  >
+                    Edit Fields
+                  </Button>
+                </div>
+                <div
+                  className="border border-gray-200 rounded-md p-3 h-96 overflow-auto"
+                  data-id="element-231"
+                >
+                  {loadingDestinations ? (
+                    <div className="text-sm text-gray-500 py-4">
+                      Loading destination fields...
+                    </div>
+                  ) : destinationError ? (
+                    <div className="text-sm text-red-500 py-4">
+                      {destinationError}
+                    </div>
+                  ) : (
+                    renderTree(
+                      destinationTree,
+                      expandedDestNodes,
+                      toggleDestNode,
+                      (path, type) => {
+                        handleDestinationSelect(
+                          path,
+                          type as 'database' | 'redis' | 'model',
+                        );
+                      },
+                      selectedDestinations,
+                      'destination',
+                    )
+                  )}
+                </div>
+                <div className="text-sm text-gray-600" data-id="element-234">
+                  <span className="font-bold">Selected:</span>{' '}
+                  {selectedDestinations.join(', ') ?? 'None'}
+                </div>
+              </div>
+            </div>
+            {/* Error Display */}
+            {mappingError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-4 relative">
+                <button
+                  onClick={() => {
+                    setMappingError(null);
+                  }}
+                  className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
+                >
+                  <XIcon size={16} />
+                </button>
+                <div className="text-red-800 text-sm pr-6">{mappingError}</div>
+              </div>
+            )}
+
+            <div
+              className="flex justify-end space-x-3 mt-6"
+              data-id="element-235"
+            >
+              <Button
+                variant="secondary"
+                className="!pb-[6px] !pt-[4px]"
+                onClick={() => {
+                  setShowAddMapping(false);
+                }}
+                data-id="element-236"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="!pb-[6px] !pt-[4px]"
+                onClick={handleSaveMapping}
+                disabled={!isCurrentMappingValid()}
+                data-id="element-237"
+              >
+                Add Mapping
+              </Button>
+            </div>
+          </div>
+        </Backdrop>
+      </div>
+    );
+  };
+
+  const hasNestedObjects = (obj: any): boolean => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+      return false;
+    }
+
+    const keys = Object.keys(obj);
+    for (const key of keys) {
+      const value = obj[key];
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        if (Object.keys(value).length > 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const getMaxNestingDepth = (obj: any, currentDepth = 0): number => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+      return currentDepth;
+    }
+
+    const keys = Object.keys(obj);
+    if (keys.length === 0) {
+      return currentDepth;
+    }
+
+    let maxDepth = currentDepth;
+    keys.forEach((key) => {
+      const value = obj[key];
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        if (Object.keys(value).length > 0) {
+          const nestedDepth = getMaxNestingDepth(value, currentDepth + 1);
+          maxDepth = Math.max(maxDepth, nestedDepth);
+        } else {
+          maxDepth = Math.max(maxDepth, currentDepth + 1);
+        }
+      }
+    });
+
+    return maxDepth;
+  };
+
+  const validateDestinationJson = (
+    json: any,
+  ): { valid: boolean; error?: string } => {
+    if (!json || typeof json !== 'object') {
+      return { valid: false, error: 'Invalid JSON structure' };
+    }
+
+    const rootKeys = Object.keys(json);
+
+    if (!rootKeys.includes('transactionDetails')) {
+      return {
+        valid: false,
+        error:
+          'Required field "transactionDetails" must exist in the Data Model section and cannot be deleted.',
+      };
+    }
+
+    if (!rootKeys.includes('redis')) {
+      return {
+        valid: false,
+        error:
+          'Required field "redis" must exist in the Data Cache section and cannot be deleted.',
+      };
+    }
+
+    const redisCount = rootKeys.filter(
+      (key) => key.toLowerCase() === 'redis',
+    ).length;
+    if (redisCount > 1) {
+      return {
+        valid: false,
+        error:
+          'Data Cache section can only have one parent object "redis". Multiple redis objects are not allowed.',
+      };
+    }
+
+    if (json.transactionDetails && hasNestedObjects(json.transactionDetails)) {
+      return {
+        valid: false,
+        error:
+          'Object "transactionDetails" cannot contain nested objects. Only primitive values (string, number, boolean) are allowed.',
+      };
+    }
+
+    if (json.redis) {
+      const redisDepth = getMaxNestingDepth(json.redis, 0);
+      if (redisDepth > 1) {
+        return {
+          valid: false,
+          error: `Object "redis" has ${redisDepth} levels of nesting. Maximum allowed nesting depth for redis is 1 level (e.g., redis → instdAmt → amount).`,
+        };
+      }
+    }
+    const MAX_NESTING_DEPTH = 1;
+    for (const key of rootKeys) {
+      if (key === 'transactionDetails' || key === 'redis') {
+        continue;
+      }
+
+      const depth = getMaxNestingDepth(json[key], 0);
+      if (depth > MAX_NESTING_DEPTH) {
+        return {
+          valid: false,
+          error: `Object "${key}" has ${depth} levels of nesting. Maximum allowed nesting depth is ${MAX_NESTING_DEPTH} level. Please reduce the nesting depth.`,
+        };
+      }
+    }
+
+    return { valid: true };
+  };
+
+  const renderEditFieldsModal = () => {
+    if (!showEditFieldsModal) return null;
+
+    const handleJsonChange = (e: any) => {
+      const updatedJson = e.updated_src;
+      setTempEditedJson(updatedJson);
+
+      const validation = validateDestinationJson(updatedJson);
+      if (!validation.valid) {
+        setValidationError(validation.error ?? 'Invalid JSON structure');
+      } else {
+        setValidationError(null);
+      }
+    };
+
+    const handleSaveChanges = async () => {
+      const validation = validateDestinationJson(tempEditedJson);
+
+      if (!validation.valid) {
+        setValidationError(validation.error ?? 'Invalid JSON structure');
+        return;
+      }
+
+      setValidationError(null);
+      setSaveError(null);
+
+      if (!tempEditedJson) {
+        setValidationError('Cannot save: JSON data is missing');
+        return;
+      }
+
+      const reorderedJson: any = {};
+      const keys = Object.keys(tempEditedJson);
+
+      keys.forEach((key) => {
+        if (key !== 'redis') {
+          reorderedJson[key] = tempEditedJson[key];
+        }
+      });
+
+      if (tempEditedJson.redis) {
+        reorderedJson.redis = tempEditedJson.redis;
+      }
+
+      try {
+        setSavingDestinationJson(true);
+        const response =
+          await dataModelApi.updateDestinationFieldsJson(reorderedJson);
+
+        if (response.success) {
+          setEditableDestinationJson(reorderedJson);
+          setShowEditFieldsModal(false);
+          setTempEditedJson(null);
+        } else {
+          throw new Error(
+            response.message ?? 'Failed to save destination fields',
+          );
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to save changes. Please try again.';
+        setSaveError(errorMessage);
+        setValidationError(errorMessage);
+      } finally {
+        setSavingDestinationJson(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <Backdrop
+          sx={(theme) => ({
+            zIndex: theme.zIndex.drawer + 1,
+            overflow: 'hidden',
+          })}
+          open={true}
+        >
+          <div className="bg-white rounded-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-auto relative z-10">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <Edit3 size={20} />
+                Edit Destination Fields
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditFieldsModal(false);
+                  setTempEditedJson(null);
+                  setValidationError(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XIcon size={20} />
+              </button>
+            </div>
+
+            {/* Commenting out for now might need it in future */}
+            {/* <div className="mb-4 text-sm text-gray-600">
+              <p className="mb-2">
+                Edit the destination fields JSON structure. Add, remove, or modify fields as needed.
+              </p>
+              <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2 mt-2">
+                <strong>Important Structure Rules:</strong>
+                <ul className="list-disc ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>transactionDetails</strong> - Required root object in Data Model section. 
+                    <span className="text-red-600 font-semibold"> Can only contain primitive values</span> (string, number, boolean). 
+                    No nested objects allowed.
+                    <br />
+                    <span className="text-gray-500 italic">Example: ✓ Amt: 0, Ccy: "" | ✗ nested: {'{\'field: 1\'}'}</span>
+                  </li>
+                  <li>
+                    <strong>redis</strong> - Required root object in Data Cache section (must be the only object in Data Cache). 
+                    <span className="text-red-600 font-semibold"> Maximum 1 level of nesting</span> allowed.
+                    <br />
+                    <span className="text-gray-500 italic">Example: ✓ redis → instdAmt → amount | ✗ redis → instdAmt → info → amount</span>
+                  </li>
+                  <li>
+                    <strong>Other root objects</strong> - Custom objects in Data Model section. 
+                    <span className="text-red-600 font-semibold"> Maximum 1 level of nesting</span> allowed.
+                    <br />
+                    <span className="text-gray-500 italic">Example: ✓ myObj → nested → field | ✗ myObj → nested → deeper → field</span>
+                  </li>
+                  <li><strong>Data Model</strong> - Can have unlimited root objects (transactionDetails + any custom objects)</li>
+                  <li><strong>Data Cache</strong> - Can only contain the "redis" object (no other root objects allowed)</li>
+                </ul>
+              </div>
+            </div> */}
+
+            {/* JSON Editor */}
+            <div
+              className="border border-gray-200 rounded-md p-4 bg-gray-50 mb-4"
+              style={{ maxHeight: '500px', overflow: 'auto' }}
+            >
+              {tempEditedJson && (
+                <ReactJson
+                  src={tempEditedJson}
+                  onEdit={handleJsonChange}
+                  onAdd={handleJsonChange}
+                  onDelete={handleJsonChange}
+                  theme="rjv-default"
+                  name={false}
+                  displayDataTypes={true}
+                  displayObjectSize={true}
+                  enableClipboard={true}
+                  collapsed={2}
+                  style={{ fontSize: '13px', backgroundColor: 'transparent' }}
+                />
+              )}
+            </div>
+
+            {/* Validation Error Display */}
+            {validationError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4 relative">
+                <button
+                  onClick={() => {
+                    setValidationError(null);
+                  }}
+                  className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
+                >
+                  <XIcon size={16} />
+                </button>
+                <div className="text-red-800 text-sm pr-6">
+                  {validationError}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="secondary"
+                className="!pb-[6px] !pt-[4px]"
+                onClick={() => {
+                  setShowEditFieldsModal(false);
+                  setTempEditedJson(null);
+                  setValidationError(null);
+                  setSaveError(null);
+                }}
+                disabled={savingDestinationJson}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="!pb-[6px] !pt-[4px]"
+                onClick={handleSaveChanges}
+                disabled={!!validationError || savingDestinationJson}
+              >
+                {savingDestinationJson ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </Backdrop>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6" data-id="element-271">
+      {/* Error Display */}
+
+      <div className="flex justify-end items-center mb-4" data-id="element-272">
+        {/* <h3 className="text-lg font-medium text-gray-900" data-id="element-273">Field Mapping</h3> */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={addNewMapping}
+          icon={<PlusIcon size={16} data-id="element-279" />}
+          disabled={readOnly}
+          data-id="element-278"
+        >
+          Add Mapping
+        </Button>
+      </div>
+      {/* Required Mappings Info Box */}
+      {!readOnly && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div className="flex items-start gap-3">
+            <Info size={18} className="text-blue-500 mt-0.5 shrink-0" />
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-blue-800">
+                Required Mappings
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="mt-1 inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                  <div>
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">Unique Message ID</span> —
+                      Every transaction must carry a globally unique identifier
+                      so it can be traced end-to-end across all systems.
+                    </p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Map your source field that contains the message ID to{' '}
+                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">
+                        transactionDetails.msgId
+                      </code>
+                      .
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="mt-1 inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                  <div>
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">
+                        Message Creation Date &amp; Time
+                      </span>{' '}
+                      — The timestamp at which the message was originated is
+                      required for audit trails, sequencing, and duplicate
+                      detection.
+                    </p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Map your source field that contains the creation timestamp
+                      to{' '}
+                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">
+                        transactionDetails.CreDtTm
+                      </code>
+                      .
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Current Mappings Display */}
+      {currentMappings.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <h4 className="text-sm font-medium text-green-800 mb-2">
+            Current Mappings ({currentMappings.length})
+          </h4>
+          <div className="space-y-2">
+            {currentMappings.map((mapping, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between bg-white p-2 rounded border"
+              >
+                <div className="flex items-center space-x-2">
+                  {mapping.transformation && (
+                    <span className="text-xs text-blue-600 font-medium">
+                      [
+                      {mapping.transformation === 'NONE'
+                        ? 'DIRECT'
+                        : mapping.transformation}
+                      ]
+                    </span>
+                  )}
+                  <span className="text-sm text-gray-600">
+                    {mapping.transformation === 'CONSTANT'
+                      ? typeof mapping.constantValue === 'number'
+                        ? mapping.constantValue
+                        : `"${mapping.constantValue}"`
+                      : Array.isArray(mapping.source)
+                        ? mapping.source.join(' + ')
+                        : mapping.source}
+                    <ArrowRightIcon size={16} className="inline mx-2" />
+                    {mapping.prefix ? `"${mapping.prefix}" + ` : ''}
+                    {Array.isArray(mapping.destination)
+                      ? mapping.destination.join(' + ')
+                      : mapping.destination}
+                  </span>
+                  {mapping.separator && (
+                    <span className="text-xs text-gray-500">
+                      (delimiter: "{mapping.separator}")
+                    </span>
+                  )}
+                  {mapping.delimiter && (
+                    <span className="text-xs text-gray-500">
+                      (delimiter: "{mapping.delimiter}")
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    await removeMappingFromBackend(index);
+                  }}
+                  disabled={readOnly}
+                  className="text-red-500 hover:bg-red-500 hover:text-white"
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {currentMappings.length === 0 ? (
+        <div className="text-center py-12 text-gray-500 flex flex-col items-center justify-center">
+          <svg
+            className="w-10 h-10 mb-3 text-blue-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5m6 0v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2m6-2v2m0-2a2 2 0 012 2v2m0-2a2 2 0 00-2-2v2m0-2a2 2 0 012 2v2"
+            />
+          </svg>
+          <p
+            className="text-base font-semibold mb-1 "
+            style={{ color: '#3b3b3b' }}
+          >
+            No mappings yet
+          </p>
+          <p className="text-sm text-gray-500 mb-1">
+            You haven't created any field mappings for this configuration.
+          </p>
+          {!readOnly && (
+            <p className="text-xs mt-1 text-gray-500">
+              Click <span className="font-semibold">"Add Mapping"</span> to get
+              started.
+            </p>
+          )}
+        </div>
+      ) : null}
+      {renderAddMappingModal()}
+      {renderEditFieldsModal()}
+    </div>
+  );
+};
