@@ -674,13 +674,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       setExpandedDestNodes([...expandedDestNodes, nodeId]);
     }
   };
-  const handleSourceSelect = (path: string[]) => {
-    // Path is stored as clean path without [0], but we need to check if we need to add it back
-    // For fields that are inside arrays, we need to reconstruct the original path with [0]
-    const pathStr = path[0] || path.join('.');
-
-    // Check if this path needs [0] notation by looking at the original schema
-    let finalPath = pathStr;
+  // Tree node ids are stored as clean paths without [0] (e.g. "ChrgsInf.Amt.Amt"),
+  // but saved mappings need the actual array index reconstructed
+  // (e.g. "ChrgsInf.0.Amt.Amt") by looking the clean path back up in the source schema.
+  const resolveSourcePath = (pathStr: string): string => {
     if (Array.isArray(sourceSchema)) {
       const matchingField = sourceSchema.find((f) => {
         const cleanFieldPath = (f.path ?? f.name ?? '').replace(/\[0\]/g, '');
@@ -688,10 +685,17 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       });
 
       if (matchingField?.path?.includes('[0]')) {
-        // Use the original path with [0] notation
-        finalPath = matchingField.path.replace(/\[0\]/g, '.0');
+        return matchingField.path.replace(/\[0\]/g, '.0');
       }
     }
+    return pathStr;
+  };
+
+  const handleSourceSelect = (path: string[]) => {
+    // Path is stored as clean path without [0], but we need to check if we need to add it back
+    // For fields that are inside arrays, we need to reconstruct the original path with [0]
+    const pathStr = path[0] || path.join('.');
+    const finalPath = resolveSourcePath(pathStr);
 
     if (selectedSources.includes(finalPath)) {
       setSelectedSources(selectedSources.filter((p) => p !== finalPath));
@@ -780,7 +784,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         skipped.push(`${destLeaf.path} (no matching source field)`);
         return;
       }
-      pairs.push({ sourcePath: match.path, destPath: destLeaf.path });
+      pairs.push({
+        sourcePath: resolveSourcePath(match.path),
+        destPath: destLeaf.path,
+      });
     });
 
     if (pairs.length === 0) {
