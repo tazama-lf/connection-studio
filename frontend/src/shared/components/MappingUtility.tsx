@@ -27,13 +27,13 @@ interface MappingUtilityProps {
   onMappingDataChange?: (mappingData: MappingData) => void;
   onCurrentMappingsChange?: (mappings: FieldMapping[]) => void;
   sourceSchema?:
-    | Array<{
-        name: string;
-        path: string;
-        type: string;
-        isRequired: boolean;
-      }>
-    | any; // Accept both array format and JSON schema object
+  | Array<{
+    name: string;
+    path: string;
+    type: string;
+    isRequired: boolean;
+  }>
+  | any; // Accept both array format and JSON schema object
   templateType?: string;
   configId?: number; // ID of the configuration to add mappings to
   existingMappings?: FieldMapping[]; // Existing mappings from backend
@@ -714,7 +714,143 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       setSelectedDestinations([...selectedDestinations, pathStr]);
     }
   };
+  // Recursively find a node by its dotted id within a tree (source or destination).
+  const findNodeById = (
+    nodes: TreeNode[],
+    id: string,
+  ): TreeNode | undefined => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNodeById(node.children, id);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  // Recursively collect the leaf (non-object/array) descendants of a node.
+  const collectLeafNodes = (
+    node: TreeNode,
+  ): Array<{ name: string; path: string }> => {
+    const hasChildren = node.children && node.children.length > 0;
+    if (!hasChildren) {
+      return node.type === 'object' || node.type === 'array'
+        ? []
+        : [{ name: node.name, path: node.id }];
+    }
+    return node.children!.flatMap((child) => collectLeafNodes(child));
+  };
+
+  // When both the selected source and destination are objects (not leaves),
+  // auto-generate one direct leaf-to-leaf mapping per pair of matching
+  // sub-field names instead of requiring them to be created one at a time.
+  const handleSaveObjectAutoMapping = async (
+    sourceNode: TreeNode,
+    destNode: TreeNode,
+  ) => {
+    const sourceLeaves = collectLeafNodes(sourceNode);
+    const destLeaves = collectLeafNodes(destNode);
+
+    const usedDestinations = new Set<string>();
+    currentMappings.forEach((mapping) => {
+      if (mapping.destination) {
+        if (Array.isArray(mapping.destination)) {
+          mapping.destination.forEach((dest) => {
+            if (dest) usedDestinations.add(dest);
+          });
+        } else {
+          usedDestinations.add(mapping.destination);
+        }
+      }
+    });
+
+    const skipped: string[] = [];
+    const pairs: Array<{ sourcePath: string; destPath: string }> = [];
+
+    destLeaves.forEach((destLeaf) => {
+      if (usedDestinations.has(destLeaf.path)) {
+        skipped.push(`${destLeaf.path} (already mapped)`);
+        return;
+      }
+      const match = sourceLeaves.find(
+        (src) => src.name.toLowerCase() === destLeaf.name.toLowerCase(),
+      );
+      if (!match) {
+        skipped.push(`${destLeaf.path} (no matching source field)`);
+        return;
+      }
+      pairs.push({ sourcePath: match.path, destPath: destLeaf.path });
+    });
+
+    if (pairs.length === 0) {
+      setMappingError(
+        `No matching sub-fields found between "${sourceNode.name}" and "${destNode.name}".`,
+      );
+      return;
+    }
+
+    const addedMappings: FieldMapping[] = [];
+    for (const pair of pairs) {
+      try {
+        const response = await configApi.addMapping(configId!, {
+          source: pair.sourcePath,
+          destination: pair.destPath,
+        });
+        if (response.success) {
+          addedMappings.push({
+            source: pair.sourcePath,
+            destination: pair.destPath,
+            transformation: 'NONE',
+          });
+        } else {
+          skipped.push(`${pair.destPath} (save failed: ${response.message})`);
+        }
+      } catch (error) {
+        skipped.push(`${pair.destPath} (save failed)`);
+      }
+    }
+
+    if (addedMappings.length > 0) {
+      hasLocalChangesRef.current = true;
+      const updatedMappings = [...currentMappings, ...addedMappings];
+      setCurrentMappings(updatedMappings);
+      validateMappings(updatedMappings);
+      if (onCurrentMappingsChange) {
+        onCurrentMappingsChange(updatedMappings);
+      }
+    }
+
+    setMappingError(
+      skipped.length > 0
+        ? `Auto-mapped ${addedMappings.length} field(s). Skipped: ${skipped.join(', ')}`
+        : null,
+    );
+    setShowAddMapping(false);
+  };
+
   const handleSaveMapping = async () => {
+    // If both selections are whole objects, auto-map their matching leaf
+    // sub-fields instead of treating this as a single direct mapping.
+    if (
+      selectedTransformation === 'none' &&
+      selectedSources.length === 1 &&
+      selectedDestinations.length === 1
+    ) {
+      const sourceNode = findNodeById(sourceTree, selectedSources[0]);
+      const destNode = findNodeById(destinationTree, selectedDestinations[0]);
+      const isObjectAutoMap =
+        sourceNode &&
+        destNode &&
+        (sourceNode.type === 'object' || sourceNode.type === 'array') &&
+        (destNode.type === 'object' || destNode.type === 'array');
+
+      if (isObjectAutoMap) {
+        await handleSaveObjectAutoMapping(sourceNode!, destNode!);
+        return;
+      }
+    }
+
     // Check if any selected destination is already used in existing mappings
     const usedDestinations = new Set<string>();
     currentMappings.forEach((mapping) => {
@@ -756,18 +892,18 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       // For other mappings, check source, destination, and transformation
       const existingSource = Array.isArray(existingMapping.source)
         ? existingMapping.source.filter(
-            (s): s is string => s != null && s !== '',
-          ) // Filter out null/undefined/empty
+          (s): s is string => s != null && s !== '',
+        ) // Filter out null/undefined/empty
         : [existingMapping.source].filter(
-            (s): s is string => s != null && s !== '',
-          );
+          (s): s is string => s != null && s !== '',
+        );
       const existingDestination = Array.isArray(existingMapping.destination)
         ? existingMapping.destination.filter(
-            (d): d is string => d != null && d !== '',
-          ) // Filter out null/undefined/empty
+          (d): d is string => d != null && d !== '',
+        ) // Filter out null/undefined/empty
         : [existingMapping.destination].filter(
-            (d): d is string => d != null && d !== '',
-          );
+          (d): d is string => d != null && d !== '',
+        );
 
       const currentSource = selectedSources.filter((s) => s);
       const currentDestination = selectedDestinations.filter((d) => d);
@@ -808,7 +944,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     const mappingRequest = {
       source:
         selectedTransformation === 'concatenate' ||
-        selectedTransformation === 'sum'
+          selectedTransformation === 'sum'
           ? selectedSources // Array for CONCAT/SUM
           : selectedTransformation === 'constant'
             ? selectedSources[0] // Constant value
@@ -819,7 +955,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           : selectedDestinations[0], // Single destination
       delimiter:
         selectedTransformation === 'split' ||
-        selectedTransformation === 'concatenate'
+          selectedTransformation === 'concatenate'
           ? (delimiter ?? ' ')
           : undefined,
       constantValue,
@@ -836,7 +972,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const newFieldMapping: FieldMapping = {
           source:
             selectedTransformation === 'concatenate' ||
-            selectedTransformation === 'sum'
+              selectedTransformation === 'sum'
               ? selectedSources // Array for CONCAT/SUM
               : selectedTransformation === 'constant'
                 ? selectedSources[0] // Constant value
@@ -954,10 +1090,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               ) : (
                 <span className="w-6" data-id="element-181"></span>
               )}
-              {/* Only allow selection for leaf nodes (no children, not object/array) */}
+              {/* Leaf nodes: select for a single-field mapping. */}
               {!hasChildren &&
-              node.type !== 'object' &&
-              node.type !== 'array' ? (
+                node.type !== 'object' &&
+                node.type !== 'array' ? (
                 <button
                   onClick={() => {
                     onSelect(
@@ -979,6 +1115,34 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       ({node.type})
                     </span>
                   )}
+                </button>
+              ) : hasChildren &&
+                (node.type === 'object' || node.type === 'array') ? (
+                /* Object/array nodes with children: select the whole node to
+                   auto-map its matching sub-fields on the other side. */
+                <button
+                  onClick={() => {
+                    onSelect(
+                      node.path,
+                      nodeType === 'redis' ? 'redis' : 'database',
+                      expanded,
+                      selectedPaths,
+                    );
+                  }}
+                  className="text-left flex-1 text-sm text-gray-600 hover:text-blue-700"
+                  title="Select this object to auto-map its matching sub-fields"
+                  data-id="element-185"
+                >
+                  {node.name}
+                  {node.type && (
+                    <span
+                      className="ml-2 text-xs text-gray-500"
+                      data-id="element-186"
+                    >
+                      ({node.type})
+                    </span>
+                  )}
+                  <span className="ml-2 text-xs text-blue-500">auto-map</span>
                 </button>
               ) : (
                 <span
@@ -1149,11 +1313,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       onChange={(e) => {
                         setSelectedTransformation(
                           e.target.value as
-                            | 'concatenate'
-                            | 'sum'
-                            | 'split'
-                            | 'none'
-                            | 'constant',
+                          | 'concatenate'
+                          | 'sum'
+                          | 'split'
+                          | 'none'
+                          | 'constant',
                         );
                       }}
                       className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -1178,28 +1342,28 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   </div>
                   {(selectedTransformation === 'split' ||
                     selectedTransformation === 'concatenate') && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {selectedTransformation === 'split'
-                          ? 'Split Delimiter'
-                          : 'Concatenate Delimiter'}
-                      </label>
-                      <input
-                        type="text"
-                        value={delimiter}
-                        onChange={(e) => {
-                          setDelimiter(e.target.value.slice(0, 1));
-                        }}
-                        placeholder=""
-                        className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        {selectedTransformation === 'split'
-                          ? 'Split using character (default: space)'
-                          : 'Join using character (default: space)'}
-                      </p>
-                    </div>
-                  )}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {selectedTransformation === 'split'
+                            ? 'Split Delimiter'
+                            : 'Concatenate Delimiter'}
+                        </label>
+                        <input
+                          type="text"
+                          value={delimiter}
+                          onChange={(e) => {
+                            setDelimiter(e.target.value.slice(0, 1));
+                          }}
+                          placeholder=""
+                          className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {selectedTransformation === 'split'
+                            ? 'Split using character (default: space)'
+                            : 'Join using character (default: space)'}
+                        </p>
+                      </div>
+                    )}
                   <div
                     className="flex-1 flex items-end justify-center"
                     data-id="element-210"
