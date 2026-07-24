@@ -2018,6 +2018,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     }
                     onSimulationComplete={setIsSimulationSuccess}
                     readOnly={readOnly}
+                    initialPayload={payload}
                     data-id="element-742"
                   />
                 </>
