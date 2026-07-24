@@ -1,4 +1,5 @@
 {
+  "version": "4.0.0",
   "scripts": {
     "test": "npm run backend:test && npm run frontend:test",
     "backend:test": "cd backend && npm run test",
@@ -12,6 +13,5 @@
   },
   "devDependencies": {
     "husky": "^9.1.7"
-  },
-  "version": "4.0.0"
+  }
 }
