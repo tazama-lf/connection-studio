@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
-import { CheckCircleIcon, XCircleIcon, UploadIcon } from 'lucide-react';
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  UploadIcon,
+  FileInputIcon,
+} from 'lucide-react';
 import {
   simulationApi,
   type SimulationResult,
@@ -14,12 +19,16 @@ interface SimulationPanelProps {
   contentType?: 'application/json' | 'application/xml';
   onSimulationComplete: (success: boolean) => void;
   readOnly?: boolean;
+  // The payload entered in the Payload step. Lets the user pull it into the
+  // test payload via the "Load Payload" button instead of retyping it.
+  initialPayload?: string;
 }
 export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   endpointId,
   contentType = 'application/json',
   onSimulationComplete,
   readOnly = false,
+  initialPayload = '',
 }: SimulationPanelProps): React.JSX.Element => {
   const { user } = useAuth();
   const isApproverUser = isApprover(user?.claims ?? []);
@@ -127,7 +136,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
             <UploadIcon size={18} className="text-blue-500" />
             Test Payload
             <span className="ml-2 text-xs font-normal text-gray-500">
-              (Enter or import a sample payload to simulate)
+              (Enter, import, or load a sample payload to simulate)
             </span>
           </h4>
           <div className="flex items-center space-x-2" data-id="element-706">
@@ -139,6 +148,20 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
               onChange={handleFileUpload}
               data-id="element-707"
             />
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<FileInputIcon size={16} />}
+              onClick={() => {
+                setTestPayload(initialPayload);
+                setSimulationError(null);
+              }}
+              disabled={
+                !initialPayload.trim() || (isApproverUser ? false : readOnly)
+              }
+            >
+              Load Payload
+            </Button>
             <Button
               variant="secondary"
               size="sm"
