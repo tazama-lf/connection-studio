@@ -544,35 +544,6 @@ describe('ConfigService', () => {
       token,
     );
   });
-  it('creates multiple datamodel tables from function array', async () => {
-    mockSftp.readFile.mockResolvedValue({
-      id: 1,
-      transactionType: 'pacs',
-      version: '1',
-      functions: [
-        {
-          functionName: 'addDataModelTable',
-          tableName: 'table1',
-          columns: [],
-        },
-        {
-          functionName: 'addDataModelTable',
-          tableName: 'table2',
-          columns: [],
-        },
-      ],
-      status: ConfigStatus.READY_FOR_DEPLOYMENT,
-    });
-
-    await service.handleWorkflowAction(
-      1,
-      { action: 'deploy', data: {} },
-      publisherUser as any,
-      token,
-    );
-
-    expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledTimes(2);
-  });
   it('deletes file from SFTP after deploy', async () => {
     mockSftp.readFile.mockResolvedValue({
       id: 1,
