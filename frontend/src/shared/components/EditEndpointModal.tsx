@@ -81,12 +81,14 @@ interface FunctionSelectionFormProps {
   onAddFunction: (functionData: any, selectedFunction?: any) => void;
   onClose: () => void;
   currentSchema?: any; // Add currentSchema prop
+  currentMappings?: any[]; // Mappings from the Mapping step, used to filter Select Data to mapped payload fields
 }
 
 const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   onAddFunction,
   onClose,
   currentSchema,
+  currentMappings = [],
 }) => {
   const tenantId = useAuth().user?.tenantId ?? '';
   const [selectedFunction, setSelectedFunction] =
@@ -160,7 +162,46 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       .filter((f) => f.type.toLowerCase() === 'object')
       .map((f) => ({ label: f.path, value: f.path, group: f.group }));
 
-  const jsonBOptions = () => {
+  // Source paths (leaf fields) used in the Mapping step, normalized to dot
+  // notation (e.g. "ChrgsInf[0].Amt.Amt" -> "chrgsinf.0.amt.amt") for
+  // case-insensitive comparison against schema paths, which use [n] brackets.
+  const getMappedSourcePaths = (): Set<string> => {
+    const paths = new Set<string>();
+    currentMappings.forEach((mapping: any) => {
+      const addSource = (src: unknown) => {
+        if (typeof src === 'string' && src.trim()) {
+          paths.add(src.replace(/\[(\d+)\]/g, '.$1').toLowerCase());
+        }
+      };
+      if (Array.isArray(mapping.source)) {
+        mapping.source.forEach(addSource);
+      } else {
+        addSource(mapping.source);
+      }
+    });
+    return paths;
+  };
+
+  // A payload object is only relevant for Select Data if a mapping actually
+  // pulls one of its descendant fields from the payload.
+  const isPayloadObjectMapped = (
+    objectPath: string,
+    mappedSourcePaths: Set<string>,
+  ): boolean => {
+    const normalized = objectPath.replace(/\[(\d+)\]/g, '.$1').toLowerCase();
+    for (const src of mappedSourcePaths) {
+      if (src === normalized || src.startsWith(`${normalized}.`)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const buildPayloadFields = (): {
+    path: string;
+    type: string;
+    group: string;
+  }[] => {
     const payloadFields: { path: string; type: string; group: string }[] = [];
 
     if (Array.isArray(currentSchema)) {
@@ -189,13 +230,48 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       traverseSchema(currentSchema.properties);
     }
 
+    return payloadFields;
+  };
+
+  const isRootPath = (path: string): boolean =>
+    !path.includes('.') && !path.includes('[');
+
+  // Top-level (non-nested) payload fields that are strings and used as a
+  // mapping source. Root scalars like a message id often make sense as the
+  // primary key even when "data" is a different nested object.
+  const getMappedPayloadRootStringFields = (): {
+    path: string;
+    type: string;
+    group: string;
+  }[] => {
+    const mappedSourcePaths = getMappedSourcePaths();
+    return buildPayloadFields().filter(
+      (f) =>
+        isRootPath(f.path) &&
+        f.type.toLowerCase() === 'string' &&
+        isPayloadObjectMapped(f.path, mappedSourcePaths),
+    );
+  };
+
+  const jsonBOptions = () => {
+    const payloadFields = buildPayloadFields();
+
     const excludedTopLevelKeys = ['redis', 'transactiondetails'];
     const filteredDataModelFields = flatDataModelFields.filter(
       (f) => !excludedTopLevelKeys.includes(f.path.split('.')[0].toLowerCase()),
     );
 
+    const mappedSourcePaths = getMappedSourcePaths();
+    const mappedPayloadObjects = getObjectsFromFlatSchema(payloadFields).filter(
+      (option) => isPayloadObjectMapped(option.value, mappedSourcePaths),
+    );
+    const mappedPayloadRootStrings = getMappedPayloadRootStringFields().map(
+      (f) => ({ label: f.path, value: f.path, group: f.group }),
+    );
+
     return [
-      ...getObjectsFromFlatSchema(payloadFields),
+      ...mappedPayloadObjects,
+      ...mappedPayloadRootStrings,
       ...getObjectsFromFlatSchema(filteredDataModelFields),
     ];
   };
@@ -211,6 +287,15 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedPath = parsed?.value ?? '';
       const selectedGroup = parsed?.group ?? '';
       if (!selectedPath) return [];
+
+      // If a root-level mapped string field was picked directly as the Data
+      // object (e.g. "cnic"), it has no children — it is its own primary key.
+      if (
+        selectedGroup === 'Payload' &&
+        getMappedPayloadRootStringFields().some((f) => f.path === selectedPath)
+      ) {
+        return [{ value: selectedPath, label: selectedPath, group: 'Fields' }];
+      }
 
       let childFields: { path: string; type: string }[] = [];
 
@@ -239,7 +324,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           if (node?.properties) {
             Object.entries(node.properties).forEach(
               ([key, val]: [string, any]) => {
-                childFields.push({ path: key, type: val.type ?? '' });
+                childFields.push({
+                  path: `${selectedPath}.${key}`,
+                  type: val.type ?? '',
+                });
               },
             );
           }
@@ -250,11 +338,18 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           .map((f) => ({ path: f.path, type: f.type }));
       }
 
+      const mappedSourcePaths =
+        selectedGroup === 'Payload' ? getMappedSourcePaths() : null;
+
       const keyOptions = childFields
         .filter(
           (f) =>
             f.type.toLowerCase() !== 'object' &&
             f.type.toLowerCase() !== 'array',
+        )
+        .filter(
+          (f) =>
+            !mappedSourcePaths || isPayloadObjectMapped(f.path, mappedSourcePaths),
         )
         .map((f) => {
           const key =
@@ -286,12 +381,23 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedGroup = jsonKeyparsed?.group ?? '';
       const datasource = selectedGroup === 'Payload' ? 'payload' : 'dataModel';
       const primaryKeyName = dataModelForm?.primaryKey ?? '';
-      const primaryKeyPath =
-        selectedPath && primaryKeyName
+      // A root-level mapped string field (e.g. a top-level message id) can be
+      // picked as the primary key even when it isn't nested under the
+      // selected Data object, so it must not be prefixed with selectedPath.
+      const isRootPrimaryKey =
+        selectedGroup === 'Payload' &&
+        getMappedPayloadRootStringFields().some(
+          (f) => f.path === primaryKeyName,
+        );
+      const primaryKeyPath = isRootPrimaryKey
+        ? primaryKeyName
+        : selectedPath && primaryKeyName
           ? `${selectedPath}.${primaryKeyName}`
           : primaryKeyName;
       let primaryKeyType = 'string';
-      if (primaryKeyName && selectedPath) {
+      if (isRootPrimaryKey) {
+        primaryKeyType = 'string';
+      } else if (primaryKeyName && selectedPath) {
         if (selectedGroup === 'Payload' && Array.isArray(currentSchema)) {
           const field = (currentSchema as any[]).find(
             (f) =>
@@ -1990,6 +2096,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                               setShowAddFunctionModal(false);
                             }}
                             currentSchema={currentSchema}
+                            currentMappings={currentMappings}
                           />
                         </div>
                       </Backdrop>
