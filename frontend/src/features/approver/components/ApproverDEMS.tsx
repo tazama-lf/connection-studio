@@ -36,7 +36,11 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
         showError('Failed to approve configuration');
       }
     } catch (error) {
-      showError('Failed to approve configuration. Please try again.');
+      showError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to approve configuration. Please try again.',
+      );
     }
   };
 

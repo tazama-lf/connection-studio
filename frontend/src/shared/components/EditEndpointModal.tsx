@@ -1014,7 +1014,27 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       }
     }
 
-    if (selectedFunction !== 'addDataModel') {
+    if (selectedFunction === 'addDataModel') {
+      // addDataModel functions all share functionName 'addDataModelTable', so
+      // the meaningful uniqueness key is the table name, not params.
+      // selectedFunctions already includes functions loaded from the saved
+      // config (see the `setSelectedFunctions(config.functions)` load above),
+      // so checking against it covers both "already added this session" and
+      // "already exists in the DB".
+      const newTableName = (functionData.tableName ?? '').trim().toLowerCase();
+      const isDuplicateTable = selectedFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'addDataModelTable' &&
+          (existingFunction.tableName ?? '').trim().toLowerCase() ===
+          newTableName,
+      );
+      if (isDuplicateTable) {
+        showError(
+          `A data model table named "${functionData.tableName}" has already been added. Please choose a different table name.`,
+        );
+        return;
+      }
+    } else {
       // Check for duplicate functions in local state first
       const isDuplicate = selectedFunctions.some((existingFunction) => {
         // Check if function name matches
@@ -1250,9 +1270,13 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         }
       } else {
         setError(`Failed to submit: ${response.message}`);
+        showError('Failed to submit configuration', response.message);
       }
     } catch (err) {
-      setError(`Submission failed: ${err}`);
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(`Submission failed: ${errorMessage}`);
+      showError('Submission failed', errorMessage);
     } finally {
       setLoading(false);
     }
