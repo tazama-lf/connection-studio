@@ -381,43 +381,54 @@ export class ConfigService {
 
           const { transactionType } = config;
 
-          if (transactionType) {
-            await this.configRepository.createTransactionTypeTable(
-              transactionType,
-              token,
+          try {
+            if (transactionType) {
+              await this.configRepository.createTransactionTypeTable(
+                transactionType,
+                token,
+              );
+            }
+
+            const functions = config.functions as unknown as Array<{
+              functionName: string;
+              tableName?: string;
+            }>;
+
+            if (Array.isArray(functions)) {
+              const datamodelFunctions = functions.filter(
+                (fn: { functionName: string; tableName?: string }) =>
+                  fn.functionName === 'addDataModelTable',
+              );
+
+              const tableCreationPromises = datamodelFunctions.map(
+                async (datamodelFn: {
+                  functionName: string;
+                  tableName?: string;
+                }) => {
+                  if (datamodelFn.tableName) {
+                    await this.configRepository.createTazamaDataModelTable(
+                      datamodelFn.tableName,
+                      token,
+                    );
+                  } else {
+                    this.logger.warn(
+                      'Skipping addDataModelTable function without tableName',
+                    );
+                  }
+                },
+              );
+
+              await Promise.all(tableCreationPromises);
+            }
+          } catch (error) {
+            const errMsg =
+              error instanceof Error ? error.message : String(error);
+            this.logger.error(
+              `Failed to create table(s) during approve: ${errMsg}`,
             );
-          }
-
-          const functions = config.functions as unknown as Array<{
-            functionName: string;
-            tableName?: string;
-          }>;
-
-          if (Array.isArray(functions)) {
-            const datamodelFunctions = functions.filter(
-              (fn: { functionName: string; tableName?: string }) =>
-                fn.functionName === 'addDataModelTable',
+            throw new BadRequestException(
+              `Failed to approve configuration: ${errMsg}`,
             );
-
-            const tableCreationPromises = datamodelFunctions.map(
-              async (datamodelFn: {
-                functionName: string;
-                tableName?: string;
-              }) => {
-                if (datamodelFn.tableName) {
-                  await this.configRepository.createTazamaDataModelTable(
-                    datamodelFn.tableName,
-                    token,
-                  );
-                } else {
-                  this.logger.warn(
-                    'Skipping addDataModelTable function without tableName',
-                  );
-                }
-              },
-            );
-
-            await Promise.all(tableCreationPromises);
           }
 
           await this.notificationService.sendWorkflowNotification(
