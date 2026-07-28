@@ -90,7 +90,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   currentSchema,
   currentMappings = [],
 }) => {
-  const tenantId = useAuth().user?.tenantId ?? '';
   const [selectedFunction, setSelectedFunction] =
     useState<AllowedFunctionName>('addAccount');
   const [selectedConfiguration, setSelectedConfiguration] = useState('');
@@ -197,6 +196,31 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     return false;
   };
 
+  // The immediate parent path of each mapped source field, Used to
+  // show only the closest containing object in Select Data, not every
+  // ancestor up to the root.
+  const getMappedSourceParentPaths = (
+    mappedSourcePaths: Set<string>,
+  ): Set<string> => {
+    const parents = new Set<string>();
+    mappedSourcePaths.forEach((src) => {
+      const idx = src.lastIndexOf('.');
+      if (idx > -1) parents.add(src.slice(0, idx));
+    });
+    return parents;
+  };
+
+  // A payload object should appear in Select Data only when it is the
+  // direct/immediate parent of a mapped field, not merely an ancestor of one
+  // several levels up.
+  const isImmediateParentOfMappedField = (
+    objectPath: string,
+    mappedSourceParentPaths: Set<string>,
+  ): boolean => {
+    const normalized = objectPath.replace(/\[(\d+)\]/g, '.$1').toLowerCase();
+    return mappedSourceParentPaths.has(normalized);
+  };
+
   const buildPayloadFields = (): {
     path: string;
     type: string;
@@ -236,10 +260,11 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   const isRootPath = (path: string): boolean =>
     !path.includes('.') && !path.includes('[');
 
-  // Top-level (non-nested) payload fields that are strings and used as a
-  // mapping source. Root scalars like a message id often make sense as the
-  // primary key even when "data" is a different nested object.
-  const getMappedPayloadRootStringFields = (): {
+  // Top-level (non-nested) payload fields that are scalars (string, number,
+  // boolean, ...) and used as a mapping source. Root scalars like a message
+  // id or amount often make sense as the primary key even when "data" is a
+  // different nested object.
+  const getMappedPayloadRootScalarFields = (): {
     path: string;
     type: string;
     group: string;
@@ -248,7 +273,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     return buildPayloadFields().filter(
       (f) =>
         isRootPath(f.path) &&
-        f.type.toLowerCase() === 'string' &&
+        f.type.toLowerCase() !== 'object' &&
+        f.type.toLowerCase() !== 'array' &&
         isPayloadObjectMapped(f.path, mappedSourcePaths),
     );
   };
@@ -262,16 +288,18 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     );
 
     const mappedSourcePaths = getMappedSourcePaths();
+    const mappedSourceParentPaths = getMappedSourceParentPaths(mappedSourcePaths);
     const mappedPayloadObjects = getObjectsFromFlatSchema(payloadFields).filter(
-      (option) => isPayloadObjectMapped(option.value, mappedSourcePaths),
+      (option) =>
+        isImmediateParentOfMappedField(option.value, mappedSourceParentPaths),
     );
-    const mappedPayloadRootStrings = getMappedPayloadRootStringFields().map(
+    const mappedPayloadRootScalars = getMappedPayloadRootScalarFields().map(
       (f) => ({ label: f.path, value: f.path, group: f.group }),
     );
 
     return [
       ...mappedPayloadObjects,
-      ...mappedPayloadRootStrings,
+      ...mappedPayloadRootScalars,
       ...getObjectsFromFlatSchema(filteredDataModelFields),
     ];
   };
@@ -288,11 +316,12 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedGroup = parsed?.group ?? '';
       if (!selectedPath) return [];
 
-      // If a root-level mapped string field was picked directly as the Data
-      // object (e.g. "cnic"), it has no children — it is its own primary key.
+      // If a root-level mapped scalar field was picked directly as the Data
+      // object (e.g. "cnic" or "amount"), it has no children — it is its own
+      // primary key.
       if (
         selectedGroup === 'Payload' &&
-        getMappedPayloadRootStringFields().some((f) => f.path === selectedPath)
+        getMappedPayloadRootScalarFields().some((f) => f.path === selectedPath)
       ) {
         return [{ value: selectedPath, label: selectedPath, group: 'Fields' }];
       }
@@ -381,12 +410,13 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedGroup = jsonKeyparsed?.group ?? '';
       const datasource = selectedGroup === 'Payload' ? 'payload' : 'dataModel';
       const primaryKeyName = dataModelForm?.primaryKey ?? '';
-      // A root-level mapped string field (e.g. a top-level message id) can be
-      // picked as the primary key even when it isn't nested under the
-      // selected Data object, so it must not be prefixed with selectedPath.
+      // A root-level mapped scalar field (e.g. a top-level message id or
+      // amount) can be picked as the primary key even when it isn't nested
+      // under the selected Data object, so it must not be prefixed with
+      // selectedPath.
       const isRootPrimaryKey =
         selectedGroup === 'Payload' &&
-        getMappedPayloadRootStringFields().some(
+        getMappedPayloadRootScalarFields().some(
           (f) => f.path === primaryKeyName,
         );
       const primaryKeyPath = isRootPrimaryKey
@@ -657,8 +687,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 <div
                   key={config.name}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedConfiguration === config.name
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-gray-400'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-300 hover:border-gray-400'
                     }`}
                   onClick={() => {
                     setSelectedConfiguration(config.name);
@@ -698,8 +728,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                     <div
                       key={param.name}
                       className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedOptionalParams.includes(param.name)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
                         }`}
                       onClick={() => {
                         handleOptionalParamToggle(param.name);
@@ -918,8 +948,12 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             // Note: We store AJV schema in DB, not original payload
             // For now, show the schema - user can modify or replace it
             if (config.payload) {
-              // If original payload is stored, use it
-              setPayload(config.payload);
+              // If original payload is stored, use it (may be stored as an object)
+              setPayload(
+                typeof config.payload === 'string'
+                  ? config.payload
+                  : JSON.stringify(config.payload, null, 2),
+              );
             } else if (config.schema) {
               // Otherwise, show the schema (user will need to replace with actual payload for editing)
               setPayload(JSON.stringify(config.schema, null, 2));
@@ -1149,18 +1183,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     });
 
     return errors;
-  };
-
-  // Step 4: Submit for Approval (simulation is handled by SimulationPanel)
-  const handleRunSimulation = async () => {
-    if (!isSimulationSuccess) {
-      setError('Please run the simulation first and ensure it passes');
-      return;
-    }
-
-    // Simply move to the next step since simulation is handled by SimulationPanel
-    setError(null); // Clear any previous errors before moving to next step
-    setCurrentStep('deploy');
   };
 
   // Step 4: Submit for Approval
@@ -1624,7 +1646,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                   );
                   const isCurrentStep = index === currentStepIndex;
                   const isCompletedStep = index < currentStepIndex;
-                  const isFutureStep = index > currentStepIndex;
 
                   return (
                     <Step key={step.id}>
@@ -1950,8 +1971,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             <div
                               key={index}
                               className={`p-4 rounded-lg border flex justify-between items-center ${unmappedParams?.length > 0
-                                  ? 'bg-red-50 border-red-200'
-                                  : 'bg-gray-50 border-gray-200'
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-gray-50 border-gray-200'
                                 }`}
                             >
                               <div className="flex-1">
@@ -2022,7 +2043,10 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                     : func?.columns && func.columns.length > 0
                                       ? func.columns
                                         .map((column) => (
-                                          <span className="text-green-600">
+                                          <span
+                                            key={column.param}
+                                            className="text-green-600"
+                                          >
                                             {column.param}
                                           </span>
                                         ))
