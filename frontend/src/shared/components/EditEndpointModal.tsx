@@ -81,14 +81,15 @@ interface FunctionSelectionFormProps {
   onAddFunction: (functionData: any, selectedFunction?: any) => void;
   onClose: () => void;
   currentSchema?: any; // Add currentSchema prop
+  currentMappings?: any[]; // Mappings from the Mapping step, used to filter Select Data to mapped payload fields
 }
 
 const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   onAddFunction,
   onClose,
   currentSchema,
+  currentMappings = [],
 }) => {
-  const tenantId = useAuth().user?.tenantId ?? '';
   const [selectedFunction, setSelectedFunction] =
     useState<AllowedFunctionName>('addAccount');
   const [selectedConfiguration, setSelectedConfiguration] = useState('');
@@ -160,7 +161,71 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       .filter((f) => f.type.toLowerCase() === 'object')
       .map((f) => ({ label: f.path, value: f.path, group: f.group }));
 
-  const jsonBOptions = () => {
+  // Source paths (leaf fields) used in the Mapping step, normalized to dot
+  // notation (e.g. "ChrgsInf[0].Amt.Amt" -> "chrgsinf.0.amt.amt") for
+  // case-insensitive comparison against schema paths, which use [n] brackets.
+  const getMappedSourcePaths = (): Set<string> => {
+    const paths = new Set<string>();
+    currentMappings.forEach((mapping: any) => {
+      const addSource = (src: unknown) => {
+        if (typeof src === 'string' && src.trim()) {
+          paths.add(src.replace(/\[(\d+)\]/g, '.$1').toLowerCase());
+        }
+      };
+      if (Array.isArray(mapping.source)) {
+        mapping.source.forEach(addSource);
+      } else {
+        addSource(mapping.source);
+      }
+    });
+    return paths;
+  };
+
+  // A payload object is only relevant for Select Data if a mapping actually
+  // pulls one of its descendant fields from the payload.
+  const isPayloadObjectMapped = (
+    objectPath: string,
+    mappedSourcePaths: Set<string>,
+  ): boolean => {
+    const normalized = objectPath.replace(/\[(\d+)\]/g, '.$1').toLowerCase();
+    for (const src of mappedSourcePaths) {
+      if (src === normalized || src.startsWith(`${normalized}.`)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // The immediate parent path of each mapped source field, Used to
+  // show only the closest containing object in Select Data, not every
+  // ancestor up to the root.
+  const getMappedSourceParentPaths = (
+    mappedSourcePaths: Set<string>,
+  ): Set<string> => {
+    const parents = new Set<string>();
+    mappedSourcePaths.forEach((src) => {
+      const idx = src.lastIndexOf('.');
+      if (idx > -1) parents.add(src.slice(0, idx));
+    });
+    return parents;
+  };
+
+  // A payload object should appear in Select Data only when it is the
+  // direct/immediate parent of a mapped field, not merely an ancestor of one
+  // several levels up.
+  const isImmediateParentOfMappedField = (
+    objectPath: string,
+    mappedSourceParentPaths: Set<string>,
+  ): boolean => {
+    const normalized = objectPath.replace(/\[(\d+)\]/g, '.$1').toLowerCase();
+    return mappedSourceParentPaths.has(normalized);
+  };
+
+  const buildPayloadFields = (): {
+    path: string;
+    type: string;
+    group: string;
+  }[] => {
     const payloadFields: { path: string; type: string; group: string }[] = [];
 
     if (Array.isArray(currentSchema)) {
@@ -189,13 +254,52 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       traverseSchema(currentSchema.properties);
     }
 
+    return payloadFields;
+  };
+
+  const isRootPath = (path: string): boolean =>
+    !path.includes('.') && !path.includes('[');
+
+  // Top-level (non-nested) payload fields that are scalars (string, number,
+  // boolean, ...) and used as a mapping source. Root scalars like a message
+  // id or amount often make sense as the primary key even when "data" is a
+  // different nested object.
+  const getMappedPayloadRootScalarFields = (): {
+    path: string;
+    type: string;
+    group: string;
+  }[] => {
+    const mappedSourcePaths = getMappedSourcePaths();
+    return buildPayloadFields().filter(
+      (f) =>
+        isRootPath(f.path) &&
+        f.type.toLowerCase() !== 'object' &&
+        f.type.toLowerCase() !== 'array' &&
+        isPayloadObjectMapped(f.path, mappedSourcePaths),
+    );
+  };
+
+  const jsonBOptions = () => {
+    const payloadFields = buildPayloadFields();
+
     const excludedTopLevelKeys = ['redis', 'transactiondetails'];
     const filteredDataModelFields = flatDataModelFields.filter(
       (f) => !excludedTopLevelKeys.includes(f.path.split('.')[0].toLowerCase()),
     );
 
+    const mappedSourcePaths = getMappedSourcePaths();
+    const mappedSourceParentPaths = getMappedSourceParentPaths(mappedSourcePaths);
+    const mappedPayloadObjects = getObjectsFromFlatSchema(payloadFields).filter(
+      (option) =>
+        isImmediateParentOfMappedField(option.value, mappedSourceParentPaths),
+    );
+    const mappedPayloadRootScalars = getMappedPayloadRootScalarFields().map(
+      (f) => ({ label: f.path, value: f.path, group: f.group }),
+    );
+
     return [
-      ...getObjectsFromFlatSchema(payloadFields),
+      ...mappedPayloadObjects,
+      ...mappedPayloadRootScalars,
       ...getObjectsFromFlatSchema(filteredDataModelFields),
     ];
   };
@@ -211,6 +315,16 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedPath = parsed?.value ?? '';
       const selectedGroup = parsed?.group ?? '';
       if (!selectedPath) return [];
+
+      // If a root-level mapped scalar field was picked directly as the Data
+      // object (e.g. "cnic" or "amount"), it has no children — it is its own
+      // primary key.
+      if (
+        selectedGroup === 'Payload' &&
+        getMappedPayloadRootScalarFields().some((f) => f.path === selectedPath)
+      ) {
+        return [{ value: selectedPath, label: selectedPath, group: 'Fields' }];
+      }
 
       let childFields: { path: string; type: string }[] = [];
 
@@ -239,7 +353,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           if (node?.properties) {
             Object.entries(node.properties).forEach(
               ([key, val]: [string, any]) => {
-                childFields.push({ path: key, type: val.type ?? '' });
+                childFields.push({
+                  path: `${selectedPath}.${key}`,
+                  type: val.type ?? '',
+                });
               },
             );
           }
@@ -250,11 +367,18 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           .map((f) => ({ path: f.path, type: f.type }));
       }
 
+      const mappedSourcePaths =
+        selectedGroup === 'Payload' ? getMappedSourcePaths() : null;
+
       const keyOptions = childFields
         .filter(
           (f) =>
             f.type.toLowerCase() !== 'object' &&
             f.type.toLowerCase() !== 'array',
+        )
+        .filter(
+          (f) =>
+            !mappedSourcePaths || isPayloadObjectMapped(f.path, mappedSourcePaths),
         )
         .map((f) => {
           const key =
@@ -286,12 +410,24 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedGroup = jsonKeyparsed?.group ?? '';
       const datasource = selectedGroup === 'Payload' ? 'payload' : 'dataModel';
       const primaryKeyName = dataModelForm?.primaryKey ?? '';
-      const primaryKeyPath =
-        selectedPath && primaryKeyName
+      // A root-level mapped scalar field (e.g. a top-level message id or
+      // amount) can be picked as the primary key even when it isn't nested
+      // under the selected Data object, so it must not be prefixed with
+      // selectedPath.
+      const isRootPrimaryKey =
+        selectedGroup === 'Payload' &&
+        getMappedPayloadRootScalarFields().some(
+          (f) => f.path === primaryKeyName,
+        );
+      const primaryKeyPath = isRootPrimaryKey
+        ? primaryKeyName
+        : selectedPath && primaryKeyName
           ? `${selectedPath}.${primaryKeyName}`
           : primaryKeyName;
       let primaryKeyType = 'string';
-      if (primaryKeyName && selectedPath) {
+      if (isRootPrimaryKey) {
+        primaryKeyType = 'string';
+      } else if (primaryKeyName && selectedPath) {
         if (selectedGroup === 'Payload' && Array.isArray(currentSchema)) {
           const field = (currentSchema as any[]).find(
             (f) =>
@@ -551,8 +687,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 <div
                   key={config.name}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedConfiguration === config.name
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-gray-400'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-300 hover:border-gray-400'
                     }`}
                   onClick={() => {
                     setSelectedConfiguration(config.name);
@@ -592,8 +728,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                     <div
                       key={param.name}
                       className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedOptionalParams.includes(param.name)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
                         }`}
                       onClick={() => {
                         handleOptionalParamToggle(param.name);
@@ -812,8 +948,12 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             // Note: We store AJV schema in DB, not original payload
             // For now, show the schema - user can modify or replace it
             if (config.payload) {
-              // If original payload is stored, use it
-              setPayload(config.payload);
+              // If original payload is stored, use it (may be stored as an object)
+              setPayload(
+                typeof config.payload === 'string'
+                  ? config.payload
+                  : JSON.stringify(config.payload, null, 2),
+              );
             } else if (config.schema) {
               // Otherwise, show the schema (user will need to replace with actual payload for editing)
               setPayload(JSON.stringify(config.schema, null, 2));
@@ -1043,18 +1183,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     });
 
     return errors;
-  };
-
-  // Step 4: Submit for Approval (simulation is handled by SimulationPanel)
-  const handleRunSimulation = async () => {
-    if (!isSimulationSuccess) {
-      setError('Please run the simulation first and ensure it passes');
-      return;
-    }
-
-    // Simply move to the next step since simulation is handled by SimulationPanel
-    setError(null); // Clear any previous errors before moving to next step
-    setCurrentStep('deploy');
   };
 
   // Step 4: Submit for Approval
@@ -1518,7 +1646,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                   );
                   const isCurrentStep = index === currentStepIndex;
                   const isCompletedStep = index < currentStepIndex;
-                  const isFutureStep = index > currentStepIndex;
 
                   return (
                     <Step key={step.id}>
@@ -1844,8 +1971,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             <div
                               key={index}
                               className={`p-4 rounded-lg border flex justify-between items-center ${unmappedParams?.length > 0
-                                  ? 'bg-red-50 border-red-200'
-                                  : 'bg-gray-50 border-gray-200'
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-gray-50 border-gray-200'
                                 }`}
                             >
                               <div className="flex-1">
@@ -1916,7 +2043,10 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                     : func?.columns && func.columns.length > 0
                                       ? func.columns
                                         .map((column) => (
-                                          <span className="text-green-600">
+                                          <span
+                                            key={column.param}
+                                            className="text-green-600"
+                                          >
                                             {column.param}
                                           </span>
                                         ))
@@ -1990,6 +2120,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                               setShowAddFunctionModal(false);
                             }}
                             currentSchema={currentSchema}
+                            currentMappings={currentMappings}
                           />
                         </div>
                       </Backdrop>
@@ -2018,6 +2149,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     }
                     onSimulationComplete={setIsSimulationSuccess}
                     readOnly={readOnly}
+                    initialPayload={payload}
                     data-id="element-742"
                   />
                 </>

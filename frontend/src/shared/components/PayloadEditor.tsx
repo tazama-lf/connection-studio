@@ -1162,8 +1162,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </div>
             </div>
-            {payloadError &&
-              !(payloadValidationMessage || fieldErrors.payload) && (
+            {payloadError && !fieldErrors.payload && (
                 <div className="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
