@@ -1043,6 +1043,40 @@ describe('ConfigService', () => {
     );
   });
 
+  it('wraps createTazamaDataModelTable errors in BadRequestException on approve', async () => {
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      status: ConfigStatus.UNDER_REVIEW,
+    });
+
+    mockRepo.getupdateConfigByStatus.mockResolvedValue({
+      id: 1,
+      functions: [{ functionName: 'addDataModelTable', tableName: 'dm_tbl' }],
+    });
+
+    mockRepo.createTazamaDataModelTable.mockRejectedValue(
+      new Error('Table "dm_tbl" already exists'),
+    );
+
+    await expect(
+      service.handleWorkflowAction(
+        1,
+        { action: 'approve', data: { comment: 'lgtm' } },
+        approverUser as any,
+        token,
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      service.handleWorkflowAction(
+        1,
+        { action: 'approve', data: { comment: 'lgtm' } },
+        approverUser as any,
+        token,
+      ),
+    ).rejects.toThrow('Failed to approve configuration: Table "dm_tbl" already exists');
+  });
+
   it('skips datamodel table creation on approve when function has no tableName', async () => {
     mockRepo.findConfigById.mockResolvedValue({
       id: 1,

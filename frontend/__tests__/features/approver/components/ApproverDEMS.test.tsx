@@ -137,9 +137,7 @@ describe('features/approver/components/ApproverDEMS.tsx', () => {
     approveConfigMock.mockRejectedValueOnce(new Error('approve-crash'));
     fireEvent.click(screen.getByTestId('approve-btn'));
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith(
-        'Failed to approve configuration. Please try again.',
-      );
+      expect(showErrorMock).toHaveBeenCalledWith('approve-crash');
     });
   });
 
