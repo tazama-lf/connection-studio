@@ -1,3 +1,7 @@
+jest.mock('dotenv', () => ({
+  config: jest.fn().mockReturnValue({ parsed: {} }),
+}));
+
 describe('utils/helpers — deferred key validation', () => {
   const originalKey = process.env.ENCRYPTION_KEY;
   const originalIv = process.env.IV_LENGTH;
