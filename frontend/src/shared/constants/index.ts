@@ -122,8 +122,7 @@ export const sampleJsonPayload = `{
     }
   }
 }`;
-export const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
-<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
+export const sampleXmlPayload = `<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
   <FIToFICstmrCdtTrf>
     <GrpHdr>
       <MsgId>TXN12345</MsgId>
