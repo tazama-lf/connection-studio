@@ -1045,7 +1045,9 @@ describe('ConfigService', () => {
         approverUser as any,
         token,
       ),
-    ).rejects.toThrow('Failed to approve configuration: Table "dm_tbl" already exists');
+    ).rejects.toThrow(
+      'Failed to approve configuration: Table "dm_tbl" already exists',
+    );
   });
 
   it('skips datamodel table creation on approve when function has no tableName', async () => {
