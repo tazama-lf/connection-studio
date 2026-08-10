@@ -28,7 +28,7 @@ import { configApi } from '../../features/config/services/configApi';
 import { Button } from './Button';
 
 interface PayloadEditorProps {
-  value: Record<string, unknown> | null;
+  value: Record<string, unknown> | string | null;
   onChange: (value: Record<string, unknown> | string | null) => void;
   endpointData?: EndpointFormData;
   onEndpointDataChange?: (data: EndpointFormData) => void;
@@ -405,7 +405,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     };
 
     const validatePayload = (
-      payloadValue: Record<string, unknown> | null,
+      payloadValue: Record<string, unknown> | string | null,
       contentType: string,
     ): void => {
       const validation = validatePayloadContent(payloadValue, contentType);

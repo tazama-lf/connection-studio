@@ -40,7 +40,8 @@ import { isStatus } from '../utils/statusColors';
 import { Button } from './Button';
 import { DeploymentConfirmation } from './DeploymentConfirmation';
 import { MappingUtility } from './MappingUtility';
-import { PayloadEditor, type PayloadEditorRef } from './PayloadEditor';
+import { PayloadEditor } from './PayloadEditor';
+import type { PayloadEditorRef } from '@shared/types';
 import { SimulationPanel } from './SimulationPanel';
 
 import { Backdrop, Button as MuiButton } from '@mui/material';

@@ -21,7 +21,7 @@ interface SimulationPanelProps {
   readOnly?: boolean;
   // The payload entered in the Payload step. Lets the user pull it into the
   // test payload via the "Load Payload" button instead of retyping it.
-  initialPayload?: string;
+  initialPayload?: string | Record<string, unknown> | null;
 }
 export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   endpointId,
@@ -153,11 +153,18 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
               size="sm"
               icon={<FileInputIcon size={16} />}
               onClick={() => {
-                setTestPayload(initialPayload);
+                const normalized =
+                  typeof initialPayload === 'object' && initialPayload !== null
+                    ? JSON.stringify(initialPayload, null, 2)
+                    : (initialPayload ?? '');
+                setTestPayload(normalized);
                 setSimulationError(null);
               }}
               disabled={
-                !initialPayload.trim() || (isApproverUser ? false : readOnly)
+                !(typeof initialPayload === 'object' && initialPayload !== null
+                  ? JSON.stringify(initialPayload).trim()
+                  : (initialPayload ?? '').trim()) ||
+                (isApproverUser ? false : readOnly)
               }
             >
               Load Payload
