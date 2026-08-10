@@ -134,7 +134,7 @@ export class ConfigService {
     try {
       const { version } = dto;
       const contentType = dto.contentType ?? ContentType.JSON;
-      const parsedPayload: unknown = dto.payload;
+      const payloadValue: unknown = dto.payload;
 
       const payloadValidation = validatePayloadContent(
         dto.payload,
@@ -183,7 +183,7 @@ export class ConfigService {
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
-        payload: parsedPayload as string | Record<string, unknown>,
+        payload: payloadValue as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
         mapping: dto.mapping,
         functions: dto.functions,
