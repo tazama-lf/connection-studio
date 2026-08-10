@@ -421,7 +421,7 @@ export const determineSourceType = (
   job: DataEnrichmentJobResponse,
 ): 'HTTP' | 'SFTP' => {
   if (job.source_type) {
-    return job.source_type as 'HTTP' | 'SFTP';
+    return job.source_type;
   }
 
   if (job.connection) {
@@ -879,15 +879,9 @@ export const handleSaveEdit = async (
     ) as Partial<UpdatePushJobDto & UpdatePullJobDto>;
 
     if (jobType === 'PUSH') {
-      await dataEnrichmentJobApi.updatePushJob(
-        job.id,
-        cleanedData as UpdatePushJobDto,
-      );
+      await dataEnrichmentJobApi.updatePushJob(job.id, cleanedData);
     } else {
-      await dataEnrichmentJobApi.updatePullJob(
-        job.id,
-        cleanedData as UpdatePullJobDto,
-      );
+      await dataEnrichmentJobApi.updatePullJob(job.id, cleanedData);
     }
 
     showSuccess('Job updated successfully');
@@ -1008,15 +1002,9 @@ export const updateJobData = async (
   payload: UpdatePullJobDto | UpdatePushJobDto,
 ): Promise<DataEnrichmentJobResponse> => {
   if (jobType === 'PUSH') {
-    return await dataEnrichmentJobApi.updatePushJob(
-      jobId,
-      payload as UpdatePushJobDto,
-    );
+    return await dataEnrichmentJobApi.updatePushJob(jobId, payload);
   } else {
-    return await dataEnrichmentJobApi.updatePullJob(
-      jobId,
-      payload as UpdatePullJobDto,
-    );
+    return await dataEnrichmentJobApi.updatePullJob(jobId, payload);
   }
 };
 
@@ -1075,15 +1063,9 @@ const updateExistingJob = async (
   payload: Partial<CreatePullJobDto> | Partial<CreatePushJobDto>,
 ): Promise<DataEnrichmentJobResponse> => {
   if (configurationType === 'pull') {
-    return await dataEnrichmentJobApi.updatePullJob(
-      selectedJobId,
-      payload as UpdatePullJobDto,
-    );
+    return await dataEnrichmentJobApi.updatePullJob(selectedJobId, payload);
   }
-  return await dataEnrichmentJobApi.updatePushJob(
-    selectedJobId,
-    payload as UpdatePushJobDto,
-  );
+  return await dataEnrichmentJobApi.updatePushJob(selectedJobId, payload);
 };
 
 const createNewJob = async (

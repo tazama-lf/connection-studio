@@ -20,7 +20,7 @@ const isResponseError = (
   'response' in error &&
   typeof (error as { response?: unknown }).response === 'object' &&
   (error as { response?: unknown }).response !== null &&
-  'status' in ((error as { response: unknown }).response as object);
+  'status' in (error.response as object);
 
 const hasMessage = (error: unknown): error is { message: string } =>
   typeof error === 'object' &&
