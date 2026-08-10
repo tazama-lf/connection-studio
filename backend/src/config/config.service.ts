@@ -383,6 +383,58 @@ export class ConfigService {
 
       case 'approve': {
         const approvalDto = actionDto.data;
+
+        try {
+          const { transactionType } = config;
+
+          if (transactionType) {
+            await this.configRepository.createTransactionTypeTable(
+              transactionType,
+              token,
+            );
+          }
+
+          const functions = config.functions as unknown as Array<{
+            functionName: string;
+            tableName?: string;
+          }>;
+
+          if (Array.isArray(functions)) {
+            const datamodelFunctions = functions.filter(
+              (fn: { functionName: string; tableName?: string }) =>
+                fn.functionName === 'addDataModelTable',
+            );
+
+            const tableCreationPromises = datamodelFunctions.map(
+              async (datamodelFn: {
+                functionName: string;
+                tableName?: string;
+              }) => {
+                if (datamodelFn.tableName) {
+                  await this.configRepository.createTazamaDataModelTable(
+                    datamodelFn.tableName,
+                    token,
+                  );
+                } else {
+                  this.logger.warn(
+                    'Skipping addDataModelTable function without tableName',
+                  );
+                }
+              },
+            );
+
+            await Promise.all(tableCreationPromises);
+          }
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `Failed to create table(s) during approve: ${errMsg}`,
+          );
+          throw new BadRequestException(
+            `Failed to approve configuration: ${errMsg}`,
+          );
+        }
+
         const updatedConfig =
           await this.configRepository.getupdateConfigByStatus(
             id,
@@ -392,64 +444,12 @@ export class ConfigService {
           );
 
         if (updatedConfig) {
-          const config = updatedConfig;
-
-          const { transactionType } = config;
-
-          try {
-            if (transactionType) {
-              await this.configRepository.createTransactionTypeTable(
-                transactionType,
-                token,
-              );
-            }
-
-            const functions = config.functions as unknown as Array<{
-              functionName: string;
-              tableName?: string;
-            }>;
-
-            if (Array.isArray(functions)) {
-              const datamodelFunctions = functions.filter(
-                (fn: { functionName: string; tableName?: string }) =>
-                  fn.functionName === 'addDataModelTable',
-              );
-
-              const tableCreationPromises = datamodelFunctions.map(
-                async (datamodelFn: {
-                  functionName: string;
-                  tableName?: string;
-                }) => {
-                  if (datamodelFn.tableName) {
-                    await this.configRepository.createTazamaDataModelTable(
-                      datamodelFn.tableName,
-                      token,
-                    );
-                  } else {
-                    this.logger.warn(
-                      'Skipping addDataModelTable function without tableName',
-                    );
-                  }
-                },
-              );
-
-              await Promise.all(tableCreationPromises);
-            }
-          } catch (error) {
-            const errMsg =
-              error instanceof Error ? error.message : String(error);
-            this.logger.error(
-              `Failed to create table(s) during approve: ${errMsg}`,
-            );
-            throw new BadRequestException(
-              `Failed to approve configuration: ${errMsg}`,
-            );
-          }
+          const approvedConfig = updatedConfig;
 
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
-            config,
+            approvedConfig,
             token,
             approvalDto.comment,
           );
