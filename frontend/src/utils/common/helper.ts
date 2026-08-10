@@ -407,10 +407,10 @@ export const validatePayloadContent = (
       return {
         isValid: false,
         message: 'Invalid JSON format',
-        error: 'Invalid JSON formats',
+        error: 'Invalid JSON format',
       };
     }
-  } else if (contentType === 'application/xml') {
+  } else if (contentType === XML_CONTENT_TYPE) {
     try {
       if (typeof payloadValue !== 'string') {
         return {
