@@ -164,8 +164,12 @@ export function validatePayloadContent(
   payloadValue: unknown,
   contentType: string,
 ): { isValid: boolean; message: string } {
-  if (!payloadValue) {
-    return { isValid: true, message: '' };
+  if (
+    payloadValue === undefined ||
+    payloadValue === null ||
+    payloadValue === ''
+  ) {
+    return { isValid: false, message: 'Payload is required' };
   }
 
   if (contentType === 'application/json') {
