@@ -1,30 +1,31 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
-  BadRequestException,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
-import { ConfigRepository } from './config.repository';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
-import { DemsClient } from '../services/dems-client.service';
+import { AuthenticatedUser } from '../auth/auth.types';
+import { EventType } from '../enums/events.enum';
 import { NotificationService } from '../notification/notification.service';
-import { ConfigWorkflowService } from './config-workflow.service';
-import { ConfigUtilsService } from './config-utils.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
+import { DemsClient } from '../services/dems-client.service';
 import { SftpService } from '../sftp/sftp.service';
+import { validatePayloadContent } from '../utils/helpers';
 import { RbacService } from '../utils/rbac/rbacHelper';
+import { ConfigUtilsService } from './config-utils.service';
+import { ConfigWorkflowService } from './config-workflow.service';
 import {
   Config,
-  CreateConfigDto,
   ConfigResponseDto,
-  ContentType,
   ConfigStatus,
+  ContentType,
+  CreateConfigDto,
   WorkflowAction,
 } from './config.interfaces';
-import { WorkflowActionDto, SftpConfigDataDto } from './dto';
-import { EventType } from '../enums/events.enum';
-import { AuthenticatedUser } from '../auth/auth.types';
-import { AdminServiceClient } from '../services/admin-service-client.service';
+import { ConfigRepository } from './config.repository';
+import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 
 @Injectable()
 export class ConfigService {
@@ -132,7 +133,21 @@ export class ConfigService {
     };
     try {
       const { version } = dto;
-      const msgFam = dto.msgFam ?? 'unknown';
+      const contentType = dto.contentType ?? ContentType.JSON;
+      const parsedPayload: unknown = dto.payload;
+
+      const payloadValidation = validatePayloadContent(
+        dto.payload,
+        contentType,
+      );
+      if (!payloadValidation.isValid) {
+        return {
+          success: false,
+          message: payloadValidation.message,
+        };
+      }
+
+      const msgFam = dto.msgFam || 'unknown';
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           msgFam,
@@ -163,12 +178,12 @@ export class ConfigService {
       );
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: dto.msgFam ?? '',
+        msgFam: dto.msgFam || '',
         transactionType: dto.transactionType,
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
-        payload: dto.payload,
+        payload: parsedPayload as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
         mapping: dto.mapping,
         functions: dto.functions,
@@ -205,7 +220,7 @@ export class ConfigService {
         error.stack,
       );
 
-      const msgFam = dto.msgFam ?? 'unknown';
+      const msgFam = dto.msgFam || 'unknown';
       const { transactionType } = dto;
       const { version } = dto;
 
@@ -675,7 +690,12 @@ export class ConfigService {
     }
 
     try {
-      await this.demsClient.notifyDems(id.toString(), tenantId, publishingStatus, token);
+      await this.demsClient.notifyDems(
+        id.toString(),
+        tenantId,
+        publishingStatus,
+        token,
+      );
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(
