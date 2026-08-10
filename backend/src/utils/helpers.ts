@@ -210,7 +210,7 @@ export function validatePayloadContent(
 
       const xmlStr = payloadValue;
 
-      if (/<\?[\s\S]*?\?>/.test(xmlStr)) {
+      if (xmlStr.includes('<?')) {
         return {
           isValid: false,
           message:
@@ -219,7 +219,7 @@ export function validatePayloadContent(
       }
 
       // Reject comments
-      if (/<!--[\s\S]*?-->/.test(xmlStr)) {
+      if (xmlStr.includes('<!--')) {
         return {
           isValid: false,
           message: 'XML comments are not allowed',
@@ -242,9 +242,8 @@ export function validatePayloadContent(
         };
       }
 
-      // Validate XML structure - must start with opening tag and end with closing tag
       if (
-        !/^\s*<(?:[A-Za-z_][A-Za-z0-9_-]*)>[\s\S]*<\/(?:[A-Za-z_][A-Za-z0-9_-]*)>\s*$/.test(
+        !/^\s*<(?<root>[A-Za-z_][A-Za-z0-9_-]*)(?:\s[^>]*)?>[\s\S]*<\/\k<root>>\s*$/.test(
           xmlStr,
         )
       ) {
