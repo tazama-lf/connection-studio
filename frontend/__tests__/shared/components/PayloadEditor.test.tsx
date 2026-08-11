@@ -201,7 +201,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.click(screen.getByRole('button', { name: /Load XML Sample/i }));
 
     expect(onChange).toHaveBeenCalledWith(
-      expect.stringContaining('<?xml version="1.0"'),
+      expect.stringContaining('<Document xmlns='),
     );
   });
 
