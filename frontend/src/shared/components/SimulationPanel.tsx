@@ -13,16 +13,38 @@ import {
 import ReactJson from 'react-json-view';
 import { useAuth } from '@features/auth';
 import { isApprover } from '@utils/common/roleUtils';
-import { XMLParser } from 'fast-xml-parser';
+import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+
+const xmlBuilder = new XMLBuilder({
+  ignoreAttributes: false,
+  attributeNamePrefix: '',
+  format: true,
+});
+
+const normalizeInitialPayload = (
+  payload: string | Record<string, unknown> | null | undefined,
+  contentType: 'application/json' | 'application/xml',
+): string => {
+  if (payload === null || payload === undefined) return '';
+  if (typeof payload === 'string') return payload;
+  if (contentType === 'application/xml') {
+    try {
+      return xmlBuilder.build(payload);
+    } catch {
+      return JSON.stringify(payload, null, 2);
+    }
+  }
+  return JSON.stringify(payload, null, 2);
+};
+
 interface SimulationPanelProps {
   endpointId?: number;
   contentType?: 'application/json' | 'application/xml';
   onSimulationComplete: (success: boolean) => void;
   readOnly?: boolean;
-  // The payload entered in the Payload step. Lets the user pull it into the
-  // test payload via the "Load Payload" button instead of retyping it.
   initialPayload?: string | Record<string, unknown> | null;
 }
+
 export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   endpointId,
   contentType = 'application/json',
@@ -153,17 +175,17 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
               size="sm"
               icon={<FileInputIcon size={16} />}
               onClick={() => {
-                const normalized =
-                  typeof initialPayload === 'object' && initialPayload !== null
-                    ? JSON.stringify(initialPayload, null, 2)
-                    : (initialPayload ?? '');
+                const normalized = normalizeInitialPayload(
+                  initialPayload,
+                  contentType,
+                );
                 setTestPayload(normalized);
                 setSimulationError(null);
+                setSimulationResult(null);
+                setHasRun(false);
               }}
               disabled={
-                !(typeof initialPayload === 'object' && initialPayload !== null
-                  ? JSON.stringify(initialPayload).trim()
-                  : (initialPayload ?? '').trim()) ||
+                !normalizeInitialPayload(initialPayload, contentType).trim() ||
                 (isApproverUser ? false : readOnly)
               }
             >
