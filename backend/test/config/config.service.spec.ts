@@ -134,6 +134,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs.008',
         version: '1.0.0',
         schema: {},
+        payload: { sample: 'value' },
         contentType: ContentType.JSON,
       } as any,
       user,
@@ -151,6 +152,7 @@ describe('ConfigService', () => {
         msgFam: 'iso',
         transactionType: 'pacs',
         version: '1',
+        payload: { sample: 'value' },
       } as any,
       user,
     );
@@ -374,6 +376,7 @@ describe('ConfigService', () => {
       transactionType: 'pacs',
       version: '1.0.0',
       schema: {},
+      payload: { sample: 'value' },
     };
 
     const result = await service.createConfig(dto as any, user);
@@ -985,6 +988,11 @@ describe('ConfigService', () => {
     mockRepo.findConfigById.mockResolvedValue({
       id: 1,
       status: ConfigStatus.UNDER_REVIEW,
+      transactionType: 'pacs.008',
+      functions: [
+        { functionName: 'addDataModelTable', tableName: 'dm_tbl' },
+        { functionName: 'other', tableName: 'x' },
+      ],
     });
 
     mockRepo.getupdateConfigByStatus.mockResolvedValue({
@@ -1018,6 +1026,7 @@ describe('ConfigService', () => {
     mockRepo.findConfigById.mockResolvedValue({
       id: 1,
       status: ConfigStatus.UNDER_REVIEW,
+      functions: [{ functionName: 'addDataModelTable', tableName: 'dm_tbl' }],
     });
 
     mockRepo.getupdateConfigByStatus.mockResolvedValue({
@@ -1833,6 +1842,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs.008',
         version: '1.0.0',
         schema: {},
+        payload: { sample: 'value' },
       } as any,
       user,
     );
@@ -1965,7 +1975,11 @@ describe('ConfigService', () => {
     mockUtils.buildUserErrorMessage.mockReturnValue('error');
 
     const res = await service.createConfig(
-      { transactionType: 'pacs', version: '1' } as any,
+      {
+        transactionType: 'pacs',
+        version: '1',
+        payload: { sample: 'value' },
+      } as any,
       user,
     );
 
