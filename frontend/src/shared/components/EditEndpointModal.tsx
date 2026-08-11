@@ -427,7 +427,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           : primaryKeyName;
       let primaryKeyType = 'string';
       if (isRootPrimaryKey) {
-        primaryKeyType = 'string';
+        const rootField = getMappedPayloadRootScalarFields().find(
+          (f) => f.path === primaryKeyName,
+        );
+        if (rootField?.type) primaryKeyType = rootField.type.toLowerCase();
       } else if (primaryKeyName && selectedPath) {
         if (selectedGroup === 'Payload' && Array.isArray(currentSchema)) {
           const field = (currentSchema as any[]).find(
