@@ -63,34 +63,26 @@ interface TreeNode {
 }
 export const MappingUtility: React.FC<MappingUtilityProps> = ({
   onMappingChange,
-  onMappingDataChange,
   onCurrentMappingsChange,
   sourceSchema,
   configId,
   existingMappings = [],
   readOnly = false,
 }) => {
-  // Generate unique component instance ID for debugging
   const componentId = useMemo(
     () =>
       `MappingUtility-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     [],
   );
 
-  // Ref to track if API fetch is in progress (prevent race conditions)
   const isFetchingRef = useRef(false);
 
-  // Ref to track if the user has made local changes (add/remove).
-  // When true, incoming existingMappings prop updates are ignored so the
-  // parent cannot accidentally re-populate mappings that were just removed.
   const hasLocalChangesRef = useRef(false);
 
-  // State for managing mappings
   const [mappingError, setMappingError] = useState<string | null>(null);
   const [currentMappings, setCurrentMappings] =
     useState<FieldMapping[]>(existingMappings);
 
-  // State for dynamic destination tree from API
   const [destinationTree, setDestinationTree] = useState<TreeNode[]>([]);
   const [loadingDestinations, setLoadingDestinations] = useState(true);
   const [destinationError, setDestinationError] = useState<string | null>(null);
@@ -598,7 +590,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [delimiter, setDelimiter] = useState<string>('');
   const [prefix, setPrefix] = useState<string>('');
 
-  // Helper function to check if current selection is valid for the transformation type
   const isCurrentMappingValid = () => {
     const getFieldType = (fieldPath: string): string | undefined => {
       if (Array.isArray(sourceSchema)) {
@@ -674,9 +665,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       setExpandedDestNodes([...expandedDestNodes, nodeId]);
     }
   };
-  // Tree node ids are stored as clean paths without [0] (e.g. "ChrgsInf.Amt.Amt"),
-  // but saved mappings need the actual array index reconstructed
-  // (e.g. "ChrgsInf.0.Amt.Amt") by looking the clean path back up in the source schema.
   const resolveSourcePath = (pathStr: string): string => {
     if (Array.isArray(sourceSchema)) {
       const matchingField = sourceSchema.find((f) => {
@@ -691,9 +679,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return pathStr;
   };
 
+
+  const cleanSourcePath = (pathStr: string): string =>
+    pathStr.split('.').filter((part) => part !== '0').join('.');
+
   const handleSourceSelect = (path: string[]) => {
-    // Path is stored as clean path without [0], but we need to check if we need to add it back
-    // For fields that are inside arrays, we need to reconstruct the original path with [0]
     const pathStr = path[0] || path.join('.');
     const finalPath = resolveSourcePath(pathStr);
 
@@ -844,7 +834,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       selectedSources.length === 1 &&
       selectedDestinations.length === 1
     ) {
-      const sourceNode = findNodeById(sourceTree, selectedSources[0]);
+      const sourceNode = findNodeById(
+        sourceTree,
+        cleanSourcePath(selectedSources[0]),
+      );
       const destNode = findNodeById(destinationTree, selectedDestinations[0]);
       const isObjectAutoMap =
         sourceNode &&
@@ -1041,7 +1034,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const isExpanded = expanded.includes(node.id);
         const isSection = node.type === 'section';
 
-        const fieldPath = isSection ? node.path : node.path;
         const isSelected =
           !isSection &&
           selectedPaths
@@ -1049,8 +1041,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             .includes(node.path.join('.'));
 
         const nodeType = node.id.startsWith('redis') ? 'redis' : type;
-        const isRedis = node.id === 'redis';
-
+  
         if (isSection) {
           return (
             <div key={node.id} data-id="element-section">
