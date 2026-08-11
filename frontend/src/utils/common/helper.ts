@@ -246,9 +246,13 @@ export const convertSchemaToFields = (
         });
 
         if (field.children) {
+          const indexedChildren = field.children.map((child) => ({
+            ...child,
+            path: child.path.replace(field.path, arrayPath),
+          }));
           fields.push(
             ...convertSchemaToFields(
-              field.children,
+              indexedChildren,
               item,
               level + NEXT_LEVEL,
               arrayPath,
