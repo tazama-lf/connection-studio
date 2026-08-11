@@ -242,9 +242,12 @@ describe('utils/common/helper.ts', () => {
       );
       expect(result.some((f) => f.path === 'items[0]')).toBe(true);
       expect(result.some((f) => f.path === 'items[1]')).toBe(true);
-      // child path is preserved as-is from schema; parent is set to arrayPath
+      // child paths are rewritten with the array index
       expect(
-        result.some((f) => f.path === 'items.id' && f.parent === 'items[0]'),
+        result.some((f) => f.path === 'items[0].id' && f.parent === 'items[0]'),
+      ).toBe(true);
+      expect(
+        result.some((f) => f.path === 'items[1].id' && f.parent === 'items[1]'),
       ).toBe(true);
     });
 
