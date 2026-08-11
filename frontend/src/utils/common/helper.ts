@@ -51,84 +51,6 @@ export const capitalizeFirstLetter = (s: string): string => {
   return `${firstChar}${rest}`;
 };
 
-// export const generateJSONSchema = (
-//   obj: Record<string, unknown>,
-//   path = '',
-// ): SchemaField[] => {
-//   const schema: SchemaField[] = [];
-
-//   Object.entries(obj).forEach(([key, value]) => {
-//     const fieldPath = path ? `${path}.${key}` : key;
-
-//     const field: SchemaField = {
-//       name: key,
-//       path: fieldPath,
-//       type: Array.isArray(value)
-//         ? 'array'
-//         : typeof value === 'object'
-//           ? 'object'
-//           : (typeof value as SchemaField['type']),
-//       isRequired: true,
-//     };
-
-//     // Handle nested object
-//     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-//       field.children = generateJSONSchema(
-//         value as Record<string, unknown>,
-//         fieldPath,
-//       );
-//     }
-
-//     // Handle array
-//     else if (Array.isArray(value)) {
-//       field.children = [];
-
-//       value.forEach((item, index) => {
-//         const itemPath = `${fieldPath}[${index}]`;
-
-//         // Array element is an object
-//         if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
-//           field.children!.push({
-//             name: `[${index}]`,
-//             path: itemPath,
-//             type: 'object',
-//             isRequired: true,
-//             children: generateJSONSchema(
-//               item as Record<string, unknown>,
-//               itemPath,
-//             ),
-//           });
-//         }
-
-//         // Array element is another array
-//         else if (Array.isArray(item)) {
-//           field.children!.push({
-//             name: `[${index}]`,
-//             path: itemPath,
-//             type: 'array',
-//             isRequired: true,
-//             children: [],
-//           });
-//         }
-
-//         // Array element is a primitive
-//         else {
-//           field.children!.push({
-//             name: `[${index}]`,
-//             path: itemPath,
-//             type: typeof item as SchemaField['type'],
-//             isRequired: true,
-//           });
-//         }
-//       });
-//     }
-
-//     schema.push(field);
-//   });
-
-//   return schema;
-// };
-
 export const generateJSONSchema = (obj: unknown, path = ''): SchemaField[] => {
   const schema: SchemaField[] = [];
   if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
@@ -162,7 +84,6 @@ export const generateJSONSchema = (obj: unknown, path = ''): SchemaField[] => {
           firstElement !== null &&
           !Array.isArray(firstElement)
         ) {
-          field.path = `${fieldPath}[0]`;
           field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
           field.arrayElementType = 'object';
         } else if (Array.isArray(firstElement)) {
