@@ -63,7 +63,7 @@ describe('utils/common/helper.ts', () => {
         type: 'array',
         arrayElementType: 'object',
       });
-      expect(schema[0].path).toBe('users[0]');
+      expect(schema[0].path).toBe('users');
       expect(schema[0].children![0]).toMatchObject({ path: 'users[0].id' });
     });
 
