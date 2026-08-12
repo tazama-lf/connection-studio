@@ -31,7 +31,9 @@ const normalizeInitialPayload = (
     try {
       return xmlBuilder.build(payload);
     } catch {
-      return JSON.stringify(payload, null, 2);
+      // XML serialization failed – return empty so the Load Payload
+      // button stays disabled, avoiding a JSON string in an XML context.
+      return '';
     }
   }
   return JSON.stringify(payload, null, 2);
@@ -183,6 +185,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
                 setSimulationError(null);
                 setSimulationResult(null);
                 setHasRun(false);
+                onSimulationComplete(false);
               }}
               disabled={
                 !normalizeInitialPayload(initialPayload, contentType).trim() ||
