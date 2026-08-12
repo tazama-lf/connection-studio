@@ -44,12 +44,13 @@ import { PayloadEditor } from './PayloadEditor';
 import type { PayloadEditorRef } from '@shared/types';
 import { SimulationPanel } from './SimulationPanel';
 
-import { Backdrop, Button as MuiButton } from '@mui/material';
+import { Backdrop, Button as MuiButton, Checkbox } from '@mui/material';
 import Box from '@mui/material/Box';
 import Step from '@mui/material/Step';
 import type { StepIconProps } from '@mui/material/StepIcon';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 // Custom Step Icon Component
 const CustomStepIcon = (props: StepIconProps) => {
@@ -887,6 +888,10 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     FunctionDefinition[]
   >([]);
   const [showAddFunctionModal, setShowAddFunctionModal] = useState(false);
+  // Bulk-selection state for the functions list (stores indices)
+  const [selectedFunctionIndices, setSelectedFunctionIndices] = useState<
+    Set<number>
+  >(new Set());
   const steps = [
     {
       id: 'payload',
@@ -1107,6 +1112,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           (_, i) => i !== index,
         );
         setSelectedFunctions(updatedFunctions);
+        // Clear selection since indices have shifted
+        setSelectedFunctionIndices(new Set());
         // Update the config in state
         if (createdEndpoint) {
           setCreatedEndpoint({
@@ -1129,6 +1136,85 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Remove multiple functions at once. Indices are deleted from highest to
+  // lowest so that earlier deletions don't shift the remaining indices.
+  const handleRemoveSelectedFunctions = async () => {
+    if (selectedFunctionIndices.size === 0) return;
+    if (!createdEndpoint?.id && !existingConfig?.id) {
+      showError('No configuration ID available to remove function');
+      return;
+    }
+    try {
+      setLoading(true);
+      const configId = createdEndpoint?.id || existingConfig?.id;
+      // Sort descending so we delete from the end first — avoids index shift
+      const sortedIndices = Array.from(selectedFunctionIndices).sort(
+        (a, b) => b - a,
+      );
+      let allSuccess = true;
+      let lastErrorMsg = '';
+      for (const index of sortedIndices) {
+        const response = await deleteFunction(configId, index);
+        if (!response.success) {
+          allSuccess = false;
+          lastErrorMsg = response.message;
+          break;
+        }
+      }
+      if (allSuccess) {
+        // All deletions succeeded — rebuild the local list from survivors
+        const updatedFunctions = selectedFunctions.filter(
+          (_, i) => !selectedFunctionIndices.has(i),
+        );
+        setSelectedFunctions(updatedFunctions);
+        setSelectedFunctionIndices(new Set());
+        if (createdEndpoint) {
+          setCreatedEndpoint({
+            ...createdEndpoint,
+            functions: updatedFunctions,
+          });
+        } else if (existingConfig) {
+          setExistingConfig({
+            ...existingConfig,
+            functions: updatedFunctions,
+          });
+        }
+      } else {
+        showError(`Failed to remove some functions: ${lastErrorMsg}`);
+        // Refresh selection to reflect what's left
+        setSelectedFunctionIndices(new Set());
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
+      showError(`Failed to remove functions: ${errorMessage}`);
+      setSelectedFunctionIndices(new Set());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleFunctionSelection = (index: number) => {
+    setSelectedFunctionIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllFunctions = () => {
+    setSelectedFunctionIndices((prev) => {
+      if (prev.size === selectedFunctions.length) {
+        return new Set();
+      }
+      return new Set(selectedFunctions.map((_, i) => i));
+    });
   };
 
   // Validate that all function parameters have corresponding mappings
@@ -1927,19 +2013,54 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         );
                       })()}
 
-                    {/* Add Function Button - Only show when not read-only */}
+                    {/* Add Function Button + Bulk Remove - Only show when not read-only */}
                     {!readOnly && (
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={() => {
-                            setShowAddFunctionModal(true);
-                          }}
-                          variant="secondary"
-                          size="sm"
-                          icon={<PlusIcon size={16} />}
-                        >
-                          Add Function
-                        </Button>
+                      <div className="flex justify-between items-center">
+                        {/* Select All checkbox — only visible when there are functions */}
+                        {selectedFunctions.length > 0 && (
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={
+                                  selectedFunctionIndices.size ===
+                                  selectedFunctions.length
+                                }
+                                indeterminate={
+                                  selectedFunctionIndices.size > 0 &&
+                                  selectedFunctionIndices.size <
+                                  selectedFunctions.length
+                                }
+                                onChange={toggleSelectAllFunctions}
+                                size="small"
+                                sx={{ padding: '4px' }}
+                              />
+                            }
+                            label="Select All"
+                            sx={{ margin: 0 }}
+                          />
+                        )}
+                        <div className="flex gap-2">
+                          {selectedFunctionIndices.size > 0 && (
+                            <Button
+                              onClick={handleRemoveSelectedFunctions}
+                              variant="secondary"
+                              size="sm"
+                              className="text-red-500 hover:bg-red-500 hover:text-white"
+                            >
+                              Remove Selected ({selectedFunctionIndices.size})
+                            </Button>
+                          )}
+                          <Button
+                            onClick={() => {
+                              setShowAddFunctionModal(true);
+                            }}
+                            variant="secondary"
+                            size="sm"
+                            icon={<PlusIcon size={16} />}
+                          >
+                            Add Function
+                          </Button>
+                        </div>
                       </div>
                     )}
 
@@ -2012,6 +2133,15 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                 : 'bg-gray-50 border-gray-200'
                                 }`}
                             >
+                              {/* Individual selection checkbox — only when not read-only */}
+                              {!readOnly && (
+                                <Checkbox
+                                  checked={selectedFunctionIndices.has(index)}
+                                  onChange={() => toggleFunctionSelection(index)}
+                                  size="small"
+                                  sx={{ marginRight: '8px', padding: '4px' }}
+                                />
+                              )}
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <h4 className="font-medium">
