@@ -147,7 +147,7 @@ export class ConfigService {
         };
       }
 
-      const msgFam = dto.msgFam || 'unknown';
+      const msgFam = dto.msgFam ?? 'unknown';
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           msgFam,
@@ -178,7 +178,7 @@ export class ConfigService {
       );
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: dto.msgFam || '',
+        msgFam: dto.msgFam ?? '',
         transactionType: dto.transactionType,
         endpointPath,
         version,
@@ -220,7 +220,7 @@ export class ConfigService {
         error.stack,
       );
 
-      const msgFam = dto.msgFam || 'unknown';
+      const msgFam = dto.msgFam ?? 'unknown';
       const { transactionType } = dto;
       const { version } = dto;
 

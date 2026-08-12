@@ -441,6 +441,14 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 f.path?.split('.').pop() === primaryKeyName),
           );
           if (field?.type) primaryKeyType = field.type.toLowerCase();
+        } else if (selectedGroup === 'Payload') {
+          // currentSchema is a JSON Schema object (not the flat array form
+          // above) — resolve the nested field's type via buildPayloadFields()
+          // instead of leaving primaryKeyType at its 'string' default.
+          const field = buildPayloadFields().find(
+            (f) => f.path === primaryKeyPath,
+          );
+          if (field?.type) primaryKeyType = field.type.toLowerCase();
         } else if (selectedGroup === 'Data Model') {
           const field = flatDataModelFields.find(
             (f) => f.parent === selectedPath && f.path === primaryKeyPath,
@@ -865,6 +873,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
   const validationInProgress = useRef(false); // Guard against repeated rapid clicks on Save & Next
+  const functionDeletionInProgress = useRef(false); // Guard shared by single/bulk function removal handlers
   // Function to update current mappings and sync with createdEndpoint
   const updateCurrentMappings = (newMappings: any[]) => {
     setCurrentMappings(newMappings);
@@ -1097,11 +1106,43 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     }
   };
 
+  // Re-fetch the config from the server and resync local function state.
+  // Used after a partial deletion failure, where some indices were removed
+  // server-side but the local list can no longer be trusted to know which.
+  const reloadConfigAfterFunctionChange = async () => {
+    const configId = createdEndpoint?.id || existingConfig?.id;
+    if (!configId) return;
+    try {
+      const response = await configApi.getConfig(configId);
+      const config: any =
+        response.success && response.config
+          ? response.config
+          : (response as any).id
+            ? response
+            : null;
+      if (!config) return;
+      const refreshedFunctions = Array.isArray(config.functions)
+        ? config.functions
+        : [];
+      setSelectedFunctions(refreshedFunctions);
+      if (createdEndpoint) {
+        setCreatedEndpoint(config);
+      } else if (existingConfig) {
+        setExistingConfig(config);
+      }
+    } catch {
+      // Best effort — if the reload itself fails, local state stays as-is
+      // until the user retries or the modal is reopened.
+    }
+  };
+
   const handleRemoveFunction = async (index: number) => {
     if (!createdEndpoint?.id && !existingConfig?.id) {
       showError('No configuration ID available to remove function');
       return;
     }
+    if (functionDeletionInProgress.current) return;
+    functionDeletionInProgress.current = true;
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
@@ -1135,6 +1176,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       showError(`Failed to remove function: ${errorMessage}`);
     } finally {
       setLoading(false);
+      functionDeletionInProgress.current = false;
     }
   };
 
@@ -1146,6 +1188,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       showError('No configuration ID available to remove function');
       return;
     }
+    if (functionDeletionInProgress.current) return;
+    functionDeletionInProgress.current = true;
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
@@ -1153,20 +1197,23 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       const sortedIndices = Array.from(selectedFunctionIndices).sort(
         (a, b) => b - a,
       );
-      let allSuccess = true;
+      const deletedIndices = new Set<number>();
+      let hadFailure = false;
       let lastErrorMsg = '';
       for (const index of sortedIndices) {
         const response = await deleteFunction(configId, index);
-        if (!response.success) {
-          allSuccess = false;
+        if (response.success) {
+          deletedIndices.add(index);
+        } else {
+          hadFailure = true;
           lastErrorMsg = response.message;
           break;
         }
       }
-      if (allSuccess) {
+      if (!hadFailure) {
         // All deletions succeeded — rebuild the local list from survivors
         const updatedFunctions = selectedFunctions.filter(
-          (_, i) => !selectedFunctionIndices.has(i),
+          (_, i) => !deletedIndices.has(i),
         );
         setSelectedFunctions(updatedFunctions);
         setSelectedFunctionIndices(new Set());
@@ -1183,16 +1230,21 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         }
       } else {
         showError(`Failed to remove some functions: ${lastErrorMsg}`);
-        // Refresh selection to reflect what's left
         setSelectedFunctionIndices(new Set());
+        // Some deletions may have already succeeded before the failure, so
+        // local indices/state can no longer be trusted — reload from the
+        // server instead of guessing which ones survived.
+        await reloadConfigAfterFunctionChange();
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
       showError(`Failed to remove functions: ${errorMessage}`);
       setSelectedFunctionIndices(new Set());
+      await reloadConfigAfterFunctionChange();
     } finally {
       setLoading(false);
+      functionDeletionInProgress.current = false;
     }
   };
 
@@ -2140,6 +2192,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                   onChange={() => toggleFunctionSelection(index)}
                                   size="small"
                                   sx={{ marginRight: '8px', padding: '4px' }}
+                                  aria-label={`Select function ${func.functionName}`}
                                 />
                               )}
                               <div className="flex-1">
