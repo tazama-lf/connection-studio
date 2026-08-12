@@ -863,6 +863,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const shouldCreateNew = !createdEndpoint && !existingConfig && isNewEndpoint;
 
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
+  const validationInProgress = useRef(false); // Guard against repeated rapid clicks on Save & Next
   // Function to update current mappings and sync with createdEndpoint
   const updateCurrentMappings = (newMappings: any[]) => {
     setCurrentMappings(newMappings);
@@ -1300,8 +1301,13 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
       switch (currentStep) {
         case 'mapping': {
+          // Guard against repeated rapid clicks firing multiple toasts
+          if (validationInProgress.current) return;
+          validationInProgress.current = true;
+
           if (!isMappingValid) {
             showError('Please complete the mapping before proceeding');
+            validationInProgress.current = false;
             return;
           }
           const getDestsSaveAndNext = (
@@ -1328,12 +1334,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             showError(
               'Mappings for "transactionDetails.msgId" and "transactionDetails.CreDtTm" are both required. Please map source fields to these destinations before proceeding.',
             );
+            validationInProgress.current = false;
             return;
           }
           if (!hasMsgIdMapping) {
             showError(
               'Mapping for "transactionDetails.msgId" is required. Please map a source field to "transactionDetails.msgId" before proceeding.',
             );
+            validationInProgress.current = false;
             return;
           }
           if (!hasCreDtTmMapping) {
@@ -1341,8 +1349,10 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             showError(
               'Mapping for "transactionDetails.CreDtTm" is required. Please map a source field to "transactionDetails.CreDtTm" before proceeding.',
             );
+            validationInProgress.current = false;
             return;
           }
+          validationInProgress.current = false;
           setCurrentStep('functions');
           break;
         }
