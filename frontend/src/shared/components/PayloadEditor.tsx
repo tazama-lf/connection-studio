@@ -33,7 +33,7 @@ interface PayloadEditorProps {
   onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; // Callback for field adjustments
   onSchemaChange?: (schema: any) => void; // Callback for current schema
   existingSchemaFields?: SchemaField[] | InferredField[]; // Existing schema fields when editing (can be either format)
-  isEditMode?: boolean; // Explicitly control whether to show Add/Remove field buttons
+  isEditMode?: boolean; // When true (resuming an existing endpoint), hides the raw payload input controls (load sample/import/clear/validation banner) and shows the "Edit Mode" banner instead; does NOT gate the Add Field controls, which are shown whenever !readOnly regardless of create vs. resume
   tenantId?: string; // Tenant ID for endpoint preview
   readOnly?: boolean; // When true, disable all editing functionality
   isCloning?: boolean; // When true, allow editing even for existing configs
