@@ -161,6 +161,65 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
+  it('shows Add Field controls for an empty schema in create mode (isEditMode=false)', async () => {
+    const { onSchemaChange } = renderEditor({
+      isEditMode: false,
+      readOnly: false,
+      value: '',
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add Your First Field' }),
+    );
+    fireEvent.change(screen.getByLabelText('Field Path *'), {
+      target: { value: 'user.id' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('user.id')).toBeInTheDocument();
+    });
+    expect(onSchemaChange).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ path: 'user.id' })]),
+    );
+  });
+
+  it('shows Add Field controls for a populated schema in create mode (isEditMode=false)', async () => {
+    const { onSchemaChange } = renderEditor({
+      isEditMode: false,
+      readOnly: false,
+      existingSchemaFields: [
+        {
+          path: 'root',
+          type: 'String',
+          level: 0,
+          required: true,
+        } as any,
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('root')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+    fireEvent.change(
+      screen.getByPlaceholderText('Field path (e.g., user.name)'),
+      { target: { value: 'root.child' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('root.child')).toBeInTheDocument();
+    });
+    expect(onSchemaChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'root' }),
+        expect.objectContaining({ path: 'root.child' }),
+      ]),
+    );
+  });
+
   it('exposes ref validation API for required endpoint fields', () => {
     const ref = React.createRef<PayloadEditorRef>();
     const onValidationErrorsChange = jest.fn();
