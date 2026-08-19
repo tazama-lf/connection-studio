@@ -11,7 +11,7 @@ export class TazamaDataModelService {
   private readonly logger = new Logger(TazamaDataModelService.name);
 
   /* c8 ignore start */
-  constructor(private readonly repository: TazamaDataModelRepository) { }
+  constructor(private readonly repository: TazamaDataModelRepository) {}
   /* c8 ignore stop */
 
   // Note: null/undefined are intentionally NOT treated as empty here, some
