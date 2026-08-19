@@ -230,6 +230,59 @@ describe('shared/components/PayloadEditor.tsx', () => {
     expect(onValidationErrorsChange).toHaveBeenCalled();
   });
 
+  it('caps Version, Event Type, and Transaction Type inputs at 50 characters', () => {
+    renderEditor();
+
+    const versionInput = screen.getByLabelText('Version *') as HTMLInputElement;
+    const eventTypeInput = screen.getByLabelText(
+      'Event Type',
+    ) as HTMLInputElement;
+    const txTypeInput = screen.getByLabelText(
+      'Transaction Type (TxTp)*',
+    ) as HTMLInputElement;
+
+    expect(versionInput).toHaveAttribute('maxLength', '50');
+    expect(eventTypeInput).toHaveAttribute('maxLength', '50');
+    expect(txTypeInput).toHaveAttribute('maxLength', '50');
+
+    fireEvent.change(versionInput, { target: { value: '1'.repeat(60) } });
+    fireEvent.change(eventTypeInput, { target: { value: 'a'.repeat(60) } });
+    fireEvent.change(txTypeInput, { target: { value: 'b'.repeat(60) } });
+
+    expect(versionInput.value).toHaveLength(50);
+    expect(eventTypeInput.value).toHaveLength(50);
+    expect(txTypeInput.value).toHaveLength(50);
+  });
+
+  it('rejects Version and Transaction Type values over 50 characters on validation', () => {
+    const ref = React.createRef<PayloadEditorRef>();
+    const onValidationErrorsChange = jest.fn();
+    renderEditor({
+      ref,
+      onValidationErrorsChange,
+      endpointData: {
+        version: `1.0.${'0'.repeat(50)}`,
+        transactionType: 'a'.repeat(51),
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    let isValid = true;
+    act(() => {
+      isValid = Boolean(ref.current?.validateAllFields());
+    });
+
+    expect(isValid).toBe(false);
+    expect(onValidationErrorsChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        version: expect.stringContaining('50 characters'),
+        transactionType: expect.stringContaining('50 characters'),
+      }),
+    );
+  });
+
   it('loads XML sample payload when content type is XML', () => {
     const onChange = jest.fn();
     renderEditor({

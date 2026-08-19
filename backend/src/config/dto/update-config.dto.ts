@@ -4,16 +4,22 @@ import {
   IsEnum,
   IsObject,
   ValidateIf,
+  MinLength,
+  MaxLength,
 } from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
 
 export class UpdateConfigDto {
   @IsString()
   @IsOptional()
+  @MinLength(1)
+  @MaxLength(50)
   msgFam?: string;
 
   @IsString()
   @IsOptional()
+  @MinLength(1)
+  @MaxLength(50)
   transactionType?: string;
 
   @IsString()
@@ -26,6 +32,8 @@ export class UpdateConfigDto {
 
   @IsString()
   @IsOptional()
+  @MinLength(1)
+  @MaxLength(50)
   version?: string;
 
   @IsEnum(ContentType)

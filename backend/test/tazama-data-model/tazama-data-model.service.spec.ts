@@ -159,5 +159,68 @@ describe('TazamaDataModelService', () => {
         'Failed to save data model JSON: Unknown error',
       );
     });
+
+    it.each([
+      ['an empty string value', { model: '' }],
+      ['a whitespace-only value', { model: '   ' }],
+      ['an empty key', { '': 'value' }],
+      ['a whitespace-only key', { '   ': 'value' }],
+      ['an empty value nested one level deep', { redis: { amount: '' } }],
+      [
+        'an empty value nested inside an array',
+        { transactionDetails: [{ amt: '' }] },
+      ],
+      ['an empty string inside an array', { tags: ['ok', ''] }],
+    ])(
+      'should reject data model JSON with %s',
+      async (_description, dataModelJson) => {
+        const tenantId = 'tenant123';
+        const token = 'token123';
+
+        await expect(
+          service.putDataModelJson(tenantId, dataModelJson, token),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(repository.putDataModelJson).not.toHaveBeenCalled();
+        expect(service['logger'].error).toHaveBeenCalledWith(
+          `Rejected data model JSON with empty field(s) for tenant: ${tenantId}`,
+        );
+      },
+    );
+
+    it.each([
+      ['primitive values only', { amount: 0, active: false, name: 'ok' }],
+      ['a non-empty nested object', { redis: { amount: 100 } }],
+      ['an empty object as a value', { redis: {} }],
+      ['a non-empty array', { tags: ['a', 'b'] }],
+      ['a null value (e.g. redis intentionally unset)', { redis: null }],
+    ])(
+      'should accept data model JSON with %s',
+      async (_description, dataModelJson) => {
+        const tenantId = 'tenant123';
+        const token = 'token123';
+        const mockResult = {
+          tenant_id: tenantId,
+          updated_at: '2023-01-01T00:00:00Z',
+        };
+
+        jest
+          .spyOn(repository, 'putDataModelJson')
+          .mockResolvedValue(mockResult);
+
+        const result = await service.putDataModelJson(
+          tenantId,
+          dataModelJson,
+          token,
+        );
+
+        expect(result).toEqual(mockResult);
+        expect(repository.putDataModelJson).toHaveBeenCalledWith(
+          tenantId,
+          dataModelJson,
+          token,
+        );
+      },
+    );
   });
 });

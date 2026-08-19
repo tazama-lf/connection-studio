@@ -6,16 +6,22 @@ import {
   IsObject,
   IsArray,
   ValidateIf,
+  MinLength,
+  MaxLength,
 } from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
 
 export class CreateConfigDto {
   @IsString()
   @IsOptional()
+  @MinLength(1)
+  @MaxLength(50)
   msgFam?: string;
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(50)
   transactionType: string;
 
   @IsString()
@@ -28,6 +34,8 @@ export class CreateConfigDto {
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(50)
   version: string;
 
   @IsEnum(ContentType)
