@@ -152,6 +152,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const versionSchema = yup
       .string()
       .required('Version is required')
+      .min(1, 'Version must be at least 1 character')
+      .max(50, 'Version must be at most 50 characters')
       .matches(
         /^v?\d+\.\d+\.\d+$/,
         'Version must follow semantic versioning format (e.g: 1.0.0 or v1.0.0)',
@@ -159,6 +161,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const transactionTypeSchema = yup
       .string()
       .required('Transaction Type is required')
+      .min(1, 'Transaction Type must be at least 1 character')
+      .max(50, 'Transaction Type must be at most 50 characters')
       .matches(
         /^[a-z_][a-z0-9_]*$/,
         'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, or underscores',
@@ -167,6 +171,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const eventTypeSchema = yup
       .string()
       .notRequired() // Optional field
+      .max(50, 'Event Type must be at most 50 characters')
       .test(
         'format',
         'Event Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
@@ -485,7 +490,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         field === 'transactionType' ||
         field === 'msgFam'
       ) {
-        sanitizedValue = newValue.replace(/\s/g, '');
+        sanitizedValue = newValue.replace(/\s/g, '').slice(0, 50);
       }
       const updatedData = { ...endpointData, [field]: sanitizedValue };
       setEndpointData(updatedData);
@@ -872,6 +877,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="1.0.0"
+                    maxLength={50}
                     className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.version
@@ -913,6 +919,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="iso-20022"
+                    maxLength={50}
                     className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.eventType
@@ -957,6 +964,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="e.g., pacs.008, pain.001"
+                    maxLength={50}
                     className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.transactionType
