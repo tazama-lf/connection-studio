@@ -23,7 +23,7 @@ import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichme
 import EndpointHistoryPage from '../features/data-enrichment/pages/EndpointHistoryPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ROUTES } from '../shared/config/routes.config';
-import { setupFetch401Interceptor } from '../utils/common/interceptor';
+import { setupFetchInterceptors } from '../utils/common/interceptor';
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
@@ -79,7 +79,7 @@ export const AppRoutes: React.FC = () => {
   const { loading } = useAuth();
 
   useEffect(() => {
-    setupFetch401Interceptor(async () => {
+    setupFetchInterceptors(async () => {
       await navigate('/login');
     });
   }, [navigate]);

@@ -3,10 +3,15 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from 'react';
 import ToastComponent from '../components/Toast';
 import type { Toast } from '../components/Toast';
+import {
+  RATE_LIMIT_EVENT,
+  type RateLimitEventDetail,
+} from '../../utils/common/interceptor';
 
 interface ToastContextType {
   addToast: (toast: Omit<Toast, 'id'>) => void;
@@ -71,6 +76,27 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     },
     [addToast],
   );
+
+  // Bridges the plain-fetch interceptor (utils/common/interceptor.ts) — which runs outside React
+  // and has no access to this context — to the toast UI, so a 429 from any API call surfaces a
+  // friendly, Retry-After-aware message instead of only whatever generic error the calling
+  // component's own catch block shows.
+  useEffect(() => {
+    const handleRateLimited = (event: Event): void => {
+      const { detail } = event as CustomEvent<RateLimitEventDetail>;
+      addToast({
+        type: 'warning',
+        title: 'Too many requests',
+        message: detail.message,
+        duration: 6000,
+      });
+    };
+
+    window.addEventListener(RATE_LIMIT_EVENT, handleRateLimited);
+    return () => {
+      window.removeEventListener(RATE_LIMIT_EVENT, handleRateLimited);
+    };
+  }, [addToast]);
 
   const value: ToastContextType = {
     addToast,
