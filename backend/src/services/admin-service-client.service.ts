@@ -115,12 +115,16 @@ export class AdminServiceClient {
 
   private handleError(error: unknown, operation: string): never {
     const err = error as {
-      response?: { status: number; data: unknown };
+      response?: {
+        status: number;
+        data: unknown;
+        headers?: Record<string, string>;
+      };
       request?: unknown;
       message: string;
     };
     if (err.response) {
-      const { status, data } = err.response;
+      const { status, data, headers } = err.response;
       this.logger.error(
         `${operation} failed with status ${status}: ${JSON.stringify(data)}`,
       );
@@ -133,7 +137,19 @@ export class AdminServiceClient {
           ? data.message
           : 'Admin service returned an error response';
 
-      throw new HttpException(message, HttpStatus.BAD_GATEWAY);
+      // Preserve the real upstream status (e.g. 429 from admin-service's rate limiter) instead of
+      // collapsing every error to a hardcoded 502 — callers need the actual status to react
+      // correctly. The Retry-After header (set on 429s) doesn't survive HttpException on its own,
+      // so it's surfaced in the body too.
+      const retryAfter = headers?.['retry-after'];
+      throw new HttpException(
+        {
+          statusCode: status,
+          message,
+          ...(retryAfter ? { retryAfter } : {}),
+        },
+        status,
+      );
     } else if (err.request) {
       this.logger.error(
         `${operation} - No response from admin-service: ${err.message}`,
