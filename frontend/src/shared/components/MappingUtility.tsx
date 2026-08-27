@@ -1601,6 +1601,36 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return maxDepth;
   };
 
+  // Note: null/undefined are intentionally NOT treated as empty here, some
+  // root fields (e.g. redis) are legitimately set to null to mean "no value
+  // yet" and that's handled separately by validateDestinationJson. Only
+  // blank/whitespace-only strings count as an "empty field" a user left
+  // unfilled while editing.
+  const isEmptyFieldValue = (value: any): boolean =>
+    typeof value === 'string' && value.trim() === '';
+
+  const hasEmptyField = (json: any): boolean => {
+    if (Array.isArray(json)) {
+      return json.some(
+        (item) => hasEmptyField(item) || isEmptyFieldValue(item),
+      );
+    }
+
+    if (!json || typeof json !== 'object') {
+      return false;
+    }
+
+    return Object.entries(json).some(([key, value]) => {
+      if (key.trim() === '') {
+        return true;
+      }
+      if (value && typeof value === 'object') {
+        return hasEmptyField(value);
+      }
+      return isEmptyFieldValue(value);
+    });
+  };
+
   const validateDestinationJson = (
     json: any,
   ): { valid: boolean; error?: string } => {
@@ -1667,6 +1697,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           error: `Object "${key}" has ${depth} levels of nesting. Maximum allowed nesting depth is ${MAX_NESTING_DEPTH} level. Please reduce the nesting depth.`,
         };
       }
+    }
+
+    if (hasEmptyField(json)) {
+      return {
+        valid: false,
+        error:
+          'JSON contains one or more empty field names or values. Please provide a name and value for every field before saving.',
+      };
     }
 
     return { valid: true };

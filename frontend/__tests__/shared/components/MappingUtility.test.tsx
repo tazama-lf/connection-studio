@@ -300,6 +300,56 @@ jest.mock('react-json-view', () => {
         >
           Mock Null Redis Value
         </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  note: '',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock Empty Field Value
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  '': 'orphaned',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock Empty Field Key
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                },
+                redis: {
+                  cacheKey: { value: '   ' },
+                },
+              },
+            })
+          }
+        >
+          Mock Whitespace Field Value
+        </button>
       </div>
     );
   };
@@ -3396,6 +3446,76 @@ describe('MappingUtility', () => {
         expect(
           screen.getByRole('button', { name: /save changes/i }),
         ).toBeDisabled();
+      });
+    });
+
+    it('rejects an empty field value', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /mock empty field value/i }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/empty field names or values/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
+    });
+
+    it('rejects an empty field key', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /mock empty field key/i }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/empty field names or values/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
+    });
+
+    it('rejects a whitespace-only field value', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /mock whitespace field value/i }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/empty field names or values/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
+    });
+
+    it('accepts a well-formed edit with no empty fields', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(screen.getByRole('button', { name: /mock edit json/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/empty field names or values/i),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).not.toBeDisabled();
       });
     });
   });

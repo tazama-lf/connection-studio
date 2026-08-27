@@ -30,6 +30,12 @@ describe('utils/helpers — deferred key validation', () => {
     delete process.env.ENCRYPTION_KEY;
     process.env.IV_LENGTH = '16';
     jest.resetModules();
+    // Prevent the module-level dotenv.config() from re-populating
+    // ENCRYPTION_KEY from .env when the module re-executes.
+    jest.doMock('dotenv', () => ({
+      ...jest.requireActual('dotenv'),
+      config: () => ({ parsed: {} }),
+    }));
     const fresh = require('../../src/utils/helpers') as {
       encrypt: (t: string) => string;
     };
