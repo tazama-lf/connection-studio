@@ -96,8 +96,8 @@
   },
   "lint-staged": {
     "**/*.{js,ts,tsx}": [
-      "npx eslint --fix --no-warn-ignored",
-      "npx prettier --write"
+      "npm run fix:eslint",
+      "prettier --write"
     ]
   }
 }

@@ -367,7 +367,7 @@ export class ConfigApiService {
     if (
       !response.ok &&
       response.status !== ConfigApiService.HTTP_UNAUTHORIZED &&
-      response.status < 500
+      response.status < ConfigApiService.HTTP_SERVER_ERROR
     ) {
       return (await response.json().catch(() => ({}))) as ConfigResponse;
     }

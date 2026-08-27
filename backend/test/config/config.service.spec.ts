@@ -134,6 +134,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs.008',
         version: '1.0.0',
         schema: {},
+        payload: { sample: 'value' },
         contentType: ContentType.JSON,
       } as any,
       user,
@@ -151,6 +152,7 @@ describe('ConfigService', () => {
         msgFam: 'iso',
         transactionType: 'pacs',
         version: '1',
+        payload: { sample: 'value' },
       } as any,
       user,
     );
@@ -374,6 +376,7 @@ describe('ConfigService', () => {
       transactionType: 'pacs',
       version: '1.0.0',
       schema: {},
+      payload: { sample: 'value' },
     };
 
     const result = await service.createConfig(dto as any, user);
@@ -543,35 +546,6 @@ describe('ConfigService', () => {
       'txn_table',
       token,
     );
-  });
-  it('creates multiple datamodel tables from function array', async () => {
-    mockSftp.readFile.mockResolvedValue({
-      id: 1,
-      transactionType: 'pacs',
-      version: '1',
-      functions: [
-        {
-          functionName: 'addDataModelTable',
-          tableName: 'table1',
-          columns: [],
-        },
-        {
-          functionName: 'addDataModelTable',
-          tableName: 'table2',
-          columns: [],
-        },
-      ],
-      status: ConfigStatus.READY_FOR_DEPLOYMENT,
-    });
-
-    await service.handleWorkflowAction(
-      1,
-      { action: 'deploy', data: {} },
-      publisherUser as any,
-      token,
-    );
-
-    expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledTimes(2);
   });
   it('deletes file from SFTP after deploy', async () => {
     mockSftp.readFile.mockResolvedValue({
@@ -1014,6 +988,11 @@ describe('ConfigService', () => {
     mockRepo.findConfigById.mockResolvedValue({
       id: 1,
       status: ConfigStatus.UNDER_REVIEW,
+      transactionType: 'pacs.008',
+      functions: [
+        { functionName: 'addDataModelTable', tableName: 'dm_tbl' },
+        { functionName: 'other', tableName: 'x' },
+      ],
     });
 
     mockRepo.getupdateConfigByStatus.mockResolvedValue({
@@ -1040,6 +1019,43 @@ describe('ConfigService', () => {
     expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledWith(
       'dm_tbl',
       token,
+    );
+  });
+
+  it('wraps createTazamaDataModelTable errors in BadRequestException on approve', async () => {
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      status: ConfigStatus.UNDER_REVIEW,
+      functions: [{ functionName: 'addDataModelTable', tableName: 'dm_tbl' }],
+    });
+
+    mockRepo.getupdateConfigByStatus.mockResolvedValue({
+      id: 1,
+      functions: [{ functionName: 'addDataModelTable', tableName: 'dm_tbl' }],
+    });
+
+    mockRepo.createTazamaDataModelTable.mockRejectedValue(
+      new Error('Table "dm_tbl" already exists'),
+    );
+
+    await expect(
+      service.handleWorkflowAction(
+        1,
+        { action: 'approve', data: { comment: 'lgtm' } },
+        approverUser as any,
+        token,
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      service.handleWorkflowAction(
+        1,
+        { action: 'approve', data: { comment: 'lgtm' } },
+        approverUser as any,
+        token,
+      ),
+    ).rejects.toThrow(
+      'Failed to approve configuration: Table "dm_tbl" already exists',
     );
   });
 
@@ -1826,6 +1842,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs.008',
         version: '1.0.0',
         schema: {},
+        payload: { sample: 'value' },
       } as any,
       user,
     );
@@ -1958,7 +1975,11 @@ describe('ConfigService', () => {
     mockUtils.buildUserErrorMessage.mockReturnValue('error');
 
     const res = await service.createConfig(
-      { transactionType: 'pacs', version: '1' } as any,
+      {
+        transactionType: 'pacs',
+        version: '1',
+        payload: { sample: 'value' },
+      } as any,
       user,
     );
 
