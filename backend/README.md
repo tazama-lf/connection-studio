@@ -1162,3 +1162,11 @@ Test data sets are provided for all major transaction types:
 - Review existing issues, discussions and pull requests
 - Start a discussion in the **Discussions** tab or create an issue in the **Issues** tab in this repository
 - Join the Tazama Slack workspace and post your question in the **#get-help** channel - :point_right: Join here: https://slack.tazama.org
+
+## Running Tests
+
+Jest loads `backend/.env.test` via `test/jest.env.ts`. That file is committed and contains
+a non-secret 32-byte `ENCRYPTION_KEY` and `IV_LENGTH=16` used only by the unit suite.
+
+If you add a new module that reads env at import time, add a placeholder value to
+`.env.test` so all suites remain loadable from a clean checkout.
