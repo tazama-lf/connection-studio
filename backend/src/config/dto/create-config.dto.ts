@@ -44,10 +44,6 @@ export class CreateConfigDto {
 
   @IsArray()
   @IsOptional()
-  mapping?: Array<Record<string, unknown>>;
-
-  @IsArray()
-  @IsOptional()
   functions?: Array<Record<string, unknown>>;
   @IsString()
   @IsOptional()
