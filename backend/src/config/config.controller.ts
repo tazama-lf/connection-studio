@@ -84,6 +84,7 @@ export class ConfigController {
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
+
   @Post()
   @RequireClaims(TazamaClaims.EDITOR)
   @Audit()

@@ -161,3 +161,111 @@ export const getGroupNameFromToken = (
       : null;
   return groupName;
 };
+
+export function validatePayloadContent(
+  payloadValue: unknown,
+  contentType: string,
+): { isValid: boolean; message: string } {
+  if (!payloadValue) {
+    return { isValid: true, message: '' };
+  }
+
+  if (contentType === 'application/json') {
+    try {
+      let parsedPayload: unknown = payloadValue;
+      if (typeof payloadValue === 'string') {
+        parsedPayload = JSON.parse(payloadValue);
+      }
+      if (
+        parsedPayload === null ||
+        Array.isArray(parsedPayload) ||
+        typeof parsedPayload !== 'object'
+      ) {
+        return {
+          isValid: false,
+          message: 'Payload must be a valid JSON object',
+        };
+      }
+
+      return {
+        isValid: true,
+        message: 'Valid JSON format detected',
+      };
+    } catch {
+      return {
+        isValid: false,
+        message: 'Invalid JSON format',
+      };
+    }
+  } else if (contentType === 'application/xml') {
+    try {
+      if (typeof payloadValue !== 'string') {
+        return {
+          isValid: false,
+          message: 'XML payload must be a string',
+        };
+      }
+
+      const xmlStr = payloadValue;
+
+      if (/<\?[\s\S]*?\?>/.test(xmlStr)) {
+        return {
+          isValid: false,
+          message:
+            'XML declarations and processing instructions are not allowed',
+        };
+      }
+
+      // Reject comments
+      if (/<!--[\s\S]*?-->/.test(xmlStr)) {
+        return {
+          isValid: false,
+          message: 'XML comments are not allowed',
+        };
+      }
+
+      // Reject DOCTYPE
+      if (/<!DOCTYPE/i.test(xmlStr)) {
+        return {
+          isValid: false,
+          message: 'DOCTYPE declarations are not allowed',
+        };
+      }
+
+      // Reject CDATA
+      if (/<!\[CDATA\[/i.test(xmlStr)) {
+        return {
+          isValid: false,
+          message: 'CDATA sections are not allowed',
+        };
+      }
+
+      // Validate XML structure - must start with opening tag and end with closing tag
+      if (
+        !/^\s*<(?:[A-Za-z_][A-Za-z0-9_-]*)>[\s\S]*<\/(?:[A-Za-z_][A-Za-z0-9_-]*)>\s*$/.test(
+          xmlStr,
+        )
+      ) {
+        return {
+          isValid: false,
+          message: 'Invalid XML structure',
+        };
+      }
+
+      return {
+        isValid: true,
+        message: 'Valid XML format detected',
+      };
+    } catch {
+      return {
+        isValid: false,
+        message: 'Invalid XML format',
+      };
+    }
+  }
+
+  return {
+    isValid: false,
+    message: 'Unsupported content type',
+  };
+}
