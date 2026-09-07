@@ -11,6 +11,7 @@ import { ContentType } from '@tazama-lf/tcs-lib';
 
 export class CreateConfigDto {
   @IsString()
+  @IsNotEmpty()
   msgFam!: string;
 
   @IsString()
