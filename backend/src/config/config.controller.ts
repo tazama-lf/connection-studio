@@ -28,9 +28,9 @@ import {
   DeploymentDto,
   StatusTransitionDto,
   WorkflowActionDto,
+  AddMappingDto,
 } from './dto';
 import type {
-  AddMappingDto,
   AddFunctionDto,
   ConfigResponseDto,
   Config,
@@ -64,9 +64,14 @@ export class ConfigController {
     @Body() dto: AddMappingDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    const mappingData = {
+      source: dto.source,
+      destination: dto.destination,
+    };
+
     return (await this.configService.addMappingViaService(
       id,
-      dto as unknown as Record<string, unknown>,
+      mappingData,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
