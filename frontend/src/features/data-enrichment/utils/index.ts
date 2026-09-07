@@ -60,7 +60,7 @@ const buildSftpConnection = (
   formValues: Record<string, unknown>,
 ): SftpConnection => ({
   host: formValues.host as string,
-  port: Number(formValues.port as string | number) || DEFAULT_SFTP_PORT,
+  port: Number(formValues.port) || DEFAULT_SFTP_PORT,
   auth_type:
     formValues.authType === 'key' ? 'PRIVATE_KEY' : 'USERNAME_PASSWORD',
   user_name: formValues.username as string,
@@ -191,7 +191,7 @@ export const determineSourceType = (
   job: DataEnrichmentJobResponse,
 ): 'HTTP' | 'SFTP' => {
   if (job.source_type) {
-    return job.source_type as 'HTTP' | 'SFTP';
+    return job.source_type;
   }
 
   if (job.connection) {
@@ -479,7 +479,7 @@ export const getConnectionType = (
   job: DataEnrichmentJobResponse,
 ): 'HTTP' | 'SFTP' | null => {
   if (job.source_type) {
-    return job.source_type as 'HTTP' | 'SFTP';
+    return job.source_type;
   }
 
   if (job.connection) {

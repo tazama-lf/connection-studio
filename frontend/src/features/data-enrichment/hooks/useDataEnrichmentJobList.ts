@@ -149,7 +149,7 @@ export const useDataEnrichmentJobList = (): {
 
   const loadJobs = useCallback(async () => {
     try {
-      setLoadingState((s) => ({ ...s, page: true as boolean }));
+      setLoadingState((s) => ({ ...s, page: true }));
       setError(null);
 
       const response = await dataEnrichmentHandlers.loadJobs(
@@ -177,7 +177,7 @@ export const useDataEnrichmentJobList = (): {
       }
       setError(message);
     } finally {
-      setLoadingState((s) => ({ ...s, page: false as boolean }));
+      setLoadingState((s) => ({ ...s, page: false }));
     }
   }, [userRole, searchingFilters, offset, limit]);
 
@@ -192,7 +192,7 @@ export const useDataEnrichmentJobList = (): {
   const handleView = useCallback(
     async (jobId: string) => {
       try {
-        setLoadingState((s) => ({ ...s, page: true as boolean }));
+        setLoadingState((s) => ({ ...s, page: true }));
         const job = jobs.find((j: DataEnrichmentJobResponse) => j.id === jobId);
         const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
@@ -206,7 +206,7 @@ export const useDataEnrichmentJobList = (): {
       } catch (err) {
         showError('Failed to load job details');
       } finally {
-        setLoadingState((s) => ({ ...s, page: false as boolean }));
+        setLoadingState((s) => ({ ...s, page: false }));
       }
     },
     [jobs, showError],
@@ -231,7 +231,7 @@ export const useDataEnrichmentJobList = (): {
       }
 
       try {
-        setLoadingState((s) => ({ ...s, page: true as boolean }));
+        setLoadingState((s) => ({ ...s, page: true }));
         const jobType = job.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
         const jobDetails =
@@ -244,7 +244,7 @@ export const useDataEnrichmentJobList = (): {
       } catch (err) {
         showError('Failed to load job details for edit');
       } finally {
-        setLoadingState((s) => ({ ...s, page: false as boolean }));
+        setLoadingState((s) => ({ ...s, page: false }));
       }
     },
     [showError],

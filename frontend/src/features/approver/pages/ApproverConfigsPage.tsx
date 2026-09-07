@@ -83,7 +83,11 @@ const ApproverConfigsPage: React.FC = () => {
         showError('Failed to approve configuration');
       }
     } catch (error) {
-      showError('Failed to approve configuration');
+      showError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to approve configuration',
+      );
     }
   };
 
@@ -201,7 +205,11 @@ const ApproverConfigsPage: React.FC = () => {
         setConfigToApprove(null);
       }
     } catch (error) {
-      showError('Failed to approve configuration');
+      showError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to approve configuration',
+      );
       setShowApprovalDialog(false);
       setConfigToApprove(null);
     } finally {

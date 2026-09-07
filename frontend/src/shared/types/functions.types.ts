@@ -6,17 +6,22 @@ export type AllowedFunctionName =
   | 'saveTransactionDetails'
   | 'addDataModel'
   | 'addDataModelTable';
+export interface FunctionColumn {
+  param: string;
+  [key: string]: unknown;
+}
+
 export interface FunctionDefinition {
-  params?: unknown;
+  params?: string[];
   functionName: AllowedFunctionName;
-  columns?: Array<Record<string, unknown>>;
+  columns?: FunctionColumn[];
   tableName?: string;
 }
 
 export interface AddFunctionDto {
   params?: string[];
   functionName: AllowedFunctionName;
-  columns?: Array<Record<string, unknown>>;
+  columns?: FunctionColumn[];
   tableName?: string;
 }
 
