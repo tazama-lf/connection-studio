@@ -160,8 +160,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       .string()
       .required('Transaction Type is required')
       .matches(
-        /^[a-z_][a-z0-9_]*$/,
-        'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, or underscores',
+        /^(?!.*\.\.)[a-z_][a-z0-9_.]*$/,
+        'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, underscores, or non-consecutive dots',
       );
 
     const eventTypeSchema = yup
@@ -952,8 +952,22 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     }}
                     onKeyPress={(e) => {
                       const char = e.key;
-                      if (!/[a-zA-Z0-9_-]/.test(char)) {
+                      if (!/[a-zA-Z0-9_.-]/.test(char)) {
                         e.preventDefault();
+                        return;
+                      }
+                      if (char === '.') {
+                        const { selectionStart, selectionEnd, value } =
+                          e.currentTarget;
+                        const start = selectionStart ?? value.length;
+                        const end = selectionEnd ?? start;
+                        if (
+                          start === 0 ||
+                          value[start - 1] === '.' ||
+                          value[end] === '.'
+                        ) {
+                          e.preventDefault();
+                        }
                       }
                     }}
                     placeholder="e.g., pacs.008, pain.001"
