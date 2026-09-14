@@ -806,6 +806,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               description: config.msgFam || '', // Using msgFam as description since there's no separate description field in backend
               contentType: config.contentType || 'application/json',
               msgFam: config.msgFam || '',
+              relatedTransaction: config.related_transaction ?? '',
             });
 
             // Set existing payload if available
