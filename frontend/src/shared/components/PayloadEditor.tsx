@@ -13,6 +13,7 @@ import {
 import React, {
   useEffect,
   useState,
+  useRef,
   forwardRef,
   useImperativeHandle,
 } from 'react';
@@ -98,20 +99,77 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
     const [showInferredFields, setShowInferredFields] = useState(false);
     const hasUserEditedRef = React.useRef(false);
-    const [relatedTransactions, setRelatedTransactions] = useState<string[]>(
-      [],
-    );
+
+    // Debounced fetch of configs by msgFam (Event Type)
+    // Stores endpoint paths returned by the admin service, e.g. /v1/tcs/pacs.008
+    const [msgFamConfigs, setMsgFamConfigs] = useState<string[]>([]);
+    // Related Transaction searchable dropdown state
+    const [rtDropdownOpen, setRtDropdownOpen] = useState(false);
+    const [rtSearch, setRtSearch] = useState('');
+    const rtDropdownRef = useRef<HTMLDivElement>(null);
+    const msgFamDebounceRef = React.useRef<ReturnType<
+      typeof setTimeout
+    > | null>(null);
 
     useEffect(() => {
-      configApi
-        .getRelatedTransactions()
-        .then((res) => {
-          setRelatedTransactions(Array.isArray(res.data) ? res.data : []);
-        })
-        .catch(() => {
-          setRelatedTransactions([]);
-        });
-    }, []);
+      const msgFamValue = (endpointData.msgFam ?? '').trim();
+
+      if (msgFamDebounceRef.current) {
+        clearTimeout(msgFamDebounceRef.current);
+      }
+
+      if (!msgFamValue) {
+        setMsgFamConfigs([]);
+        return;
+      }
+
+      msgFamDebounceRef.current = setTimeout(() => {
+        configApi
+          .getConfigsByMsgFam(msgFamValue)
+          .then((res) => {
+            setMsgFamConfigs(res.data ?? []);
+          })
+          .catch(() => {
+            setMsgFamConfigs([]);
+          });
+      }, 500);
+
+      return () => {
+        if (msgFamDebounceRef.current) {
+          clearTimeout(msgFamDebounceRef.current);
+        }
+      };
+    }, [endpointData.msgFam]);
+
+    // Close related-transaction dropdown on outside click
+    useEffect(() => {
+      if (!rtDropdownOpen) return;
+      const handler = (e: MouseEvent): void => {
+        if (
+          rtDropdownRef.current &&
+          !rtDropdownRef.current.contains(e.target as Node)
+        ) {
+          setRtDropdownOpen(false);
+        }
+      };
+      document.addEventListener('mousedown', handler);
+      return () => {
+        document.removeEventListener('mousedown', handler);
+      };
+    }, [rtDropdownOpen]);
+
+    // Derived values for related-transaction dropdown
+    const selectedRtPath = endpointData.relatedTransaction ?? '';
+    const selectedRtTxtp = selectedRtPath
+      ? (selectedRtPath.split('/').filter(Boolean).pop() ?? selectedRtPath)
+      : '';
+    const filteredRtConfigs = msgFamConfigs.filter((path) => {
+      const txtp = path.split('/').filter(Boolean).pop() ?? path;
+      return (
+        txtp.toLowerCase().includes(rtSearch.toLowerCase()) ||
+        path.toLowerCase().includes(rtSearch.toLowerCase())
+      );
+    });
     const [fieldGenerationError, setFieldGenerationError] = useState<
       string | null
     >(null);
@@ -488,6 +546,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         sanitizedValue = newValue.replace(/\s/g, '');
       }
       const updatedData = { ...endpointData, [field]: sanitizedValue };
+      
+      if (field === 'msgFam') {
+        updatedData.relatedTransaction = '';
+      }
       setEndpointData(updatedData);
       if (onEndpointDataChange) {
         onEndpointDataChange(updatedData);
@@ -928,6 +990,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   {fieldErrors.eventType}
                 </p>
               )}
+         
             </div>
             { }
             <div>
@@ -1003,7 +1066,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               })()}
             </div>
             { }
-            <div>
+            <div className="md:col-span-2">
               <label
                 htmlFor="related-transaction"
                 className="block text-sm font-medium text-gray-700 mb-2"
@@ -1013,28 +1076,88 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               {(() => {
                 const isReadOnly = readOnly || (!isCloning && !!configId);
                 return (
-                  <select
-                    id="related-transaction"
-                    value={endpointData.relatedTransaction ?? ''}
-                    onChange={(e) => {
-                      handleEndpointDataChange(
-                        'relatedTransaction',
-                        e.target.value,
-                      );
-                    }}
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : 'bg-white border-gray-300'
-                      }`}
-                    disabled={isReadOnly}
-                  >
-                    <option value="">-- Select Related Transaction --</option>
-                    {relatedTransactions.map((rt) => (
-                      <option key={rt} value={rt}>
-                        {rt}
-                      </option>
-                    ))}
-                  </select>
+                  <div ref={rtDropdownRef} className="relative">
+                    <button
+                      type="button"
+                      id="related-transaction"
+                      onClick={() => {
+                        if (!isReadOnly) {
+                          setRtDropdownOpen((v) => !v);
+                        }
+                      }}
+                      className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-left [&:-webkit-autofill]:bg-white ${isReadOnly
+                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                          : 'bg-white border-gray-300'
+                        }`}
+                      disabled={isReadOnly}
+                    >
+                      {selectedRtPath ? (
+                        <span className="font-mono">
+                          <span className="font-bold">{selectedRtTxtp}</span>
+                          {' - '}
+                          {selectedRtPath}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-- Select Related Transaction --</span>
+                      )}
+                    </button>
+                    {rtDropdownOpen && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg">
+                        <div className="p-2 border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={rtSearch}
+                            onChange={(e) => {
+                              setRtSearch(e.target.value);
+                            }}
+                            placeholder="Search transaction type..."
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-60 overflow-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleEndpointDataChange('relatedTransaction', '');
+                              setRtDropdownOpen(false);
+                              setRtSearch('');
+                            }}
+                            className="block w-full px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-50"
+                          >
+                            -- Select Related Transaction --
+                          </button>
+                          {filteredRtConfigs.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-gray-400 text-center">
+                              No matching transaction types
+                            </div>
+                          ) : (
+                            filteredRtConfigs.map((path) => {
+                              const txtp = path.split('/').filter(Boolean).pop() ?? path;
+                              return (
+                                <button
+                                  type="button"
+                                  key={path}
+                                  onClick={() => {
+                                    handleEndpointDataChange('relatedTransaction', path);
+                                    setRtDropdownOpen(false);
+                                    setRtSearch('');
+                                  }}
+                                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-blue-50 ${selectedRtPath === path ? 'bg-blue-50' : ''}`}
+                                >
+                                  <span className="font-mono">
+                                    <span className="font-bold">{txtp}</span>
+                                    {' - '}
+                                    {path}
+                                  </span>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })()}
             </div>

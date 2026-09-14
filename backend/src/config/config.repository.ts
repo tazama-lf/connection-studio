@@ -175,4 +175,11 @@ export class ConfigRepository {
   ): Promise<{ related_transactions: string[] }> {
     return await this.adminServiceClient.getRelatedTransactions(token);
   }
+
+  async getConfigsByMsgFam(
+    msgFam: string,
+    token: string,
+  ): Promise<{ success: boolean; data: string[]; total: number }> {
+    return await this.adminServiceClient.getConfigsByMsgFam(msgFam, token);
+  }
 }

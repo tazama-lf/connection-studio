@@ -132,6 +132,7 @@ export class ConfigService {
     };
     try {
       const { version } = dto;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- msgFam is optional in DTO
       const msgFam = dto.msgFam ?? 'unknown';
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
@@ -163,6 +164,7 @@ export class ConfigService {
       );
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- msgFam is optional in DTO
         msgFam: dto.msgFam ?? '',
         transactionType: dto.transactionType,
         endpointPath,
@@ -200,11 +202,10 @@ export class ConfigService {
         config,
       };
     } catch (error) {
-      this.logger.error(
-        `Failed to create config: ${error.message}`,
-        error.stack,
-      );
+      const err = error as Error;
+      this.logger.error(`Failed to create config: ${err.message}`, err.stack);
 
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- msgFam is optional in DTO
       const msgFam = dto.msgFam ?? 'unknown';
       const { transactionType } = dto;
       const { version } = dto;
@@ -282,7 +283,7 @@ export class ConfigService {
         config = configData as unknown as Config;
       } catch (error) {
         throw new BadRequestException(
-          `Cannot read config ${id} from SFTP: ${error.message}`,
+          `Cannot read config ${id} from SFTP: ${(error as Error).message}`,
         );
       }
     } else {
@@ -507,10 +508,11 @@ export class ConfigService {
             config: result as Config | undefined,
           };
         } catch (error) {
-          this.logger.error(`Failed to export config: ${error.message}`);
+          const err = error as Error;
+          this.logger.error(`Failed to export config: ${err.message}`);
 
           throw new BadRequestException(
-            `Failed to export config: ${error.message}`,
+            `Failed to export config: ${err.message}`,
           );
         }
       }
@@ -531,7 +533,7 @@ export class ConfigService {
             )) as unknown as SftpConfigDataDto;
           } catch (error) {
             throw new BadRequestException(
-              `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
+              `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${(error as Error).message}`,
             );
           }
         }
@@ -565,7 +567,7 @@ export class ConfigService {
             );
           } catch (insertError) {
             this.logger.error(
-              `Failed to insert deployed config: ${insertError.message}`,
+              `Failed to insert deployed config: ${(insertError as Error).message}`,
             );
             throw insertError;
           }
@@ -664,7 +666,12 @@ export class ConfigService {
     }
 
     try {
-      await this.demsClient.notifyDems(id.toString(), tenantId, publishingStatus, token);
+      await this.demsClient.notifyDems(
+        id.toString(),
+        tenantId,
+        publishingStatus,
+        token,
+      );
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(
@@ -935,8 +942,29 @@ export class ConfigService {
         user.token.tokenString,
       );
     } catch (error) {
-      this.logger.error(`Failed to get related transactions: ${error.message}`);
+      this.logger.error(
+        `Failed to get related transactions: ${(error as Error).message}`,
+      );
       throw new BadRequestException('Failed to retrieve related transactions');
+    }
+  }
+
+  async getConfigsByMsgFam(
+    msgFam: string,
+    user: AuthenticatedUser,
+  ): Promise<{ success: boolean; data: string[]; total: number }> {
+    try {
+      return await this.configRepository.getConfigsByMsgFam(
+        msgFam,
+        user.token.tokenString,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get configs by msgFam '${msgFam}': ${(error as Error).message}`,
+      );
+      throw new BadRequestException(
+        `Failed to retrieve configs for event type '${msgFam}'`,
+      );
     }
   }
 }

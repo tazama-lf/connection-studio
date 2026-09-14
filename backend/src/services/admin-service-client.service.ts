@@ -209,10 +209,14 @@ export class AdminServiceClient {
 
       return response.data;
     } catch (error) {
-      this.logger.error(`${method} ${path} - Failed: ${error.message}`);
+      const err = error as Error & {
+        response?: { status: number; data: unknown };
+        request?: unknown;
+      };
+      this.logger.error(`${method} ${path} - Failed: ${err.message}`);
 
-      if (error.response) {
-        const { status, data } = error.response;
+      if (err.response) {
+        const { status, data } = err.response;
         this.logger.error(
           `Admin-service error (${status}): ${JSON.stringify(data)}`,
         );
@@ -221,21 +225,21 @@ export class AdminServiceClient {
           data &&
           typeof data === 'object' &&
           'message' in data &&
-          typeof data.message === 'string'
-            ? data.message
+          typeof (data as Record<string, unknown>).message === 'string'
+            ? (data as { message: string }).message
             : typeof data === 'string'
               ? data
               : 'Request failed';
 
         throw new HttpException(message, status);
-      } else if (error.request) {
-        this.logger.error(`No response from admin-service: ${error.message}`);
+      } else if (err.request) {
+        this.logger.error(`No response from admin-service: ${err.message}`);
         throw new HttpException(
           'Admin service is unavailable',
           HttpStatus.SERVICE_UNAVAILABLE,
         );
       } else {
-        this.logger.error(`Request setup error: ${error.message}`);
+        this.logger.error(`Request setup error: ${err.message}`);
         throw new HttpException(
           'Internal server error',
           HttpStatus.INTERNAL_SERVER_ERROR,
@@ -1014,5 +1018,16 @@ export class AdminServiceClient {
       `${CONFIG_URL}/related-transactions`,
       token,
     );
+  }
+
+  async getConfigsByMsgFam(
+    msgFam: string,
+    token: string,
+  ): Promise<{ success: boolean; data: string[]; total: number }> {
+    return await this.executeHttpRequest<{
+      success: boolean;
+      data: string[];
+      total: number;
+    }>('POST', `${CONFIG_URL}/msg-fam`, token, { msgFam });
   }
 }

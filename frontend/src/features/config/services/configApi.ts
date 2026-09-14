@@ -101,15 +101,11 @@ interface PaginationParams {
 }
 
 const HTTP_UNAUTHORIZED = 401;
-const HTTP_BAD_REQUEST = 400;
-const HTTP_SERVER_ERROR = 500;
 const HTTP_NO_CONTENT = 204;
 
 export class ConfigApiService {
   private readonly baseURL: string;
   private static readonly HTTP_UNAUTHORIZED = HTTP_UNAUTHORIZED;
-  private static readonly HTTP_BAD_REQUEST = HTTP_BAD_REQUEST;
-  private static readonly HTTP_SERVER_ERROR = HTTP_SERVER_ERROR;
   private static readonly HTTP_NO_CONTENT = HTTP_NO_CONTENT;
 
   constructor() {
@@ -558,6 +554,25 @@ export class ConfigApiService {
     return await ConfigApiService.handleResponse<{
       success: boolean;
       data: string[];
+    }>(response);
+  }
+
+  async getConfigsByMsgFam(msgFam: string): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+  }> {
+    const response = await fetch(
+      `${this.baseURL}/config/tcs/by-msg-fam/${encodeURIComponent(msgFam)}`,
+      {
+        method: 'GET',
+        headers: ConfigApiService.getAuthHeaders(),
+      },
+    );
+    return await ConfigApiService.handleResponse<{
+      success: boolean;
+      data: string[];
+      total: number;
     }>(response);
   }
 

@@ -1,11 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { CronTime } from 'cron';
 import * as crypto from 'node:crypto';
-import dotenv from 'dotenv';
 import * as path from 'node:path';
 import type { AuthenticatedUser } from 'src/auth/auth.types';
 import * as jwt from 'jsonwebtoken';
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 interface DecodedUserInfo {
   preferredUsername: string;
