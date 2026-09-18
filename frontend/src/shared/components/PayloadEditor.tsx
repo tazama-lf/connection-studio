@@ -64,6 +64,62 @@ interface PayloadEditorProps {
   setPayloadError: (error: string | null) => void;
 }
 
+interface FormattedJsonSectionProps {
+  value: Record<string, unknown> | string | null;
+  onChange: (value: Record<string, unknown> | string | null) => void;
+}
+
+const FormattedJsonSection: React.FC<FormattedJsonSectionProps> = ({
+  value,
+  onChange,
+}) => {
+  const parseResult = safeJsonParse(value);
+  if (parseResult.success && parseResult.data) {
+    return (
+      <ReactJson
+        src={parseResult.data as object}
+        onEdit={(e) => {
+          onChange(e.updated_src as Record<string, unknown>);
+        }}
+        onAdd={(e) => {
+          onChange(e.updated_src as Record<string, unknown>);
+        }}
+        onDelete={(e) => {
+          onChange(e.updated_src as Record<string, unknown>);
+        }}
+        theme="rjv-default"
+        name={false}
+        displayDataTypes={false}
+        displayObjectSize={true}
+        enableClipboard={true}
+        collapsed={false}
+        style={{ fontSize: '13px' }}
+      />
+    );
+  }
+  return (
+    <div className="flex items-center justify-center h-full text-gray-400">
+      <div className="text-center">
+        <svg
+          className="w-12 h-12 mx-auto mb-2"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.732 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <p className="text-sm">Invalid JSON format</p>
+        <p className="text-xs mt-1">Enter valid JSON to see preview</p>
+      </div>
+    </div>
+  );
+};
+
 export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
   (
     {
@@ -458,53 +514,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       }
     };
 
-    const FormattedJsonSection: React.FC = () => {
-      const parseResult = safeJsonParse(value);
-      if (parseResult.success && parseResult.data) {
-        return (
-          <ReactJson
-            src={parseResult.data as object}
-            onEdit={(e) => {
-              onChange(e.updated_src as Record<string, unknown>);
-            }}
-            onAdd={(e) => {
-              onChange(e.updated_src as Record<string, unknown>);
-            }}
-            onDelete={(e) => {
-              onChange(e.updated_src as Record<string, unknown>);
-            }}
-            theme="rjv-default"
-            name={false}
-            displayDataTypes={false}
-            displayObjectSize={true}
-            enableClipboard={true}
-            collapsed={false}
-            style={{ fontSize: '13px' }}
-          />
-        );
-      }
-      return (
-        <div className="flex items-center justify-center h-full text-gray-400">
-          <div className="text-center">
-            <svg
-              className="w-12 h-12 mx-auto mb-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.732 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <p className="text-sm">Invalid JSON format</p>
-            <p className="text-xs mt-1">Enter valid JSON to see preview</p>
-          </div>
-        </div>
-      );
-    };
     return (
       <div className="space-y-4">
         {}
@@ -947,7 +956,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     Preview
                   </h4>
                   <div className="border rounded-md relative bg-white p-4 h-[400px] overflow-auto">
-                    <FormattedJsonSection />
+                    <FormattedJsonSection value={value} onChange={onChange} />
                   </div>
                 </div>
               )}
