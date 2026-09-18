@@ -1966,9 +1966,9 @@ describe('ConfigService', () => {
     );
   });
 
-  // ===== branch: msgFam ?? 'unknown' in error path =====
+  // ===== branch: missing msgFam in error path =====
 
-  it('uses default msgFam in error path when not provided', async () => {
+  it('passes undefined msgFam in error path when not provided', async () => {
     mockRepo.findConfigByMsgFamVersionAndTransactionType.mockRejectedValue(
       new Error('fail'),
     );
@@ -1985,7 +1985,7 @@ describe('ConfigService', () => {
 
     expect(mockUtils.buildUserErrorMessage).toHaveBeenCalledWith(
       expect.any(Error),
-      'unknown',
+      undefined,
       'pacs',
       '1',
     );
