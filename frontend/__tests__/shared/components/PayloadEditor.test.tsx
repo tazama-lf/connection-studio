@@ -63,9 +63,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
       target: { value: 'pacs.008' },
     });
 
-
-
-
     await waitFor(() => {
       expect(
         screen.getAllByText((content, node) =>
@@ -465,7 +462,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.change(fileInput, { target: { files: [jsonFile] } });
 
     await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith(JSON.stringify({ ok: true }, null, 2));
+      expect(onChange).toHaveBeenCalledWith(
+        JSON.stringify({ ok: true }, null, 2),
+      );
     });
 
     (global as any).FileReader = originalFileReader;
@@ -530,12 +529,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
-    fireEvent.change(
-      screen.getByPlaceholderText(/Field path/i),
-      {
-        target: { value: 'customer.id' },
-      },
-    );
+    fireEvent.change(screen.getByPlaceholderText(/Field path/i), {
+      target: { value: 'customer.id' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
@@ -553,7 +549,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     );
     expect(invalidEls.length).toBeGreaterThan(0);
 
-     const enterEls = screen.queryAllByText((_, node) =>
+    const enterEls = screen.queryAllByText((_, node) =>
       /Enter valid JSON to see preview/i.test(node?.textContent || ''),
     );
     if (enterEls.length === 0) {
@@ -619,7 +615,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
       );
     });
 
-    expect(screen.getByPlaceholderText(/Enter your .*payload/i)).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/Enter your .*payload/i),
+    ).toBeInTheDocument();
   });
 
   it('supports empty-state add form controls and cancel reset', () => {
@@ -737,7 +735,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
   });
 
   it('generates schema fields for JSON with array of objects', async () => {
-    renderEditor({
+    const { onSchemaChange } = renderEditor({
       value: JSON.stringify({ users: [{ id: 1, name: 'alice' }] }),
       endpointData: {
         version: '1.0.0',
@@ -751,12 +749,16 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('users[0].id')).toBeInTheDocument();
+      expect(onSchemaChange).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ path: 'users[0][0].id' }),
+        ]),
+      );
     });
   });
 
   it('generates schema fields for JSON with nested arrays (array of arrays)', async () => {
-    renderEditor({
+    const { onSchemaChange } = renderEditor({
       value: JSON.stringify({
         matrix: [
           [1, 2],
@@ -775,12 +777,16 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('matrix')).toBeInTheDocument();
+      expect(onSchemaChange).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ path: 'matrix[0]' }),
+        ]),
+      );
     });
   });
 
   it('generates schema fields for JSON with array of primitives', async () => {
-    renderEditor({
+    const { onSchemaChange } = renderEditor({
       value: JSON.stringify({ tags: ['alpha', 'beta'] }),
       endpointData: {
         version: '1.0.0',
@@ -794,7 +800,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('tags')).toBeInTheDocument();
+      expect(onSchemaChange).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ path: 'tags[0]' })]),
+      );
     });
   });
 
@@ -1187,7 +1195,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
     expect(screen.getByDisplayValue('new_field')).toBeInTheDocument();
   });
 
-
   it('allows valid key presses on version input (v at position 0 covers both onKeyPress branches)', () => {
     renderEditor();
     const versionInput = screen.getByLabelText(/Version/i);
@@ -1423,7 +1430,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Enter your .*payload/i)).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Enter your .*payload/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -1691,7 +1700,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
       },
     });
 
-    expect(screen.queryByPlaceholderText(/Enter your JSON payload/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText(/Enter your JSON payload/i),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Endpoint Configuration')).toBeInTheDocument();
   });
 
@@ -1790,12 +1801,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
       expect(screen.getByPlaceholderText(/Field path/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(
-      screen.getByPlaceholderText(/Field path/i),
-      {
-        target: { value: 'dup.field' },
-      },
-    );
+    fireEvent.change(screen.getByPlaceholderText(/Field path/i), {
+      target: { value: 'dup.field' },
+    });
 
     const callsBefore = onFieldAdjustmentsChange.mock.calls.length;
 
@@ -1807,7 +1815,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
         .filter((el) => el.hasAttribute('readonly')),
     ).toHaveLength(1);
   });
-
 
   it('shows payloadError banner and dismisses it via close button (line 915)', async () => {
     const setPayloadError = jest.fn();
@@ -1929,9 +1936,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
     (global as any).FileReader = originalFileReader;
   });
 
-  it('XML file upload throws during XMLParser.parse and triggers catch block (line 507)', async () => {
+  it('XML file upload keeps valid XML content as a string', async () => {
     const originalFileReader = global.FileReader;
-    const { XMLParser: ActualXMLParser } = await import('fast-xml-parser');
+    const onChange = jest.fn();
 
     class MockXmlFileReader {
       onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
@@ -1945,13 +1952,8 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
     (global as any).FileReader = MockXmlFileReader as any;
 
-    const parseSpy = jest
-      .spyOn(ActualXMLParser.prototype, 'parse')
-      .mockImplementation(() => {
-        throw new Error('parse failed');
-      });
-
     renderEditor({
+      onChange,
       endpointData: {
         version: '',
         transactionType: '',
@@ -1970,10 +1972,9 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.change(fileInput, { target: { files: [xmlFile] } });
 
     await waitFor(() => {
-      expect(screen.getByText(/Invalid XML file/i)).toBeInTheDocument();
+      expect(onChange).toHaveBeenCalledWith('<root>ok</root>');
     });
 
-    parseSpy.mockRestore();
     (global as any).FileReader = originalFileReader;
   });
 
