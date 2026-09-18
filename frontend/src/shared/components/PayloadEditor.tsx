@@ -1,7 +1,21 @@
 import { sampleJsonPayload, sampleXmlPayload } from '@shared/constants';
-import type { EndpointFormData, InferredField, PayloadEditorRef } from '@shared/types';
-import { capitalizeFirstLetter, convertSchemaFieldsToInferredFields, generateSchemaFromPayload, safeJsonParse, validateEventType, validateInput, validatePayloadContent, validateTransactionType, validateVersion } from '@utils/common/helper';
-import { XMLParser, XMLValidator } from 'fast-xml-parser';
+import type {
+  EndpointFormData,
+  InferredField,
+  PayloadEditorRef,
+} from '@shared/types';
+import {
+  convertSchemaFieldsToInferredFields,
+  convertSchemaToFields,
+  generateSchemaFromPayload,
+  safeJsonParse,
+  validateEventType,
+  validateInput,
+  validatePayloadContent,
+  validateTransactionType,
+  validateVersion,
+} from '@utils/common/helper';
+import { XMLValidator } from 'fast-xml-parser';
 import {
   ArrowDownToLine,
   Code2,
@@ -15,6 +29,7 @@ import {
 } from 'lucide-react';
 import React, {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useState,
@@ -33,22 +48,21 @@ interface PayloadEditorProps {
   endpointData?: EndpointFormData;
   onEndpointDataChange?: (data: EndpointFormData) => void;
   configId?: number;
-  onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; 
+  onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void;
   onSchemaChange?: (schema: unknown) => void;
-  existingSchemaFields?: SchemaField[] | InferredField[]; 
-  isEditMode?: boolean; 
-  tenantId?: string; 
+  existingSchemaFields?: SchemaField[] | InferredField[];
+  isEditMode?: boolean;
+  tenantId?: string;
   readOnly?: boolean;
-  isCloning?: boolean; 
-  shouldCreateNew?: boolean; 
+  isCloning?: boolean;
+  shouldCreateNew?: boolean;
   onValidationErrorsChange?: (errors: {
     version: string;
     transactionType: string;
-  }) => void; 
-  payloadError?: string | null; 
+  }) => void;
+  payloadError?: string | null;
   setPayloadError: (error: string | null) => void;
 }
-
 
 export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
   (
@@ -61,8 +75,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       onFieldAdjustmentsChange,
       onSchemaChange,
       existingSchemaFields,
-      isEditMode = false, 
-      tenantId = 'tenant-id', 
+      isEditMode = false,
+      tenantId = 'tenant-id',
       readOnly = false,
       isCloning = false,
       shouldCreateNew = true,
@@ -124,7 +138,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     });
     const [showValidationErrors, setShowValidationErrors] = useState(false);
 
-    const validateAllFields = () => {
+    const validateAllFields = useCallback((): boolean => {
       const versionError = validateVersion(endpointData.version);
       const transactionTypeError = validateTransactionType(
         endpointData.transactionType,
@@ -145,17 +159,22 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         });
       }
       return !versionError && !transactionTypeError && !eventTypeError;
-    };
+    }, [
+      endpointData.msgFam,
+      endpointData.transactionType,
+      endpointData.version,
+      onValidationErrorsChange,
+    ]);
 
     useImperativeHandle(
       ref,
       () => ({
         validateAllFields,
       }),
-      [endpointData.version, endpointData.transactionType, endpointData.msgFam],
+      [validateAllFields],
     );
 
-    const handleAddField = () => {
+    const handleAddField = (): void => {
       if (!newField.path.trim()) {
         return;
       }
@@ -193,7 +212,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         setEndpointData(initialEndpointData);
       }
     }, [initialEndpointData]);
-
 
     useEffect(() => {
       if (hasUserEditedRef.current) return;
@@ -245,16 +263,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         onFieldAdjustmentsChange(fieldAdjustments);
       }
     }, [inferredFields, onFieldAdjustmentsChange]);
-    
+
     useEffect(() => {
-      if (onSchemaChange) {
-        if (inferredFields.length > 0) {
-          onSchemaChange(inferredFields);
-        } else {
-        }
+      if (onSchemaChange && inferredFields.length > 0) {
+        onSchemaChange(inferredFields);
       }
     }, [inferredFields, onSchemaChange]);
-
 
     const handleGenerateFields = (): void => {
       if (!value) {
@@ -272,82 +286,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           endpointData.contentType,
         );
         if (schema) {
-          const convertSchemaToFields = (
-            schemaFields: SchemaField[],
-            payload?: unknown,
-            level = 0,
-            parentPath = '',
-          ): InferredField[] => {
-            const fields: InferredField[] = [];
-
-            schemaFields.forEach((field) => {
-              const currentValue =
-                payload && typeof payload === 'object'
-                  ? (payload as Record<string, unknown>)[
-                  field.path.split('.').pop() as string
-                  ]
-                  : undefined;
-
-              if (field.type === 'array' && Array.isArray(currentValue)) {
-                currentValue.forEach((item, index) => {
-                  const arrayPath = `${field.path}[${index}]`;
-
-                  fields.push({
-                    path: arrayPath,
-                    type: 'Array',
-                    level,
-                    parent:
-                      parentPath ||
-                      (arrayPath.includes('.')
-                        ? arrayPath.substring(0, arrayPath.lastIndexOf('.'))
-                        : undefined),
-                    required: field.isRequired,
-                  });
-
-                  if (field.children) {
-                    fields.push(
-                      ...convertSchemaToFields(
-                        field.children,
-                        item,
-                        level + 1,
-                        arrayPath,
-                      ),
-                    );
-                  }
-                });
-
-                return;
-              }
-
-              fields.push({
-                path: field.path,
-                type: capitalizeFirstLetter(
-                  field.type,
-                ) as InferredField['type'],
-                level,
-                parent:
-                  parentPath ||
-                  (field.path.includes('.')
-                    ? field.path.substring(0, field.path.lastIndexOf('.'))
-                    : undefined),
-                required: field.isRequired,
-              });
-
-              if (field.children) {
-                fields.push(
-                  ...convertSchemaToFields(
-                    field.children,
-                    currentValue,
-                    level + 1,
-                    field.path,
-                  ),
-                );
-              }
-            });
-
-            return fields;
-          };
-          const fields = convertSchemaToFields(schema);
+          const parsed = safeJsonParse(value);
+          const fields = convertSchemaToFields(
+            schema,
+            parsed.success ? parsed.data : undefined,
+          );
 
           setInferredFields(fields);
           setShowInferredFields(true);
@@ -362,7 +305,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         setIsGeneratingFields(false);
       }
     };
-
 
     const handleEndpointDataChange = (
       field: keyof EndpointFormData,
@@ -434,7 +376,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const handleFileUpload = (
       event: React.ChangeEvent<HTMLInputElement>,
     ): void => {
-      const file = event.target.files?.[0];
+      const input = event.currentTarget;
+      const file = input.files?.[0];
       if (file) {
         const fileName = file.name.toLowerCase();
         const isJsonFile = fileName.endsWith('.json');
@@ -453,7 +396,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             ...prev,
             payload: `File format mismatch: Expected ${expectedFormat} file but received ${actualFormat} file. Please select the correct file type or change the Content Type setting.`,
           }));
-          event.target.value = '';
+          input.value = '';
           return;
         }
         const reader = new FileReader();
@@ -462,7 +405,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           let contentValidationError = '';
           if (isJsonExpected) {
             try {
-              const parsed = JSON.parse(content);
+              const parsed: unknown = JSON.parse(content);
               if (
                 parsed === null ||
                 Array.isArray(parsed) ||
@@ -487,23 +430,16 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
               const isValidXml =
                 parseError.length === 0 &&
-                XMLValidator.validate(content) &&
+                XMLValidator.validate(content) === true &&
                 validateInput(content);
 
-              if (!isValidXml) {
+              if (isValidXml) {
+                onChange(content);
+              } else {
                 contentValidationError =
                   'Invalid XML file: The uploaded file contains invalid XML format.';
-              } else {
-                const parser = new XMLParser({
-                  ignoreAttributes: false,
-                  attributeNamePrefix: '',
-                });
-
-                const parsedXml = parser.parse(content);
-
-                onChange(parsedXml);
               }
-            } catch (error) {
+            } catch {
               contentValidationError =
                 'Invalid XML file: The uploaded file contains invalid XML format.';
             }
@@ -513,7 +449,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               ...prev,
               payload: contentValidationError,
             }));
-            event.target.value = '';
+            input.value = '';
             return;
           }
           setFieldErrors((prev) => ({ ...prev, payload: '' }));
@@ -527,10 +463,16 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       if (parseResult.success && parseResult.data) {
         return (
           <ReactJson
-            src={parseResult.data}
-            onEdit={(e) => onChange(e.updated_src as Record<string, unknown>)}
-            onAdd={(e) => onChange(e.updated_src as Record<string, unknown>)}
-            onDelete={(e) => onChange(e.updated_src as Record<string, unknown>)}
+            src={parseResult.data as object}
+            onEdit={(e) => {
+              onChange(e.updated_src as Record<string, unknown>);
+            }}
+            onAdd={(e) => {
+              onChange(e.updated_src as Record<string, unknown>);
+            }}
+            onDelete={(e) => {
+              onChange(e.updated_src as Record<string, unknown>);
+            }}
             theme="rjv-default"
             name={false}
             displayDataTypes={false}
@@ -565,14 +507,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     };
     return (
       <div className="space-y-4">
-        { }
+        {}
         <div className="">
           <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900 mb-4">
             <Settings2 className="text-blue-500" size={16} /> Endpoint
             Configuration
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            { }
+            {}
             <div>
               <label
                 htmlFor="version"
@@ -601,12 +543,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="1.0.0"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : fieldErrors.version
-                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'bg-white border-gray-300'
-                      }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${
+                      isReadOnly
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : fieldErrors.version
+                          ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'bg-white border-gray-300'
+                    }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -617,7 +560,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            { }
+            {}
             <div>
               <label
                 htmlFor="msgFam"
@@ -642,12 +585,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="iso-20022"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : fieldErrors.eventType
-                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'bg-white border-gray-300'
-                      }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
+                      isReadOnly
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : fieldErrors.eventType
+                          ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'bg-white border-gray-300'
+                    }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -658,7 +602,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            { }
+            {}
             <div>
               <label
                 htmlFor="transaction-type"
@@ -686,12 +630,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="e.g., pacs.008, pain.001"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : fieldErrors.transactionType
-                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'bg-white border-gray-300'
-                      }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
+                      isReadOnly
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : fieldErrors.transactionType
+                          ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'bg-white border-gray-300'
+                    }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -702,7 +647,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            { }
+            {}
             <div>
               <label
                 htmlFor="content-type"
@@ -719,10 +664,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     onChange={(e) => {
                       handleEndpointDataChange('contentType', e.target.value);
                     }}
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : 'bg-white border-gray-300'
-                      }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
+                      isReadOnly
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'bg-white border-gray-300'
+                    }`}
                     disabled={isReadOnly}
                   >
                     <option value="application/json">application/json</option>
@@ -731,7 +677,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 );
               })()}
             </div>
-            { }
+            {}
             <div>
               <label
                 htmlFor="related-transaction"
@@ -751,10 +697,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                         e.target.value,
                       );
                     }}
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : 'bg-white border-gray-300'
-                      }`}
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
+                      isReadOnly
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'bg-white border-gray-300'
+                    }`}
                     disabled={isReadOnly}
                   >
                     <option value="">-- Select Related Transaction --</option>
@@ -768,9 +715,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               })()}
             </div>
           </div>
-          { }
-          { }
-          { }
+          {}
+          {}
+          {}
           {endpointData.transactionType && (
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start gap-3">
@@ -793,7 +740,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   <h4 className="text-sm font-medium text-blue-900 mb-2">
                     Endpoint Path Preview
                   </h4>
-                  { }
+                  {}
                   <div className="bg-white border border-blue-200 rounded px-3 py-2 font-mono text-sm text-gray-900">
                     /{tenantId}/{endpointData.version || 'v1'}/
                     {endpointData.msgFam ? `${endpointData.msgFam}/` : ''}
@@ -821,7 +768,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 )}
               </h3>
               <div className="flex items-center space-x-2">
-                {!isEditMode && !value && !readOnly && (
+                {!isEditMode && !value && (
                   <div className="flex space-x-2">
                     <Button
                       variant="secondary"
@@ -832,7 +779,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       onClick={() => {
                         onChange(
                           endpointData.contentType === 'application/json'
-                            ? JSON.parse(sampleJsonPayload)
+                            ? (JSON.parse(sampleJsonPayload) as Record<
+                                string,
+                                unknown
+                              >)
                             : sampleXmlPayload,
                         );
                       }}
@@ -845,7 +795,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     </Button>
                   </div>
                 )}
-                {!readOnly && !isEditMode && value && (
+                {!isEditMode && value && (
                   <Button
                     variant="secondary"
                     size="sm"
@@ -860,7 +810,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   </Button>
                 )}
                 <div className="">
-                  {!readOnly && !isEditMode && (
+                  {!isEditMode && (
                     <>
                       <input
                         type="file"
@@ -887,70 +837,73 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               </div>
             </div>
             {payloadError && !fieldErrors.payload && (
-                <div className="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      <svg
-                        className="w-5 h-5 text-red-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                        />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-red-900 mb-1">
-                        Error
-                      </h4>
-                      <p className="text-sm text-red-700">{payloadError}</p>
-                    </div>
-                    <button
-                      onClick={() => setPayloadError(null)}
-                      className="flex-shrink-0 text-red-500 hover:text-red-700"
-                      title="Dismiss error"
+              <div className="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg
+                      className="w-5 h-5 text-red-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
+                    </svg>
                   </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-red-900 mb-1">
+                      Error
+                    </h4>
+                    <p className="text-sm text-red-700">{payloadError}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPayloadError(null);
+                    }}
+                    className="flex-shrink-0 text-red-500 hover:text-red-700"
+                    title="Dismiss error"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
                 </div>
-              )}
-            { }
-            {!readOnly &&
-              !isEditMode &&
+              </div>
+            )}
+            {}
+            {!isEditMode &&
               (payloadValidationMessage || fieldErrors.payload) && (
                 <div
-                  className={`p-3 border rounded-md mb-3 mt-5 ${fieldErrors.payload
-                    ? 'bg-red-50 border-red-200'
-                    : isPayloadValid
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-yellow-50 border-yellow-200'
-                    }`}
+                  className={`p-3 border rounded-md mb-3 mt-5 ${
+                    fieldErrors.payload
+                      ? 'bg-red-50 border-red-200'
+                      : isPayloadValid
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-yellow-50 border-yellow-200'
+                  }`}
                 >
                   <p
-                    className={`text-sm ${fieldErrors.payload
-                      ? 'text-red-700'
-                      : isPayloadValid
-                        ? 'text-green-700'
-                        : 'text-yellow-700'
-                      }`}
+                    className={`text-sm ${
+                      fieldErrors.payload
+                        ? 'text-red-700'
+                        : isPayloadValid
+                          ? 'text-green-700'
+                          : 'text-yellow-700'
+                    }`}
                   >
                     {fieldErrors.payload || payloadValidationMessage}
                   </p>
@@ -958,11 +911,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               )}
           </div>
         )}
-        { }
+        {}
         {!isEditMode && (shouldCreateNew || isCloning) && (
           <>
             <div className="flex gap-5 w-full">
-              { }
+              {}
               <div className="flex-1">
                 <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
                   <Terminal className="text-blue-500" size={16} /> Raw Input
@@ -986,7 +939,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   />
                 </div>
               </div>
-              { }
+              {}
               {endpointData.contentType === 'application/json' && (
                 <div className="flex-1">
                   <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
@@ -999,14 +952,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               )}
             </div>
-            { }
+            {}
             <div className="my-6">
               {fieldGenerationError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
                   {fieldGenerationError}
                 </div>
               )}
-              { }
+              {}
               {value && isPayloadValid && (
                 <div className="text-center mb-4">
                   <Button
@@ -1036,7 +989,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             </div>
           </>
         )}
-        { }
+        {}
         {isEditMode && !readOnly && (
           <div className="my-5 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
@@ -1067,7 +1020,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             </div>
           </div>
         )}
-        { }
+        {}
         {showInferredFields && (
           <div className="mt-6 space-y-4">
             {(isEditMode || readOnly || inferredFields.length > 0) && (
@@ -1088,43 +1041,21 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </div>
             )}
-            { }
+            {}
             {inferredFields.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                { }
-                { }
-                { }
+                {}
+                {}
+                {}
                 {!readOnly && (
                   <div className="mt-4">
-                    {!showAddFieldForm ? (
-                      <button
-                        onClick={() => {
-                          setShowAddFieldForm(true);
-                        }}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                          />
-                        </svg>
-                        Add Your First Field
-                      </button>
-                    ) : (
+                    {showAddFieldForm ? (
                       <div className="max-w-md mx-auto p-4 border border-gray-300 rounded-lg bg-gray-50 text-left">
                         <h4 className="text-sm font-medium text-gray-900 mb-3 text-center">
                           Add Your First Field
                         </h4>
                         <div className="space-y-3">
-                          { }
+                          {}
                           <div>
                             <label
                               htmlFor="empty-field-path"
@@ -1149,7 +1080,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Use dots for nested fields (parent.child)
                             </p>
                           </div>
-                          { }
+                          {}
                           <div>
                             <label
                               htmlFor="empty-field-type"
@@ -1175,7 +1106,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               <option value="Array">Array</option>
                             </select>
                           </div>
-                          { }
+                          {}
                           <div className="flex items-center">
                             <input
                               id="empty-field-required"
@@ -1196,7 +1127,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Required field
                             </label>
                           </div>
-                          { }
+                          {}
                           <div className="flex justify-center space-x-2 mt-4">
                             <button
                               onClick={() => {
@@ -1221,13 +1152,35 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                           </div>
                         </div>
                       </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setShowAddFieldForm(true);
+                        }}
+                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        Add Your First Field
+                      </button>
                     )}
                   </div>
                 )}
               </div>
             ) : (
               <>
-                { }
+                {}
                 <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-3">
@@ -1245,35 +1198,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     </div>
                   </div>
                 </div>
-                { }
                 {!readOnly && (
                   <div className="mb-4">
-                    {!showAddFieldForm ? (
-                      <button
-                        onClick={() => {
-                          setShowAddFieldForm(true);
-                        }}
-                        className="inline-flex items-center px-3 py-1 border border-dashed border-gray-300 rounded text-sm text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                          />
-                        </svg>
-                        Add Field
-                      </button>
-                    ) : (
+                    {showAddFieldForm ? (
                       <div className="p-3 border border-gray-200 rounded bg-gray-50">
                         <div className="grid grid-cols-12 gap-2 items-center">
-                          { }
                           <div className="col-span-5">
                             <input
                               type="text"
@@ -1288,7 +1217,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           </div>
-                          { }
                           <div className="col-span-2">
                             <select
                               value={newField.type}
@@ -1307,7 +1235,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               <option value="Array">Array</option>
                             </select>
                           </div>
-                          { }
                           <div className="col-span-2 flex items-center">
                             <input
                               type="checkbox"
@@ -1324,7 +1251,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Required
                             </label>
                           </div>
-                          { }
                           <div className="col-span-3 flex justify-end gap-1">
                             <button
                               onClick={() => {
@@ -1349,10 +1275,31 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                           </div>
                         </div>
                       </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setShowAddFieldForm(true);
+                        }}
+                        className="inline-flex items-center px-3 py-1 border border-dashed border-gray-300 rounded text-sm text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        Add Field
+                      </button>
                     )}
                   </div>
                 )}
-                { }
                 <div className="border border-gray-200 rounded-lg">
                   <div
                     className="space-y-2 p-2"
@@ -1368,7 +1315,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                         <div className="flex gap-3 items-center w-full">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center">
-                              { }
                               <div
                                 className="flex items-center w-full"
                                 style={{ paddingLeft: `${field.level * 24}px` }}
@@ -1444,8 +1390,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </>
             )}
-            { }
-            { }
+            {}
+            {}
           </div>
         )}
       </div>
