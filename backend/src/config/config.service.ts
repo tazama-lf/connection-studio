@@ -147,7 +147,7 @@ export class ConfigService {
         };
       }
 
-      const msgFam = dto.msgFam ?? 'unknown';
+      const { msgFam } = dto;
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           msgFam,
@@ -178,14 +178,13 @@ export class ConfigService {
       );
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: dto.msgFam ?? '',
+        msgFam: dto.msgFam,
         transactionType: dto.transactionType,
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
         payload: payloadValue as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
-        mapping: dto.mapping,
         functions: dto.functions,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
@@ -220,8 +219,7 @@ export class ConfigService {
         error.stack,
       );
 
-      const msgFam = dto.msgFam ?? 'unknown';
-      const { transactionType } = dto;
+      const { msgFam, transactionType } = dto;
       const { version } = dto;
 
       const userMessage = this.configUtils.buildUserErrorMessage(
