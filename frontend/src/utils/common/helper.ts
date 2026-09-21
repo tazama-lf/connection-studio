@@ -21,12 +21,6 @@ const XML_CONTENT_TYPE = 'application/xml';
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
 
-interface PayloadValidationResult {
-  isValid: boolean;
-  message: string;
-  error: string;
-}
-
 export default function ensurePromise<
   T extends (...args: unknown[]) => unknown,
 >(fn: T): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
@@ -296,89 +290,106 @@ export const validateEventType = (eventType: string): string => {
   }
 };
 
-const payloadValidationResult = (
-  isValid: boolean,
-  message: string,
-  error = message,
-): PayloadValidationResult => ({
-  isValid,
-  message,
-  error,
-});
-
-const validateJsonPayload = (
-  payloadValue: unknown,
-): PayloadValidationResult => {
-  try {
-    if (typeof payloadValue === 'string') {
-      const parsed: unknown = JSON.parse(payloadValue);
-      if (!isRecord(parsed)) {
-        throw new Error('Invalid JSON structure');
-      }
-    } else if (!isRecord(payloadValue)) {
-      throw new Error('Invalid JSON structure');
-    }
-
-    return payloadValidationResult(true, 'Valid JSON format detected', '');
-  } catch {
-    return payloadValidationResult(false, 'Invalid JSON format');
-  }
-};
-
-const hasDomParserError = (xmlStr: string): boolean => {
-  try {
-    const xmlDoc = new DOMParser().parseFromString(xmlStr, 'text/xml');
-    return (
-      xmlDoc.getElementsByTagName('parsererror').length > FIRST_ELEMENT_INDEX
-    );
-  } catch {
-    return true;
-  }
-};
-
-const validateXmlPayload = (payloadValue: unknown): PayloadValidationResult => {
-  if (typeof payloadValue !== 'string') {
-    return payloadValidationResult(false, 'Invalid XML format');
-  }
-
-  if (hasDomParserError(payloadValue)) {
-    return payloadValidationResult(false, 'Invalid XML format');
-  }
-
-  try {
-    const parser = new XMLParser({ ignoreAttributes: false });
-    const parsed: unknown = parser.parse(payloadValue);
-    if (!isRecord(parsed) || !validateInput(payloadValue)) {
-      return payloadValidationResult(false, 'Invalid XML format');
-    }
-
-    return payloadValidationResult(true, 'Valid XML format detected', '');
-  } catch {
-    return payloadValidationResult(false, 'Invalid XML format');
-  }
-};
-
 export const validatePayloadContent = (
   payloadValue: unknown,
   contentType: string,
-): PayloadValidationResult => {
+): { isValid: boolean; message: string; error: string } => {
   if (
     payloadValue === undefined ||
     payloadValue === null ||
     payloadValue === ''
   ) {
-    return payloadValidationResult(false, 'Payload is required');
+    return {
+      isValid: false,
+      message: 'Payload is required',
+      error: 'Payload is required',
+    };
   }
-
   if (contentType === JSON_CONTENT_TYPE) {
-    return validateJsonPayload(payloadValue);
-  }
+    try {
+      if (typeof payloadValue === 'string') {
+        const parsed: unknown = JSON.parse(payloadValue);
+        if (
+          parsed === null ||
+          Array.isArray(parsed) ||
+          typeof parsed !== 'object'
+        ) {
+          throw new Error('Invalid JSON structure');
+        }
+      } else if (
+        Array.isArray(payloadValue) ||
+        typeof payloadValue !== 'object'
+      ) {
+        throw new Error('Invalid JSON structure');
+      }
 
-  if (contentType === XML_CONTENT_TYPE) {
-    return validateXmlPayload(payloadValue);
-  }
+      return {
+        isValid: true,
+        message: 'Valid JSON format detected',
+        error: '',
+      };
+    } catch {
+      return {
+        isValid: false,
+        message: 'Invalid JSON format',
+        error: 'Invalid JSON format',
+      };
+    }
+  } else if (contentType === XML_CONTENT_TYPE) {
+    try {
+      if (typeof payloadValue !== 'string') {
+        return {
+          isValid: false,
+          message: 'Invalid XML format',
+          error: 'Invalid XML format',
+        };
+      }
+      const xmlStr = payloadValue;
 
-  return payloadValidationResult(false, '', 'Unsupported content type');
+      // Use DOMParser to detect well-formedness (parsererror presence)
+      try {
+        const xmlDoc = new DOMParser().parseFromString(xmlStr, 'text/xml');
+        const parseError = xmlDoc.getElementsByTagName('parsererror');
+        if (parseError.length > 0) {
+          return {
+            isValid: false,
+            message: 'Invalid XML format',
+            error: 'Invalid XML format',
+          };
+        }
+      } catch (err) {
+        return {
+          isValid: false,
+          message: 'Invalid XML format',
+          error: 'Invalid XML format',
+        };
+      }
+
+      // Additional safety checks
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const parsed: unknown = parser.parse(xmlStr);
+      const result = isRecord(parsed) && validateInput(xmlStr);
+      if (!result) {
+        return {
+          isValid: false,
+          message: 'Invalid XML format',
+          error: 'Invalid XML format',
+        };
+      }
+      return {
+        isValid: true,
+        message: 'Valid XML format detected',
+        error: '',
+      };
+    } catch (e) {
+      return {
+        isValid: false,
+        message: 'Invalid XML format',
+        error: 'Invalid XML format',
+      };
+    }
+  }
+  return { isValid: false, message: '', error: 'Unsupported content type' };
 };
 
 export const validateInput = (input: string): boolean => {
