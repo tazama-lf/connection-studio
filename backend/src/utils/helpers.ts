@@ -160,10 +160,111 @@ export const getGroupNameFromToken = (
   return groupName;
 };
 
+interface PayloadValidationResult {
+  isValid: boolean;
+  message: string;
+}
+
+const validateJsonPayload = (
+  payloadValue: unknown,
+): PayloadValidationResult => {
+  try {
+    let parsedPayload: unknown = payloadValue;
+    if (typeof payloadValue === 'string') {
+      parsedPayload = JSON.parse(payloadValue);
+    }
+    if (
+      parsedPayload === null ||
+      Array.isArray(parsedPayload) ||
+      typeof parsedPayload !== 'object'
+    ) {
+      return {
+        isValid: false,
+        message: 'Payload must be a valid JSON object',
+      };
+    }
+
+    return {
+      isValid: true,
+      message: 'Valid JSON format detected',
+    };
+  } catch {
+    return {
+      isValid: false,
+      message: 'Invalid JSON format',
+    };
+  }
+};
+
+const validateXmlPayload = (payloadValue: unknown): PayloadValidationResult => {
+  try {
+    if (typeof payloadValue !== 'string') {
+      return {
+        isValid: false,
+        message: 'XML payload must be a string',
+      };
+    }
+
+    const xmlStr = payloadValue;
+
+    if (xmlStr.includes('<?')) {
+      return {
+        isValid: false,
+        message: 'XML declarations and processing instructions are not allowed',
+      };
+    }
+
+    // Reject comments
+    if (xmlStr.includes('<!--')) {
+      return {
+        isValid: false,
+        message: 'XML comments are not allowed',
+      };
+    }
+
+    // Reject DOCTYPE
+    if (/<!DOCTYPE/i.test(xmlStr)) {
+      return {
+        isValid: false,
+        message: 'DOCTYPE declarations are not allowed',
+      };
+    }
+
+    // Reject CDATA
+    if (/<!\[CDATA\[/i.test(xmlStr)) {
+      return {
+        isValid: false,
+        message: 'CDATA sections are not allowed',
+      };
+    }
+
+    if (
+      !/^\s*<(?<root>[A-Za-z_][A-Za-z0-9_-]*)(?:\s[^>]*)?>[\s\S]*<\/\k<root>>\s*$/.test(
+        xmlStr,
+      )
+    ) {
+      return {
+        isValid: false,
+        message: 'Invalid XML structure',
+      };
+    }
+
+    return {
+      isValid: true,
+      message: 'Valid XML format detected',
+    };
+  } catch {
+    return {
+      isValid: false,
+      message: 'Invalid XML format',
+    };
+  }
+};
+
 export function validatePayloadContent(
   payloadValue: unknown,
   contentType: string,
-): { isValid: boolean; message: string } {
+): PayloadValidationResult {
   if (
     payloadValue === undefined ||
     payloadValue === null ||
@@ -173,96 +274,11 @@ export function validatePayloadContent(
   }
 
   if (contentType === 'application/json') {
-    try {
-      let parsedPayload: unknown = payloadValue;
-      if (typeof payloadValue === 'string') {
-        parsedPayload = JSON.parse(payloadValue);
-      }
-      if (
-        parsedPayload === null ||
-        Array.isArray(parsedPayload) ||
-        typeof parsedPayload !== 'object'
-      ) {
-        return {
-          isValid: false,
-          message: 'Payload must be a valid JSON object',
-        };
-      }
+    return validateJsonPayload(payloadValue);
+  }
 
-      return {
-        isValid: true,
-        message: 'Valid JSON format detected',
-      };
-    } catch {
-      return {
-        isValid: false,
-        message: 'Invalid JSON format',
-      };
-    }
-  } else if (contentType === 'application/xml') {
-    try {
-      if (typeof payloadValue !== 'string') {
-        return {
-          isValid: false,
-          message: 'XML payload must be a string',
-        };
-      }
-
-      const xmlStr = payloadValue;
-
-      if (xmlStr.includes('<?')) {
-        return {
-          isValid: false,
-          message:
-            'XML declarations and processing instructions are not allowed',
-        };
-      }
-
-      // Reject comments
-      if (xmlStr.includes('<!--')) {
-        return {
-          isValid: false,
-          message: 'XML comments are not allowed',
-        };
-      }
-
-      // Reject DOCTYPE
-      if (/<!DOCTYPE/i.test(xmlStr)) {
-        return {
-          isValid: false,
-          message: 'DOCTYPE declarations are not allowed',
-        };
-      }
-
-      // Reject CDATA
-      if (/<!\[CDATA\[/i.test(xmlStr)) {
-        return {
-          isValid: false,
-          message: 'CDATA sections are not allowed',
-        };
-      }
-
-      if (
-        !/^\s*<(?<root>[A-Za-z_][A-Za-z0-9_-]*)(?:\s[^>]*)?>[\s\S]*<\/\k<root>>\s*$/.test(
-          xmlStr,
-        )
-      ) {
-        return {
-          isValid: false,
-          message: 'Invalid XML structure',
-        };
-      }
-
-      return {
-        isValid: true,
-        message: 'Valid XML format detected',
-      };
-    } catch {
-      return {
-        isValid: false,
-        message: 'Invalid XML format',
-      };
-    }
+  if (contentType === 'application/xml') {
+    return validateXmlPayload(payloadValue);
   }
 
   return {
