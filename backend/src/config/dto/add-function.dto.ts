@@ -1,9 +1,12 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsDefined,
   IsIn,
+  IsNotEmpty,
   IsOptional,
   IsString,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -49,7 +52,12 @@ export class AddFunctionDto {
   @IsOptional()
   columns?: FunctionColumnDto[];
 
+  @ValidateIf(
+    (dto: AddFunctionDto) =>
+      dto.functionName === 'addDataModelTable' || dto.tableName !== undefined,
+  )
+  @IsDefined()
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   tableName?: string;
 }
