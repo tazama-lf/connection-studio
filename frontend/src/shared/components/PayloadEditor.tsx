@@ -77,7 +77,7 @@ const FormattedJsonSection: React.FC<FormattedJsonSectionProps> = ({
   if (parseResult.success && parseResult.data) {
     return (
       <ReactJson
-        src={parseResult.data as object}
+        src={parseResult.data}
         onEdit={(e) => {
           onChange(e.updated_src as Record<string, unknown>);
         }}
@@ -321,7 +321,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     }, [inferredFields, onFieldAdjustmentsChange]);
 
     useEffect(() => {
-      if (onSchemaChange && inferredFields.length > 0) {
+      if (onSchemaChange) {
         onSchemaChange(inferredFields);
       }
     }, [inferredFields, onSchemaChange]);

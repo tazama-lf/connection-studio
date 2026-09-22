@@ -1157,6 +1157,31 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
+  it('emits an empty schema when generated fields are empty', async () => {
+    const { onSchemaChange } = renderEditor({
+      value: '{}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'pacs.008',
+        description: 'test',
+        contentType: 'application/json',
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Generate Fields' }),
+      ).toBeInTheDocument();
+    });
+
+    onSchemaChange.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
+
+    await waitFor(() => {
+      expect(onSchemaChange).toHaveBeenCalledWith([]);
+    });
+  });
+
   it('handles invalid JSON and XML during file upload validation', async () => {
     const { container } = renderEditor();
     const fileInput = container.querySelector(
