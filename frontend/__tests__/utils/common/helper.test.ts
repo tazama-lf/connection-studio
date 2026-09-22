@@ -251,6 +251,34 @@ describe('utils/common/helper.ts', () => {
       ).toBe(true);
     });
 
+    it('reindexes generated array object child paths without duplicating representative indexes', () => {
+      const payload = {
+        users: [
+          { id: 1, name: 'alice' },
+          { id: 2, name: 'bob' },
+        ],
+      };
+
+      const result = convertSchemaToFields(
+        generateJSONSchema(payload),
+        payload,
+      );
+      const paths = result.map((field) => field.path);
+
+      expect(paths).toEqual(
+        expect.arrayContaining([
+          'users[0]',
+          'users[0].id',
+          'users[0].name',
+          'users[1]',
+          'users[1].id',
+          'users[1].name',
+        ]),
+      );
+      expect(paths).not.toContain('users[0][0].id');
+      expect(paths).not.toContain('users[1][0].id');
+    });
+
     it('handles array field with parentPath', () => {
       const result = convertSchemaToFields(
         [

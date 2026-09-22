@@ -751,7 +751,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     await waitFor(() => {
       expect(onSchemaChange).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({ path: 'users[0][0].id' }),
+          expect.objectContaining({ path: 'users[0].id' }),
         ]),
       );
     });

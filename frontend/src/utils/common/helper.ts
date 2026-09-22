@@ -21,6 +21,21 @@ const XML_CONTENT_TYPE = 'application/xml';
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
 
+const reindexArrayChildPath = (
+  childPath: string,
+  fieldPath: string,
+  arrayPath: string,
+): string => {
+  const representativePath = `${fieldPath}[0]`;
+  if (
+    childPath === representativePath ||
+    childPath.startsWith(`${representativePath}.`)
+  ) {
+    return childPath.replace(representativePath, arrayPath);
+  }
+  return childPath.replace(fieldPath, arrayPath);
+};
+
 export default function ensurePromise<
   T extends (...args: unknown[]) => unknown,
 >(fn: T): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
@@ -169,7 +184,7 @@ export const convertSchemaToFields = (
         if (field.children) {
           const indexedChildren = field.children.map((child) => ({
             ...child,
-            path: child.path.replace(field.path, arrayPath),
+            path: reindexArrayChildPath(child.path, field.path, arrayPath),
           }));
           fields.push(
             ...convertSchemaToFields(
