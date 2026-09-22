@@ -165,6 +165,40 @@ interface PayloadValidationResult {
   message: string;
 }
 
+const XML_NAME_PATTERN = '[A-Za-z_][A-Za-z0-9_-]*';
+const XML_ROOT_PATTERN = new RegExp(
+  `^\\s*<(?<root>${XML_NAME_PATTERN})(?:\\s[^>]*)?\\s*(?:\\/|>[\\s\\S]*<\\/\\k<root>)>\\s*$`,
+);
+const XML_TAG_PATTERN = new RegExp(
+  `<\\s*(\\/?)(${XML_NAME_PATTERN})(?:\\s[^<>]*)?(\\/?)\\s*>`,
+  'g',
+);
+
+const hasBalancedXmlTags = (xmlStr: string): boolean => {
+  const stack: string[] = [];
+  const textWithoutTags = xmlStr.replace(XML_TAG_PATTERN, '');
+
+  if (/[<>]/.test(textWithoutTags)) {
+    return false;
+  }
+
+  for (const match of xmlStr.matchAll(XML_TAG_PATTERN)) {
+    const [, closingSlash, tagName, selfClosingSlash] = match;
+    if (selfClosingSlash) {
+      continue;
+    }
+    if (closingSlash) {
+      if (stack.pop() !== tagName) {
+        return false;
+      }
+    } else {
+      stack.push(tagName);
+    }
+  }
+
+  return stack.length === 0;
+};
+
 const validateJsonPayload = (
   payloadValue: unknown,
 ): PayloadValidationResult => {
@@ -238,11 +272,7 @@ const validateXmlPayload = (payloadValue: unknown): PayloadValidationResult => {
       };
     }
 
-    if (
-      !/^\s*<(?<root>[A-Za-z_][A-Za-z0-9_-]*)(?:\s[^>]*)?>[\s\S]*<\/\k<root>>\s*$/.test(
-        xmlStr,
-      )
-    ) {
+    if (!XML_ROOT_PATTERN.test(xmlStr) || !hasBalancedXmlTags(xmlStr)) {
       return {
         isValid: false,
         message: 'Invalid XML structure',
