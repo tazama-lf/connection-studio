@@ -224,7 +224,7 @@ export class ConfigService {
 
       const userMessage = this.configUtils.buildUserErrorMessage(
         error,
-        msgFam,
+        msgFam ?? 'unknown',
         transactionType,
         version,
       );
