@@ -29,12 +29,10 @@ import {
   StatusTransitionDto,
   WorkflowActionDto,
   AddMappingDto,
-} from './dto';
-import type {
   AddFunctionDto,
-  ConfigResponseDto,
-  Config,
-} from '../config/config.interfaces';
+  UpdatePublishingStatusDto,
+} from './dto';
+import type { ConfigResponseDto, Config } from '../config/config.interfaces';
 import {
   RequireClaims,
   TazamaClaims,
@@ -162,9 +160,16 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    const functionData = {
+      functionName: dto.functionName,
+      ...(dto.params !== undefined && { params: dto.params }),
+      ...(dto.columns !== undefined && { columns: dto.columns }),
+      ...(dto.tableName !== undefined && { tableName: dto.tableName }),
+    };
+
     return (await this.configService.addFunctionViaService(
       id,
-      dto as unknown as Record<string, unknown>,
+      functionData,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
@@ -263,7 +268,7 @@ export class ConfigController {
   @Audit()
   async updatePublishingStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: { publishing_status: 'active' | 'inactive' },
+    @Body() dto: UpdatePublishingStatusDto,
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
