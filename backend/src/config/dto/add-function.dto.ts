@@ -12,7 +12,7 @@ const allowedFunctionNames = [
   'addEntity',
   'addAccount',
   'saveTransactionDetails',
-  'transactionRelationship',
+  'addDataModel',
   'addDataModelTable',
 ] as const;
 
