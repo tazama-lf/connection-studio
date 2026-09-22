@@ -8,6 +8,7 @@ import {
   convertSchemaFieldsToInferredFields,
   convertSchemaToFields,
   generateSchemaFromPayload,
+  parsePayloadForSchemaConversion,
   safeJsonParse,
   validateEventType,
   validateInput,
@@ -74,7 +75,12 @@ const FormattedJsonSection: React.FC<FormattedJsonSectionProps> = ({
   onChange,
 }) => {
   const parseResult = safeJsonParse(value);
-  if (parseResult.success && parseResult.data) {
+  if (
+    parseResult.success &&
+    parseResult.data &&
+    typeof parseResult.data === 'object' &&
+    !Array.isArray(parseResult.data)
+  ) {
     return (
       <ReactJson
         src={parseResult.data}
@@ -342,7 +348,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           endpointData.contentType,
         );
         if (schema) {
-          const parsed = safeJsonParse(value);
+          const parsed = parsePayloadForSchemaConversion(
+            value,
+            endpointData.contentType,
+          );
           const fields = convertSchemaToFields(
             schema,
             parsed.success ? parsed.data : undefined,

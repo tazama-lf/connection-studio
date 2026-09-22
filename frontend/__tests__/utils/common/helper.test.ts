@@ -4,6 +4,7 @@ import {
   convertSchemaToFields,
   generateJSONSchema,
   generateSchemaFromPayload,
+  parsePayloadForSchemaConversion,
   safeJsonParse,
   validateEventType,
   validateInput,
@@ -582,6 +583,41 @@ describe('utils/common/helper.ts', () => {
     it('returns object value directly for non-string', () => {
       const obj = { a: 1 };
       expect(safeJsonParse(obj)).toEqual({ success: true, data: obj });
+    });
+  });
+
+  describe('parsePayloadForSchemaConversion', () => {
+    it('preserves JSON parsing behavior', () => {
+      expect(
+        parsePayloadForSchemaConversion(
+          '{"items":[{"id":1}]}',
+          'application/json',
+        ),
+      ).toEqual({
+        success: true,
+        data: { items: [{ id: 1 }] },
+      });
+    });
+
+    it('parses XML payloads for schema conversion', () => {
+      expect(
+        parsePayloadForSchemaConversion(
+          '<root><item><id>1</id></item><item><id>2</id></item></root>',
+          'application/xml',
+        ),
+      ).toEqual({
+        success: true,
+        data: { root: { item: [{ id: 1 }, { id: 2 }] } },
+      });
+    });
+
+    it('returns an error for non-string XML payloads', () => {
+      expect(
+        parsePayloadForSchemaConversion({ root: {} }, 'application/xml'),
+      ).toEqual({
+        success: false,
+        error: 'XML payload must be a string',
+      });
     });
   });
 });

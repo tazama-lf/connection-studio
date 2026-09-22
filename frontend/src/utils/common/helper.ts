@@ -272,6 +272,36 @@ export const generateSchemaFromPayload = (
   return null;
 };
 
+export const parsePayloadForSchemaConversion = (
+  payload: unknown,
+  contentType: string,
+): { success: boolean; data?: unknown; error?: string } => {
+  if (contentType === JSON_CONTENT_TYPE) {
+    return safeJsonParse(payload as Record<string, unknown> | string | null);
+  }
+
+  if (contentType === XML_CONTENT_TYPE) {
+    if (typeof payload !== 'string') {
+      return { success: false, error: 'XML payload must be a string' };
+    }
+
+    try {
+      const xmlparser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: '',
+      });
+      return {
+        success: true,
+        data: xmlparser.parse(payload),
+      };
+    } catch {
+      return { success: false, error: 'Invalid XML' };
+    }
+  }
+
+  return { success: false, error: 'Unsupported content type' };
+};
+
 export const validateTransactionType = (transactionType: string): string => {
   try {
     transactionTypeSchema.validateSync(transactionType);

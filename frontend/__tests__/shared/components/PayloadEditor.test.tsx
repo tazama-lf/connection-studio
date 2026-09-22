@@ -1023,6 +1023,36 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
+  it('generates indexed schema fields from XML array elements', async () => {
+    const { onSchemaChange } = renderEditor({
+      value: '<root><item><id>1</id></item><item><id>2</id></item></root>',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/xml',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Generate Fields' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
+
+    await waitFor(() => {
+      expect(onSchemaChange).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ path: 'root.item[0].id' }),
+          expect.objectContaining({ path: 'root.item[1].id' }),
+        ]),
+      );
+    });
+  });
+
   it('shows XML content validation error on file upload with invalid XML content (line 528)', async () => {
     const originalFileReader = global.FileReader;
 
