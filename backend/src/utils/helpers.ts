@@ -1,11 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { CronTime } from 'cron';
 import * as crypto from 'node:crypto';
-import dotenv from 'dotenv';
 import * as path from 'node:path';
 import type { AuthenticatedUser } from 'src/auth/auth.types';
 import * as jwt from 'jsonwebtoken';
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 interface DecodedUserInfo {
   preferredUsername: string;
@@ -161,3 +159,160 @@ export const getGroupNameFromToken = (
       : null;
   return groupName;
 };
+
+interface PayloadValidationResult {
+  isValid: boolean;
+  message: string;
+}
+
+const XML_NAME_PATTERN = '[A-Za-z_][A-Za-z0-9_-]*';
+const XML_ROOT_PATTERN = new RegExp(
+  `^\\s*<(?<root>${XML_NAME_PATTERN})(?:\\s[^>]*)?\\s*(?:\\/|>[\\s\\S]*<\\/\\k<root>)>\\s*$`,
+);
+const XML_TAG_PATTERN = new RegExp(
+  `<\\s*(\\/?)(${XML_NAME_PATTERN})(?:\\s[^<>]*)?(\\/?)\\s*>`,
+  'g',
+);
+
+const hasBalancedXmlTags = (xmlStr: string): boolean => {
+  const stack: string[] = [];
+  const textWithoutTags = xmlStr.replace(XML_TAG_PATTERN, '');
+
+  if (/[<>]/.test(textWithoutTags)) {
+    return false;
+  }
+
+  for (const match of xmlStr.matchAll(XML_TAG_PATTERN)) {
+    const [, closingSlash, tagName, selfClosingSlash] = match;
+    if (selfClosingSlash) {
+      continue;
+    }
+    if (closingSlash) {
+      if (stack.pop() !== tagName) {
+        return false;
+      }
+    } else {
+      stack.push(tagName);
+    }
+  }
+
+  return stack.length === 0;
+};
+
+const validateJsonPayload = (
+  payloadValue: unknown,
+): PayloadValidationResult => {
+  try {
+    let parsedPayload: unknown = payloadValue;
+    if (typeof payloadValue === 'string') {
+      parsedPayload = JSON.parse(payloadValue);
+    }
+    if (
+      parsedPayload === null ||
+      Array.isArray(parsedPayload) ||
+      typeof parsedPayload !== 'object'
+    ) {
+      return {
+        isValid: false,
+        message: 'Payload must be a valid JSON object',
+      };
+    }
+
+    return {
+      isValid: true,
+      message: 'Valid JSON format detected',
+    };
+  } catch {
+    return {
+      isValid: false,
+      message: 'Invalid JSON format',
+    };
+  }
+};
+
+const validateXmlPayload = (payloadValue: unknown): PayloadValidationResult => {
+  try {
+    if (typeof payloadValue !== 'string') {
+      return {
+        isValid: false,
+        message: 'XML payload must be a string',
+      };
+    }
+
+    const xmlStr = payloadValue;
+
+    if (xmlStr.includes('<?')) {
+      return {
+        isValid: false,
+        message: 'XML declarations and processing instructions are not allowed',
+      };
+    }
+
+    // Reject comments
+    if (xmlStr.includes('<!--')) {
+      return {
+        isValid: false,
+        message: 'XML comments are not allowed',
+      };
+    }
+
+    // Reject DOCTYPE
+    if (/<!DOCTYPE/i.test(xmlStr)) {
+      return {
+        isValid: false,
+        message: 'DOCTYPE declarations are not allowed',
+      };
+    }
+
+    // Reject CDATA
+    if (/<!\[CDATA\[/i.test(xmlStr)) {
+      return {
+        isValid: false,
+        message: 'CDATA sections are not allowed',
+      };
+    }
+
+    if (!XML_ROOT_PATTERN.test(xmlStr) || !hasBalancedXmlTags(xmlStr)) {
+      return {
+        isValid: false,
+        message: 'Invalid XML structure',
+      };
+    }
+
+    return {
+      isValid: true,
+      message: 'Valid XML format detected',
+    };
+  } catch {
+    return {
+      isValid: false,
+      message: 'Invalid XML format',
+    };
+  }
+};
+
+export function validatePayloadContent(
+  payloadValue: unknown,
+  contentType: string,
+): PayloadValidationResult {
+  if (
+    payloadValue === undefined ||
+    payloadValue === null ||
+    payloadValue === ''
+  ) {
+    return { isValid: false, message: 'Payload is required' };
+  }
+
+  if (contentType === 'application/json') {
+    return validateJsonPayload(payloadValue);
+  }
+
+  if (contentType === 'application/xml') {
+    return validateXmlPayload(payloadValue);
+  }
+
+  return {
+    isValid: false,
+    message: 'Unsupported content type',
+  };
+}

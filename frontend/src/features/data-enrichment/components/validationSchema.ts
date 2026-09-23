@@ -430,7 +430,7 @@ export const pullValidationSchema = yup.object({
 
               const formatValue = Array.isArray(fileFormat)
                 ? String(fileFormat[FIRST_ARRAY_INDEX] as unknown)
-                : String(fileFormat as unknown);
+                : String(fileFormat);
 
               if (
                 allowedFormats &&

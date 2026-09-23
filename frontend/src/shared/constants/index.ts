@@ -52,3 +52,101 @@ export const TRANSACTION_TYPE = {
 
 export type TransactionType =
   (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
+
+export const sampleJsonPayload = `{
+  "FIToFIPmtSts": {
+    "GrpHdr": {
+      "MsgId": "msg_id",
+      "CreDtTm": "2023-02-03T09:53:58.069Z"
+    },
+    "TxInfAndSts": {
+      "OrgnlInstrId": "5d158d92f70142a6ac7ffba30ac6c2db",
+      "OrgnlEndToEndId": "End_To_End_Id",
+      "TxSts": "ACCC",
+      "ChrgsInf": [
+        {
+          "Amt": {
+            "Amt": 3000.07,
+            "Ccy": "USD"
+          },
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "typolog028"
+              }
+            }
+          }
+        },
+        {
+          "Amt": {
+            "Amt": 153.57,
+            "Ccy": "USD"
+          },
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "typolog028"
+              }
+            }
+          }
+        },
+        {
+          "Amt": {
+            "Amt": 35,
+            "Ccy": "USD"
+          },
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "dfsp002"
+              }
+            }
+          }
+        }
+      ],
+      "AccptncDtTm": "2023-02-03T09:53:58.069Z",
+      "InstgAgt": {
+        "FinInstnId": {
+          "ClrSysMmbId": {
+            "MmbId": "typolog028"
+          }
+        }
+      },
+      "InstdAgt": {
+        "FinInstnId": {
+          "ClrSysMmbId": {
+            "MmbId": "dfsp002"
+          }
+        }
+      }
+    }
+  }
+}`;
+export const sampleXmlPayload = `<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
+  <FIToFICstmrCdtTrf>
+    <GrpHdr>
+      <MsgId>TXN12345</MsgId>
+      <CreDtTm>2023-10-15T10:30:00</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+    </GrpHdr>
+    <CdtTrfTxInf>
+      <PmtId>
+        <InstrId>INSTR001</InstrId>
+        <EndToEndId>E2E001</EndToEndId>
+      </PmtId>
+      <IntrBkSttlmAmt Ccy="USD">100.00</IntrBkSttlmAmt>
+      <Dbtr>
+        <Nm>John Doe</Nm>
+        <Id>
+          <PrvtId>CUST123</PrvtId>
+        </Id>
+      </Dbtr>
+      <Cdtr>
+        <Nm>Jane Smith</Nm>
+        <Id>
+          <PrvtId>CUST456</PrvtId>
+        </Id>
+      </Cdtr>
+    </CdtTrfTxInf>
+  </FIToFICstmrCdtTrf>
+</Document>`;

@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
-import { CheckCircleIcon, XCircleIcon, UploadIcon } from 'lucide-react';
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  UploadIcon,
+  FileInputIcon,
+} from 'lucide-react';
 import {
   simulationApi,
   type SimulationResult,
@@ -8,18 +13,46 @@ import {
 import ReactJson from 'react-json-view';
 import { useAuth } from '@features/auth';
 import { isApprover } from '@utils/common/roleUtils';
-import { XMLParser } from 'fast-xml-parser';
+import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+
+const xmlBuilder = new XMLBuilder({
+  ignoreAttributes: false,
+  attributeNamePrefix: '',
+  format: true,
+});
+
+const normalizeInitialPayload = (
+  payload: string | Record<string, unknown> | null | undefined,
+  contentType: 'application/json' | 'application/xml',
+): string => {
+  if (payload === null || payload === undefined) return '';
+  if (typeof payload === 'string') return payload;
+  if (contentType === 'application/xml') {
+    try {
+      return xmlBuilder.build(payload);
+    } catch {
+      // XML serialization failed – return empty so the Load Payload
+      // button stays disabled, avoiding a JSON string in an XML context.
+      return '';
+    }
+  }
+  return JSON.stringify(payload, null, 2);
+};
+
 interface SimulationPanelProps {
   endpointId?: number;
   contentType?: 'application/json' | 'application/xml';
   onSimulationComplete: (success: boolean) => void;
   readOnly?: boolean;
+  initialPayload?: string | Record<string, unknown> | null;
 }
+
 export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   endpointId,
   contentType = 'application/json',
   onSimulationComplete,
   readOnly = false,
+  initialPayload = '',
 }: SimulationPanelProps): React.JSX.Element => {
   const { user } = useAuth();
   const isApproverUser = isApprover(user?.claims ?? []);
@@ -127,7 +160,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
             <UploadIcon size={18} className="text-blue-500" />
             Test Payload
             <span className="ml-2 text-xs font-normal text-gray-500">
-              (Enter or import a sample payload to simulate)
+              (Enter, import, or load a sample payload to simulate)
             </span>
           </h4>
           <div className="flex items-center space-x-2" data-id="element-706">
@@ -139,6 +172,28 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
               onChange={handleFileUpload}
               data-id="element-707"
             />
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<FileInputIcon size={16} />}
+              onClick={() => {
+                const normalized = normalizeInitialPayload(
+                  initialPayload,
+                  contentType,
+                );
+                setTestPayload(normalized);
+                setSimulationError(null);
+                setSimulationResult(null);
+                setHasRun(false);
+                onSimulationComplete(false);
+              }}
+              disabled={
+                !normalizeInitialPayload(initialPayload, contentType).trim() ||
+                (isApproverUser ? false : readOnly)
+              }
+            >
+              Load Payload
+            </Button>
             <Button
               variant="secondary"
               size="sm"

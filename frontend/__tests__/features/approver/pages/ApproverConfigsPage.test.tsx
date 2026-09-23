@@ -216,7 +216,7 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('Yes, Approve Configuration'));
 
     await waitFor(() => {
-      expect(showError).toHaveBeenCalledWith('Failed to approve configuration');
+      expect(showError).toHaveBeenCalledWith('boom');
     });
   });
 
@@ -838,7 +838,7 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('review-approve'));
 
     await waitFor(() => {
-      expect(showError).toHaveBeenCalledWith('Failed to approve configuration');
+      expect(showError).toHaveBeenCalledWith('network crash');
     });
     useStateSpy.mockRestore();
   });

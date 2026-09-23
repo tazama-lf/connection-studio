@@ -24,7 +24,10 @@ const ReactJson = ({
       </button>
     )}
     {onAdd && (
-      <button data-testid="rjv-add" onClick={() => onAdd({ updated_src: src })}>
+      <button
+        data-testid="rjv-add"
+        onClick={() => onAdd({ updated_src: src })}
+      >
         Add JSON
       </button>
     )}

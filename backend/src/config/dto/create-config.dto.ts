@@ -5,30 +5,27 @@ import {
   IsNotEmpty,
   IsObject,
   IsArray,
-  ValidateIf,
 } from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
+import { IsValidPayload } from '../../decorators/is-valid-payload.decorator';
 
 export class CreateConfigDto {
   @IsString()
   @IsOptional()
+  @IsNotEmpty()
   msgFam?: string;
 
   @IsString()
   @IsNotEmpty()
-  transactionType: string;
+  transactionType!: string;
 
   @IsString()
   @IsOptional()
   tableName?: string;
 
   @IsString()
-  @IsOptional()
-  endpointPath?: string;
-
-  @IsString()
   @IsNotEmpty()
-  version: string;
+  version!: string;
 
   @IsEnum(ContentType)
   @IsOptional()
@@ -38,12 +35,8 @@ export class CreateConfigDto {
   @IsOptional()
   schema?: Record<string, unknown>;
 
-  @ValidateIf((o) => typeof o.payload === 'string')
-  @IsString()
-  @ValidateIf((o) => typeof o.payload === 'object')
-  @IsObject()
-  @IsNotEmpty()
-  payload: string | Record<string, unknown>;
+  @IsValidPayload()
+  payload!: string | Record<string, unknown>;
 
   @IsString()
   @IsOptional()
@@ -51,11 +44,8 @@ export class CreateConfigDto {
 
   @IsArray()
   @IsOptional()
-  mapping?: Array<Record<string, unknown>>;
-
-  @IsArray()
-  @IsOptional()
   functions?: Array<Record<string, unknown>>;
+
   @IsString()
   @IsOptional()
   related_transaction?: string;
