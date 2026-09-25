@@ -4,7 +4,12 @@ FROM node:20-alpine
 WORKDIR /app
 # Install dependencies for better Docker layer caching
 COPY package.json package-lock.json* ./
-RUN npm i --legacy-peer-deps
+# npm/cli#4828: package-lock.json resolved on a non-Alpine host omits the
+# musl-native optional deps (rollup, lightningcss, esbuild, ...), which
+# makes Vite crash at startup. Drop the lock so npm re-resolves optionals
+# against the actual runtime platform.
+RUN rm -f package-lock.json \
+ && npm i --legacy-peer-deps
 # Copy source code
 COPY . .
 # Expose the development server port
