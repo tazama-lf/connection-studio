@@ -670,8 +670,14 @@ export class SimulationService {
       return obj;
     }
     if (Array.isArray(obj)) {
+      const itemSchema = (schema as Record<string, unknown> | undefined)?.items;
       return obj.map((item) =>
-        this.normalizeXmlParsedObjectWithSchema(item, schema, path, rootSchema),
+        this.normalizeXmlParsedObjectWithSchema(
+          item,
+          itemSchema,
+          path,
+          rootSchema,
+        ),
       );
     }
 
@@ -685,7 +691,17 @@ export class SimulationService {
         const schemaProperties = (schema as Record<string, unknown> | undefined)
           ?.properties as Record<string, unknown> | undefined;
         if (schemaProperties && '#text' in schemaProperties) {
-          normalized['#text'] = value;
+          const textSchema = schemaProperties['#text'] as
+            | Record<string, unknown>
+            | undefined;
+          const expectedTextType = textSchema?.type as string | undefined;
+          normalized['#text'] =
+            typeof value === 'string' &&
+            (expectedTextType === 'number' || expectedTextType === 'integer') &&
+            value.trim() !== '' &&
+            !Number.isNaN(Number(value))
+              ? Number(value)
+              : value;
           continue;
         }
 
@@ -748,6 +764,9 @@ export class SimulationService {
     let current = schema as Record<string, unknown>;
 
     for (const part of parts) {
+      if (current.type === 'array' && current.items) {
+        current = current.items as Record<string, unknown>;
+      }
       const props = current.properties as Record<string, unknown> | undefined;
       if (props?.[part]) {
         current = props[part] as Record<string, unknown>;
@@ -772,6 +791,9 @@ export class SimulationService {
     let current = schema as Record<string, unknown>;
 
     for (const part of parts) {
+      if (current.type === 'array' && current.items) {
+        current = current.items as Record<string, unknown>;
+      }
       const props = current.properties as Record<string, unknown> | undefined;
       if (props?.[part]) {
         current = props[part] as Record<string, unknown>;

@@ -44,9 +44,9 @@ describe('CreateConfigDto (issue #136 — cloning with existing mappings)', () =
       someUnknownField: 'should be rejected',
     });
 
-    expect(
-      errors.some((error) => error.property === 'someUnknownField'),
-    ).toBe(true);
+    expect(errors.some((error) => error.property === 'someUnknownField')).toBe(
+      true,
+    );
   });
 
   it('rejects a non-array mapping value', () => {

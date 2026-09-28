@@ -4609,6 +4609,100 @@ describe('SimulationService', () => {
       expect(errors).toEqual([]);
     });
 
+    it('should resolve item schemas and coerce numeric #text for a repeated attribute+text element (CodeRabbit PR #145 findings)', () => {
+      // Shape verified against the REAL (unmocked) xml2js parser for
+      // <Item Ccy="USD">100.00</Item> repeated siblings: no value processors
+      // are configured, so #text comes back as the STRING "100.00", not a
+      // number — unlike the frontend's fast-xml-parser/JSON path used
+      // elsewhere in this suite. xml2js is jest.mock()'d in this file, so
+      // this test starts from that already-parsed shape directly rather
+      // than going through parsePayload().
+      const parsed = {
+        Doc: {
+          Items: {
+            Item: [
+              { '#text': '100.00', Ccy: 'USD' },
+              { '#text': '50.00', Ccy: 'EUR' },
+            ],
+          },
+        },
+      };
+
+      const schema = {
+        type: 'object',
+        required: ['Doc'],
+        properties: {
+          Doc: {
+            type: 'object',
+            required: ['Items'],
+            properties: {
+              Items: {
+                type: 'object',
+                required: ['Item'],
+                properties: {
+                  Item: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['#text', 'Ccy'],
+                      properties: {
+                        '#text': { type: 'number' },
+                        Ccy: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const normalized = (service as any).normalizePayloadForValidation(
+        parsed,
+        { schema },
+      );
+      expect(normalized.Doc.Items.Item).toEqual([
+        { '#text': 100, Ccy: 'USD' },
+        { '#text': 50, Ccy: 'EUR' },
+      ]);
+
+      const errors = (service as any).validatePayloadAgainstSchema(
+        parsed,
+        (service as any).cleanSchemaForXML(schema),
+        { schema },
+      );
+      expect(errors).toEqual([]);
+    });
+
+    it('should leave a non-numeric-looking #text string unconverted even when the schema declares a number type', () => {
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        { '#text': 'not-a-number', Ccy: 'USD' },
+        {
+          type: 'object',
+          properties: {
+            '#text': { type: 'number' },
+            Ccy: { type: 'string' },
+          },
+        },
+      );
+      expect(result).toEqual({ '#text': 'not-a-number', Ccy: 'USD' });
+    });
+
+    it('should not attempt numeric coercion when #text is already a number', () => {
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        { '#text': 100, Ccy: 'USD' },
+        {
+          type: 'object',
+          properties: {
+            '#text': { type: 'number' },
+            Ccy: { type: 'string' },
+          },
+        },
+      );
+      expect(result).toEqual({ '#text': 100, Ccy: 'USD' });
+    });
+
     it('should stringify non-string XML payload before parsing', async () => {
       const mockConfig = {
         id: 1,
