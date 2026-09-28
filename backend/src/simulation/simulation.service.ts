@@ -682,11 +682,6 @@ export class SimulationService {
         continue;
       }
       if (key === '#text') {
-        // If this object's own schema explicitly declares a '#text' property
-        // (e.g. an XML element with both an attribute and text content,
-        // generated from a payload parsed with fast-xml-parser), keep it as
-        // '#text' instead of renaming it to 'textContent' — the schema is
-        // the source of truth for what shape validation expects.
         const schemaProperties = (schema as Record<string, unknown> | undefined)
           ?.properties as Record<string, unknown> | undefined;
         if (schemaProperties && '#text' in schemaProperties) {

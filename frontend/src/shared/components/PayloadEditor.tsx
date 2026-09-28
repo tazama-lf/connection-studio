@@ -786,12 +786,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 )}
               </h3>
               <div className="flex items-center space-x-2">
-                {/* readOnly is redundant here today (the enclosing block at
-                    line ~772 already narrows it to false) but is kept as a
-                    defensive, self-contained guard per issue #139 — this
-                    button calls onChange and must never depend solely on an
-                    ancestor condition staying correct. */}
-                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see comment above */}
+                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive, #139 */}
                 {!isEditMode && !value && !readOnly && (
                   <div className="flex space-x-2">
                     <Button
@@ -819,7 +814,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     </Button>
                   </div>
                 )}
-                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive per-button readOnly guard, see comment above (issue #139) */}
+                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive, #139 */}
                 {!isEditMode && value && !readOnly && (
                   <Button
                     variant="secondary"
@@ -835,7 +830,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   </Button>
                 )}
                 <div className="">
-                  {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive per-button readOnly guard, see comment above (issue #139) */}
+                  {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive, #139 */}
                   {!isEditMode && !readOnly && (
                     <>
                       <input
