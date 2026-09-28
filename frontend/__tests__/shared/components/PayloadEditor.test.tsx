@@ -1428,6 +1428,33 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
+  it('shows the raw payload textarea and Generate Fields when cloning, even though isEditMode is true (issue #136 clone-payload regression)', async () => {
+    // A real "Clone" action always passes a real source endpointId, so
+    // EditEndpointModal derives isEditMode={!isNewEndpoint} = true for
+    // clone too — isCloning must still be enough to show this section on
+    // its own, independent of isEditMode.
+    renderEditor({
+      shouldCreateNew: false,
+      isCloning: true,
+      isEditMode: true,
+      value: '{"x":1}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/Enter your JSON payload/i),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Raw Input/i)).toBeInTheDocument();
+  });
+
   it('endpoint path preview shows v1 fallback when version is empty (covers version || v1)', async () => {
     renderEditor({
       endpointData: {

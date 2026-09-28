@@ -299,10 +299,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         (!existingSchemaFields || existingSchemaFields.length === 0)
       ) {
         setShowInferredFields(true);
-        setInferredFields([]);
+        setInferredFields((prev) => (prev.length === 0 ? prev : []));
       } else if (!configId) {
         setShowInferredFields(true);
-        setInferredFields([]);
+        setInferredFields((prev) => (prev.length === 0 ? prev : []));
       }
     }, [existingSchemaFields, configId]);
 
@@ -786,7 +786,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 )}
               </h3>
               <div className="flex items-center space-x-2">
-                {!isEditMode && !value && (
+                {/* readOnly is redundant here today (the enclosing block at
+                    line ~772 already narrows it to false) but is kept as a
+                    defensive, self-contained guard per issue #139 — this
+                    button calls onChange and must never depend solely on an
+                    ancestor condition staying correct. */}
+                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see comment above */}
+                {!isEditMode && !value && !readOnly && (
                   <div className="flex space-x-2">
                     <Button
                       variant="secondary"
@@ -813,7 +819,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     </Button>
                   </div>
                 )}
-                {!isEditMode && value && (
+                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive per-button readOnly guard, see comment above (issue #139) */}
+                {!isEditMode && value && !readOnly && (
                   <Button
                     variant="secondary"
                     size="sm"
@@ -828,7 +835,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   </Button>
                 )}
                 <div className="">
-                  {!isEditMode && (
+                  {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive per-button readOnly guard, see comment above (issue #139) */}
+                  {!isEditMode && !readOnly && (
                     <>
                       <input
                         type="file"
@@ -930,7 +938,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           </div>
         )}
         {}
-        {!isEditMode && (shouldCreateNew || isCloning) && (
+        {(shouldCreateNew || isCloning) && (
           <>
             <div className="flex gap-5 w-full">
               {}
