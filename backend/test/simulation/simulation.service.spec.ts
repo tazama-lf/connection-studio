@@ -4518,6 +4518,97 @@ describe('SimulationService', () => {
       expect(result.child).toBeDefined();
     });
 
+    it('should keep #text as-is (not rename to textContent) when the schema explicitly declares a #text property (issue #134)', () => {
+      // XML element with both an attribute and text content, as produced by
+      // fast-xml-parser({ ignoreAttributes: false, attributeNamePrefix: '' })
+      // e.g. <IntrBkSttlmAmt Ccy="USD">100.00</IntrBkSttlmAmt>
+      const xmlObj = {
+        '#text': 100,
+        Ccy: 'USD',
+      };
+      const schema = {
+        type: 'object',
+        properties: {
+          '#text': { type: 'number' },
+          Ccy: { type: 'string' },
+        },
+        required: ['#text', 'Ccy'],
+      };
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        'IntrBkSttlmAmt',
+      );
+
+      expect(result).toEqual({ '#text': 100, Ccy: 'USD' });
+      expect(result.textContent).toBeUndefined();
+    });
+
+    it('should resolve nested schemas correctly beyond one level of depth, and validate a real attribute+text payload with zero errors (issue #134 regression)', () => {
+      // Mirrors the exact structure from
+      // https://github.com/tazama-lf/connection-studio/issues/134 :
+      // an XML element nested 4 levels deep that has both an attribute and
+      // text content, with a schema generated the way the frontend does
+      // (every key required, #text included as its own required property).
+      const payload = {
+        Document: {
+          FIToFICstmrCdtTrf: {
+            CdtTrfTxInf: {
+              IntrBkSttlmAmt: { '#text': 100, Ccy: 'USD' },
+            },
+          },
+        },
+      };
+      const schema = {
+        type: 'object',
+        properties: {
+          Document: {
+            type: 'object',
+            properties: {
+              FIToFICstmrCdtTrf: {
+                type: 'object',
+                properties: {
+                  CdtTrfTxInf: {
+                    type: 'object',
+                    properties: {
+                      IntrBkSttlmAmt: {
+                        type: 'object',
+                        properties: {
+                          '#text': { type: 'number' },
+                          Ccy: { type: 'string' },
+                        },
+                        required: ['#text', 'Ccy'],
+                      },
+                    },
+                    required: ['IntrBkSttlmAmt'],
+                  },
+                },
+                required: ['CdtTrfTxInf'],
+              },
+            },
+            required: ['FIToFICstmrCdtTrf'],
+          },
+        },
+        required: ['Document'],
+      };
+
+      const normalized = (service as any).normalizeXmlParsedObjectWithSchema(
+        payload,
+        schema,
+      );
+      expect(
+        normalized.Document.FIToFICstmrCdtTrf.CdtTrfTxInf.IntrBkSttlmAmt,
+      ).toEqual({ '#text': 100, Ccy: 'USD' });
+
+      const errors = (service as any).validatePayloadAgainstSchema(
+        payload,
+        (service as any).cleanSchemaForXML(schema),
+        { schema },
+      );
+      expect(errors).toEqual([]);
+    });
+
     it('should stringify non-string XML payload before parsing', async () => {
       const mockConfig = {
         id: 1,

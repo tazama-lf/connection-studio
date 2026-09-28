@@ -664,13 +664,14 @@ export class SimulationService {
     obj: unknown,
     schema?: unknown,
     path = '',
+    rootSchema: unknown = schema,
   ): unknown {
     if (!obj || typeof obj !== 'object') {
       return obj;
     }
     if (Array.isArray(obj)) {
       return obj.map((item) =>
-        this.normalizeXmlParsedObjectWithSchema(item, schema, path),
+        this.normalizeXmlParsedObjectWithSchema(item, schema, path, rootSchema),
       );
     }
 
@@ -681,6 +682,18 @@ export class SimulationService {
         continue;
       }
       if (key === '#text') {
+        // If this object's own schema explicitly declares a '#text' property
+        // (e.g. an XML element with both an attribute and text content,
+        // generated from a payload parsed with fast-xml-parser), keep it as
+        // '#text' instead of renaming it to 'textContent' — the schema is
+        // the source of truth for what shape validation expects.
+        const schemaProperties = (schema as Record<string, unknown> | undefined)
+          ?.properties as Record<string, unknown> | undefined;
+        if (schemaProperties && '#text' in schemaProperties) {
+          normalized['#text'] = value;
+          continue;
+        }
+
         const hasAttributes = Object.keys(obj).some(
           (k) => k !== '#text' && !k.startsWith('@'),
         );
@@ -688,7 +701,7 @@ export class SimulationService {
           (k) => k === '#text' || k.startsWith('@'),
         );
 
-        const expectedType = this.getSchemaTypeAtPath(schema, path);
+        const expectedType = this.getSchemaTypeAtPath(rootSchema, path);
 
         if (expectedType === 'string' && hasAttributes) {
           return value;
@@ -702,13 +715,14 @@ export class SimulationService {
       }
       const currentPath = path ? `${path}.${key}` : key;
 
-      const fieldSchema = this.getSchemaAtPath(schema, currentPath);
+      const fieldSchema = this.getSchemaAtPath(rootSchema, currentPath);
 
       if (value && typeof value === 'object') {
         const normalizedValue = this.normalizeXmlParsedObjectWithSchema(
           value,
           fieldSchema,
           currentPath,
+          rootSchema,
         );
         if (
           fieldSchema?.type === 'string' &&
