@@ -186,6 +186,7 @@ export class ConfigService {
         payload: payloadValue as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
         functions: dto.functions,
+        mapping: dto.mapping,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
