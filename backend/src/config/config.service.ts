@@ -1,33 +1,33 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
-  BadRequestException,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
-import { ConfigRepository } from './config.repository';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
-import { DemsClient } from '../services/dems-client.service';
-import { NotificationService } from '../notification/notification.service';
-import { ConfigWorkflowService } from './config-workflow.service';
-import { ConfigUtilsService } from './config-utils.service';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
+import { AuthenticatedUser } from '../auth/auth.types';
+import { EventType } from '../enums/events.enum';
+import { NotificationService } from '../notification/notification.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
+import { DemsClient } from '../services/dems-client.service';
 import { SftpService } from '../sftp/sftp.service';
+import { validatePayloadContent } from '../utils/helpers';
 import { RbacService } from '../utils/rbac/rbacHelper';
+import { ConfigUtilsService } from './config-utils.service';
+import { ConfigWorkflowService } from './config-workflow.service';
 import {
   Config,
-  CreateConfigDto,
   ConfigResponseDto,
-  ContentType,
   ConfigStatus,
+  ContentType,
+  CreateConfigDto,
   WorkflowAction,
 } from './config.interfaces';
-import { WorkflowActionDto, SftpConfigDataDto } from './dto';
-import { EventType } from '../enums/events.enum';
-import { AuthenticatedUser } from '../auth/auth.types';
-import { AdminServiceClient } from '../services/admin-service-client.service';
-import { validatePayloadContent } from '../utils/helpers';
+import { ConfigRepository } from './config.repository';
+import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 
 @Injectable()
 export class ConfigService {
@@ -141,7 +141,7 @@ export class ConfigService {
     try {
       const { version } = dto;
       const contentType = dto.contentType ?? ContentType.JSON;
-      const parsedPayload: unknown = dto.payload;
+      const payloadValue: unknown = dto.payload;
 
       const payloadValidation = validatePayloadContent(
         dto.payload,
@@ -154,7 +154,7 @@ export class ConfigService {
         };
       }
 
-      const msgFam = dto.msgFam || 'unknown';
+      const msgFam = dto.msgFam ?? 'unknown';
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           msgFam,
@@ -185,14 +185,13 @@ export class ConfigService {
       );
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: dto.msgFam || '',
+        msgFam,
         transactionType: dto.transactionType,
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
-        payload: parsedPayload as string | Record<string, unknown>,
+        payload: payloadValue as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
-        mapping: dto.mapping,
         functions: dto.functions,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
@@ -227,13 +226,12 @@ export class ConfigService {
         error.stack,
       );
 
-      const msgFam = dto.msgFam || 'unknown';
-      const { transactionType } = dto;
+      const { msgFam, transactionType } = dto;
       const { version } = dto;
 
       const userMessage = this.configUtils.buildUserErrorMessage(
         error,
-        msgFam,
+        msgFam ?? 'unknown',
         transactionType,
         version,
       );
@@ -390,17 +388,8 @@ export class ConfigService {
 
       case 'approve': {
         const approvalDto = actionDto.data;
-        const updatedConfig =
-          await this.configRepository.getupdateConfigByStatus(
-            id,
-            ConfigStatus.APPROVED,
-            token,
-            approvalDto.comment,
-          );
 
-        if (updatedConfig) {
-          const config = updatedConfig;
-
+        try {
           const { transactionType } = config;
 
           if (transactionType) {
@@ -441,11 +430,31 @@ export class ConfigService {
 
             await Promise.all(tableCreationPromises);
           }
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `Failed to create table(s) during approve: ${errMsg}`,
+          );
+          throw new BadRequestException(
+            `Failed to approve configuration: ${errMsg}`,
+          );
+        }
+
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.APPROVED,
+            token,
+            approvalDto.comment,
+          );
+
+        if (updatedConfig) {
+          const approvedConfig = updatedConfig;
 
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
-            config,
+            approvedConfig,
             token,
             approvalDto.comment,
           );

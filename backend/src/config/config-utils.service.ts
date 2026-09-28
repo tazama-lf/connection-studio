@@ -25,7 +25,7 @@ export class ConfigUtilsService {
 
   buildUserErrorMessage(
     error: unknown,
-    msgFam: string,
+    msgFam: string | undefined,
     transactionType: string,
     version: string,
   ): string {

@@ -21,6 +21,21 @@ const XML_CONTENT_TYPE = 'application/xml';
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
 
+const reindexArrayChildPath = (
+  childPath: string,
+  fieldPath: string,
+  arrayPath: string,
+): string => {
+  const representativePath = `${fieldPath}[0]`;
+  if (
+    childPath === representativePath ||
+    childPath.startsWith(`${representativePath}.`)
+  ) {
+    return childPath.replace(representativePath, arrayPath);
+  }
+  return childPath.replace(fieldPath, arrayPath);
+};
+
 export default function ensurePromise<
   T extends (...args: unknown[]) => unknown,
 >(fn: T): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
@@ -50,84 +65,6 @@ export const capitalizeFirstLetter = (s: string): string => {
   const rest = s.slice(NEXT_LEVEL).toLowerCase();
   return `${firstChar}${rest}`;
 };
-
-// export const generateJSONSchema = (
-//   obj: Record<string, unknown>,
-//   path = '',
-// ): SchemaField[] => {
-//   const schema: SchemaField[] = [];
-
-//   Object.entries(obj).forEach(([key, value]) => {
-//     const fieldPath = path ? `${path}.${key}` : key;
-
-//     const field: SchemaField = {
-//       name: key,
-//       path: fieldPath,
-//       type: Array.isArray(value)
-//         ? 'array'
-//         : typeof value === 'object'
-//           ? 'object'
-//           : (typeof value as SchemaField['type']),
-//       isRequired: true,
-//     };
-
-//     // Handle nested object
-//     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-//       field.children = generateJSONSchema(
-//         value as Record<string, unknown>,
-//         fieldPath,
-//       );
-//     }
-
-//     // Handle array
-//     else if (Array.isArray(value)) {
-//       field.children = [];
-
-//       value.forEach((item, index) => {
-//         const itemPath = `${fieldPath}[${index}]`;
-
-//         // Array element is an object
-//         if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
-//           field.children!.push({
-//             name: `[${index}]`,
-//             path: itemPath,
-//             type: 'object',
-//             isRequired: true,
-//             children: generateJSONSchema(
-//               item as Record<string, unknown>,
-//               itemPath,
-//             ),
-//           });
-//         }
-
-//         // Array element is another array
-//         else if (Array.isArray(item)) {
-//           field.children!.push({
-//             name: `[${index}]`,
-//             path: itemPath,
-//             type: 'array',
-//             isRequired: true,
-//             children: [],
-//           });
-//         }
-
-//         // Array element is a primitive
-//         else {
-//           field.children!.push({
-//             name: `[${index}]`,
-//             path: itemPath,
-//             type: typeof item as SchemaField['type'],
-//             isRequired: true,
-//           });
-//         }
-//       });
-//     }
-
-//     schema.push(field);
-//   });
-
-//   return schema;
-// };
 
 export const generateJSONSchema = (obj: unknown, path = ''): SchemaField[] => {
   const schema: SchemaField[] = [];
@@ -162,7 +99,6 @@ export const generateJSONSchema = (obj: unknown, path = ''): SchemaField[] => {
           firstElement !== null &&
           !Array.isArray(firstElement)
         ) {
-          field.path = `${fieldPath}[0]`;
           field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
           field.arrayElementType = 'object';
         } else if (Array.isArray(firstElement)) {
@@ -246,9 +182,13 @@ export const convertSchemaToFields = (
         });
 
         if (field.children) {
+          const indexedChildren = field.children.map((child) => ({
+            ...child,
+            path: reindexArrayChildPath(child.path, field.path, arrayPath),
+          }));
           fields.push(
             ...convertSchemaToFields(
-              field.children,
+              indexedChildren,
               item,
               level + NEXT_LEVEL,
               arrayPath,
@@ -332,6 +272,36 @@ export const generateSchemaFromPayload = (
   return null;
 };
 
+export const parsePayloadForSchemaConversion = (
+  payload: unknown,
+  contentType: string,
+): { success: boolean; data?: unknown; error?: string } => {
+  if (contentType === JSON_CONTENT_TYPE) {
+    return safeJsonParse(payload as Record<string, unknown> | string | null);
+  }
+
+  if (contentType === XML_CONTENT_TYPE) {
+    if (typeof payload !== 'string') {
+      return { success: false, error: 'XML payload must be a string' };
+    }
+
+    try {
+      const xmlparser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: '',
+      });
+      return {
+        success: true,
+        data: xmlparser.parse(payload),
+      };
+    } catch {
+      return { success: false, error: 'Invalid XML' };
+    }
+  }
+
+  return { success: false, error: 'Unsupported content type' };
+};
+
 export const validateTransactionType = (transactionType: string): string => {
   try {
     transactionTypeSchema.validateSync(transactionType);
@@ -369,8 +339,16 @@ export const validatePayloadContent = (
   payloadValue: unknown,
   contentType: string,
 ): { isValid: boolean; message: string; error: string } => {
-  if (!payloadValue) {
-    return { isValid: true, message: '', error: '' };
+  if (
+    payloadValue === undefined ||
+    payloadValue === null ||
+    payloadValue === ''
+  ) {
+    return {
+      isValid: false,
+      message: 'Payload is required',
+      error: 'Payload is required',
+    };
   }
   if (contentType === JSON_CONTENT_TYPE) {
     try {
@@ -399,10 +377,10 @@ export const validatePayloadContent = (
       return {
         isValid: false,
         message: 'Invalid JSON format',
-        error: 'Invalid JSON formats',
+        error: 'Invalid JSON format',
       };
     }
-  } else if (contentType === 'application/xml') {
+  } else if (contentType === XML_CONTENT_TYPE) {
     try {
       if (typeof payloadValue !== 'string') {
         return {

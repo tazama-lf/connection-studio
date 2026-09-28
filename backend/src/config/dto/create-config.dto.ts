@@ -5,14 +5,15 @@ import {
   IsNotEmpty,
   IsObject,
   IsArray,
-  ValidateIf,
 } from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
+import { IsValidPayload } from '../../decorators/is-valid-payload.decorator';
 
 export class CreateConfigDto {
   @IsString()
+  @IsOptional()
   @IsNotEmpty()
-  msgFam!: string;
+  msgFam?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -33,11 +34,7 @@ export class CreateConfigDto {
   @IsObject()
   schema!: Record<string, unknown>;
 
-  @ValidateIf((o) => typeof o.payload === 'string')
-  @IsString()
-  @ValidateIf((o) => typeof o.payload === 'object')
-  @IsObject()
-  @IsNotEmpty()
+  @IsValidPayload()
   payload!: string | Record<string, unknown>;
 
   @IsString()
@@ -46,11 +43,8 @@ export class CreateConfigDto {
 
   @IsArray()
   @IsOptional()
-  mapping?: Array<Record<string, unknown>>;
-
-  @IsArray()
-  @IsOptional()
   functions?: Array<Record<string, unknown>>;
+
   @IsString()
   @IsOptional()
   related_transaction?: string;
