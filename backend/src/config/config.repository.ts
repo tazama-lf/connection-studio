@@ -93,16 +93,41 @@ export class ConfigRepository {
     transactionType: string,
     token: string,
   ): Promise<void> {
-    await this.adminServiceClient.createTransactionTypeTable(
-      transactionType,
-      token,
-    );
+    try {
+      await this.adminServiceClient.createTransactionTypeTable(
+        transactionType,
+        token,
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (/already exists/i.test(msg)) {
+        this.logger.warn(
+          `Transaction type table "${transactionType}" already exists, skipping creation`,
+        );
+        return;
+      }
+      throw error;
+    }
   }
   async createTazamaDataModelTable(
     tableName: string,
     token: string,
   ): Promise<void> {
-    await this.adminServiceClient.createTazamaDataModelTable(tableName, token);
+    try {
+      await this.adminServiceClient.createTazamaDataModelTable(
+        tableName,
+        token,
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (/already exists/i.test(msg)) {
+        this.logger.warn(
+          `Data model table "${tableName}" already exists, skipping creation`,
+        );
+        return;
+      }
+      throw error;
+    }
   }
   async updateConfigStatus(
     id: number,

@@ -28,13 +28,11 @@ import {
   DeploymentDto,
   StatusTransitionDto,
   WorkflowActionDto,
-} from './dto';
-import type {
   AddMappingDto,
   AddFunctionDto,
-  ConfigResponseDto,
-  Config,
-} from '../config/config.interfaces';
+  UpdatePublishingStatusDto,
+} from './dto';
+import type { ConfigResponseDto, Config } from '../config/config.interfaces';
 import {
   RequireClaims,
   TazamaClaims,
@@ -64,9 +62,14 @@ export class ConfigController {
     @Body() dto: AddMappingDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    const mappingData = {
+      source: dto.source,
+      destination: dto.destination,
+    };
+
     return (await this.configService.addMappingViaService(
       id,
-      dto as unknown as Record<string, unknown>,
+      mappingData,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
@@ -84,6 +87,7 @@ export class ConfigController {
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
+
   @Post()
   @RequireClaims(TazamaClaims.EDITOR)
   @Audit()
@@ -156,9 +160,16 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    const functionData = {
+      functionName: dto.functionName,
+      ...(dto.params !== undefined && { params: dto.params }),
+      ...(dto.columns !== undefined && { columns: dto.columns }),
+      ...(dto.tableName !== undefined && { tableName: dto.tableName }),
+    };
+
     return (await this.configService.addFunctionViaService(
       id,
-      dto as unknown as Record<string, unknown>,
+      functionData,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
@@ -257,7 +268,7 @@ export class ConfigController {
   @Audit()
   async updatePublishingStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: { publishing_status: 'active' | 'inactive' },
+    @Body() dto: UpdatePublishingStatusDto,
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
