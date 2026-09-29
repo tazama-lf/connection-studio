@@ -387,9 +387,12 @@ describe('utils/common/helper.ts', () => {
   });
 
   describe('validateEventType', () => {
-    it('returns empty string for valid or empty event type', () => {
-      expect(validateEventType('')).toBe('');
+    it('returns empty string for valid event type', () => {
       expect(validateEventType('iso-20022')).toBe('');
+    });
+
+    it('returns error for empty event type', () => {
+      expect(validateEventType('')).not.toBe('');
     });
 
     it('returns error for invalid event type', () => {

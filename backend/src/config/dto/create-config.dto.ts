@@ -32,8 +32,7 @@ export class CreateConfigDto {
   contentType?: ContentType;
 
   @IsObject()
-  @IsOptional()
-  schema?: Record<string, unknown>;
+  schema!: Record<string, unknown>;
 
   @IsValidPayload()
   payload!: string | Record<string, unknown>;
