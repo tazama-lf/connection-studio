@@ -1188,7 +1188,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
-  it('emits an empty schema when generated fields are empty', async () => {
+  it('does not emit an empty schema when generated fields are empty', async () => {
     const { onSchemaChange } = renderEditor({
       value: '{}',
       endpointData: {
@@ -1209,8 +1209,12 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
 
     await waitFor(() => {
-      expect(onSchemaChange).toHaveBeenCalledWith([]);
+      expect(
+        screen.queryByText('Failed to generate schema from payload'),
+      ).not.toBeInTheDocument();
     });
+
+    expect(onSchemaChange).not.toHaveBeenCalledWith([]);
   });
 
   it('handles invalid JSON and XML during file upload validation', async () => {

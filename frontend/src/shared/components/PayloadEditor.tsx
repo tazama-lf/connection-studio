@@ -401,6 +401,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
     useEffect(() => {
       if (!onSchemaChange) return;
+      if (inferredFields.length === 0) return;
       if (lastPushedFieldsRef.current === inferredFields) return;
       lastPushedFieldsRef.current = inferredFields;
       onSchemaChange(inferredFields);
