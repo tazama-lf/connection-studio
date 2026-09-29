@@ -1571,10 +1571,12 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     payloadError={error}
                     setPayloadError={setError}
                     existingSchemaFields={(() => {
-                      if (currentSchema) {
-                        if (Array.isArray(currentSchema)) {
-                          return currentSchema;
-                        }
+                      if (
+                        currentSchema &&
+                        Array.isArray(currentSchema) &&
+                        currentSchema.length > 0
+                      ) {
+                        return currentSchema;
                       }
 
                       const schemaToUse =
