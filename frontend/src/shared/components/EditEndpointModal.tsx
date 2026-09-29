@@ -9,7 +9,7 @@ import {
   XCircle,
   XIcon,
 } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as yup from 'yup';
 import { useAuth } from '../../features/auth';
 import {
@@ -870,6 +870,106 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
 
   const shouldCreateNew = !createdEndpoint && !existingConfig && isNewEndpoint;
+
+  const existingSchemaFieldsProp = useMemo(() => {
+    if (currentSchema && Array.isArray(currentSchema)) {
+      return currentSchema;
+    }
+
+    const schemaToUse =
+      createdEndpoint?.schema || inferredSchema || existingConfig?.schema;
+
+    if (!schemaToUse) {
+      return undefined;
+    }
+
+    const convertAjvToSchemaFields = (
+      ajvSchema: any,
+      parentPath = '',
+    ): any[] => {
+      if (!ajvSchema || typeof ajvSchema !== 'object') {
+        return [];
+      }
+
+      const schemaFields: any[] = [];
+
+      if (ajvSchema.properties) {
+        Object.entries(ajvSchema.properties).forEach(
+          ([fieldName, fieldSchema]: [string, any]) => {
+            const fieldPath = parentPath
+              ? `${parentPath}.${fieldName}`
+              : fieldName;
+
+            let fieldType = 'string';
+            if (fieldSchema.type) {
+              switch (fieldSchema.type) {
+                case 'string':
+                  fieldType = 'string';
+                  break;
+                case 'number':
+                case 'integer':
+                  fieldType = 'number';
+                  break;
+                case 'boolean':
+                  fieldType = 'boolean';
+                  break;
+                case 'object':
+                  fieldType = 'object';
+                  break;
+                case 'array':
+                  fieldType = 'array';
+                  break;
+                default:
+                  fieldType = 'string';
+              }
+            }
+
+            const schemaField: any = {
+              name: fieldName,
+              path: fieldPath,
+              type: fieldType,
+              isRequired:
+                ajvSchema.required?.includes(fieldName) || false,
+            };
+
+            if (fieldType === 'object' && fieldSchema.properties) {
+              schemaField.children = convertAjvToSchemaFields(
+                fieldSchema,
+                fieldPath,
+              );
+            }
+
+            if (fieldType === 'array' && fieldSchema.items) {
+              if (
+                fieldSchema.items.type === 'object' &&
+                fieldSchema.items.properties
+              ) {
+                schemaField.arrayElementType = 'object';
+                schemaField.children = convertAjvToSchemaFields(
+                  fieldSchema.items,
+                  `${fieldPath}[0]`,
+                );
+              } else {
+                schemaField.arrayElementType =
+                  fieldSchema.items.type || 'string';
+              }
+            }
+
+            schemaFields.push(schemaField);
+          },
+        );
+      }
+
+      return schemaFields;
+    };
+
+    return convertAjvToSchemaFields(schemaToUse);
+  }, [
+    currentSchema,
+    createdEndpoint?.schema,
+    inferredSchema,
+    existingConfig?.schema,
+  ]);
 
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
   const validationInProgress = useRef(false); // Guard against repeated rapid clicks on Save & Next
@@ -1844,7 +1944,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                 })}
               </Stepper>
             </Box>
-
             <div className="space-y-8" data-id="element-739">
               {currentStep === 'payload' && (
                 <>
@@ -1866,120 +1965,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     onEndpointDataChange={setEndpointData}
                     onSchemaChange={setCurrentSchema}
                     configId={createdEndpoint?.id || existingConfig?.id}
-                    isEditMode={!isNewEndpoint} // Only allow editing for truly new endpoints (not clone or edit)
+                    isEditMode={!isNewEndpoint}
                     tenantId={tenantId}
                     readOnly={readOnly}
                     isCloning={isCloning}
                     shouldCreateNew={shouldCreateNew}
                     payloadError={error}
                     setPayloadError={setError}
-                    existingSchemaFields={(() => {
-                      if (currentSchema) {
-                        if (Array.isArray(currentSchema)) {
-                          return currentSchema;
-                        }
-                      }
-
-                      const schemaToUse =
-                        createdEndpoint?.schema ||
-                        inferredSchema ||
-                        existingConfig?.schema;
-
-                      if (!schemaToUse) {
-                        return undefined;
-                      }
-                      const convertAjvToSchemaFields = (
-                        ajvSchema: any,
-                        parentPath = '',
-                      ): any[] => {
-                        if (!ajvSchema || typeof ajvSchema !== 'object') {
-                          return [];
-                        }
-
-                        const schemaFields: any[] = [];
-
-                        if (ajvSchema.properties) {
-                          Object.entries(ajvSchema.properties).forEach(
-                            ([fieldName, fieldSchema]: [string, any]) => {
-                              const fieldPath = parentPath
-                                ? `${parentPath}.${fieldName}`
-                                : fieldName;
-
-                              let fieldType = 'string';
-                              if (fieldSchema.type) {
-                                switch (fieldSchema.type) {
-                                  case 'string':
-                                    fieldType = 'string';
-                                    break;
-                                  case 'number':
-                                  case 'integer':
-                                    fieldType = 'number';
-                                    break;
-                                  case 'boolean':
-                                    fieldType = 'boolean';
-                                    break;
-                                  case 'object':
-                                    fieldType = 'object';
-                                    break;
-                                  case 'array':
-                                    fieldType = 'array';
-                                    break;
-                                  default:
-                                    fieldType = 'string';
-                                }
-                              }
-
-                              const schemaField: any = {
-                                name: fieldName,
-                                path: fieldPath,
-                                type: fieldType,
-                                isRequired:
-                                  ajvSchema.required?.includes(fieldName) ||
-                                  false,
-                              };
-
-                              // Handle nested objects
-                              if (
-                                fieldType === 'object' &&
-                                fieldSchema.properties
-                              ) {
-                                schemaField.children = convertAjvToSchemaFields(
-                                  fieldSchema,
-                                  fieldPath,
-                                );
-                              }
-
-                              // Handle arrays with object items
-                              if (fieldType === 'array' && fieldSchema.items) {
-                                if (
-                                  fieldSchema.items.type === 'object' &&
-                                  fieldSchema.items.properties
-                                ) {
-                                  schemaField.arrayElementType = 'object';
-                                  // For array elements, append [0] to the path for proper display
-                                  schemaField.children =
-                                    convertAjvToSchemaFields(
-                                      fieldSchema.items,
-                                      `${fieldPath}[0]`,
-                                    );
-                                } else {
-                                  schemaField.arrayElementType =
-                                    fieldSchema.items.type || 'string';
-                                }
-                              }
-
-                              schemaFields.push(schemaField);
-                            },
-                          );
-                        }
-
-                        return schemaFields;
-                      };
-
-                      const convertedFields =
-                        convertAjvToSchemaFields(schemaToUse);
-                      return convertedFields;
-                    })()}
+                    existingSchemaFields={existingSchemaFieldsProp}
                     data-id="element-740"
                   />
                 </>
