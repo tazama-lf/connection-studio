@@ -180,8 +180,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         clearTimeout(msgFamDebounceRef.current);
       }
 
+      setMsgFamConfigs([]);
+
       if (!msgFamValue) {
-        setMsgFamConfigs([]);
         return;
       }
 
@@ -189,9 +190,15 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         configApi
           .getConfigsByMsgFam(msgFamValue)
           .then((res) => {
-            setMsgFamConfigs(res.data ?? []);
+            if ((endpointData.msgFam ?? '').trim() !== msgFamValue) {
+              return;
+            }
+            setMsgFamConfigs(Array.isArray(res.data) ? res.data : []);
           })
           .catch(() => {
+            if ((endpointData.msgFam ?? '').trim() !== msgFamValue) {
+              return;
+            }
             setMsgFamConfigs([]);
           });
       }, 500);

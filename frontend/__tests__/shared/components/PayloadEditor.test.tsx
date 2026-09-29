@@ -1696,7 +1696,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
       '../../../src/features/config/services/configApi',
     ) as {
       configApi: {
-        getConfigsByMsgFam: { mockResolvedValueOnce: (v: unknown) => void };
+        getConfigsByMsgFam: jest.Mock;
       };
     };
     mockModule.configApi.getConfigsByMsgFam.mockResolvedValueOnce({
@@ -1714,8 +1714,13 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Endpoint Path Preview/i)).toBeInTheDocument();
+      expect(mockModule.configApi.getConfigsByMsgFam).toHaveBeenCalled();
     });
+    await act(async () => {
+      await mockModule.configApi.getConfigsByMsgFam.mock.results[0].value;
+    });
+
+    expect(screen.getByText(/Endpoint Path Preview/i)).toBeInTheDocument();
     expect(
       screen.getByText('-- Select Related Transaction --'),
     ).toBeInTheDocument();
