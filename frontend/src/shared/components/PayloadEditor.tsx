@@ -34,8 +34,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useRef,
-  useState,
-  useRef
+  useState
 } from 'react';
 import ReactJson from 'react-json-view';
 import type {

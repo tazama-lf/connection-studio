@@ -1741,7 +1741,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           functions: existingConfig?.functions,
         });
       } else {
-        const { payload: _omitted, ...updateRequest } = createRequest;
+        const { payload: _omitted, version: _v, ...updateRequest } =
+          createRequest;
         saveResponse = await configApi.updateConfig(
           actualConfigId,
           updateRequest,
