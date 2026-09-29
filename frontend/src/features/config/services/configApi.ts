@@ -102,11 +102,13 @@ interface PaginationParams {
 
 const HTTP_UNAUTHORIZED = 401;
 const HTTP_NO_CONTENT = 204;
+const HTTP_SERVER_ERROR = 500;
 
 export class ConfigApiService {
   private readonly baseURL: string;
   private static readonly HTTP_UNAUTHORIZED = HTTP_UNAUTHORIZED;
   private static readonly HTTP_NO_CONTENT = HTTP_NO_CONTENT;
+  private static readonly HTTP_SERVER_ERROR = HTTP_SERVER_ERROR;
 
   constructor() {
     this.baseURL = API_CONFIG.AUTH_BASE_URL;
@@ -363,7 +365,7 @@ export class ConfigApiService {
     if (
       !response.ok &&
       response.status !== ConfigApiService.HTTP_UNAUTHORIZED &&
-      response.status < 500
+      response.status < ConfigApiService.HTTP_SERVER_ERROR
     ) {
       return (await response.json().catch(() => ({}))) as ConfigResponse;
     }

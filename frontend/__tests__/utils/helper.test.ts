@@ -30,11 +30,11 @@ describe('ensurePromise', () => {
 
   it('should wrap non-Error throws in an Error', async () => {
     const throwString = () => {
-      throw 'raw string error';
+      throw 'Unexpected error';
     };
     const wrapped = ensurePromise(throwString);
 
-    await expect(wrapped()).rejects.toThrow('raw string error');
+    await expect(wrapped()).rejects.toThrow('Unexpected error');
   });
 
   it('should handle functions with multiple arguments', async () => {

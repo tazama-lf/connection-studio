@@ -32,13 +32,13 @@ const hasMessage = (error: unknown): error is { message: string } =>
   typeof error === 'object' &&
   error !== null &&
   'message' in error &&
-  isString((error as { message: unknown }).message);
+  isString(error.message);
 
 const hasResponse = (error: unknown): error is { response: ErrorResponse } =>
   typeof error === 'object' &&
   error !== null &&
   'response' in error &&
-  typeof (error as { response: unknown }).response === 'object';
+  typeof error.response === 'object';
 
 const getErrorStatus = (error: unknown): number | undefined => {
   if (hasResponse(error)) {
@@ -52,7 +52,7 @@ const getErrorCode = (error: unknown): string | undefined => {
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    isString((error as { code: unknown }).code)
+    isString(error.code)
   ) {
     return (error as { code: string }).code;
   }
@@ -305,8 +305,8 @@ export const getErrorDetails = (
     typeof error === 'object' &&
     error !== null &&
     'config' in error &&
-    typeof (error as { config: unknown }).config === 'object' &&
-    (error as { config: unknown }).config !== null
+    typeof error.config === 'object' &&
+    error.config !== null
   ) {
     const { config } = error as { config: ErrorConfig };
     ({ url, method } = config);
