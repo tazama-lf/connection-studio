@@ -175,6 +175,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
     useEffect(() => {
       const msgFamValue = (endpointData.msgFam ?? '').trim();
+      let cancelled = false;
 
       if (msgFamDebounceRef.current) {
         clearTimeout(msgFamDebounceRef.current);
@@ -190,13 +191,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         configApi
           .getConfigsByMsgFam(msgFamValue)
           .then((res) => {
-            if ((endpointData.msgFam ?? '').trim() !== msgFamValue) {
+            if (cancelled) {
               return;
             }
             setMsgFamConfigs(Array.isArray(res.data) ? res.data : []);
           })
           .catch(() => {
-            if ((endpointData.msgFam ?? '').trim() !== msgFamValue) {
+            if (cancelled) {
               return;
             }
             setMsgFamConfigs([]);
@@ -204,6 +205,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       }, 500);
 
       return () => {
+        cancelled = true;
         if (msgFamDebounceRef.current) {
           clearTimeout(msgFamDebounceRef.current);
         }
@@ -780,6 +782,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     <button
                       type="button"
                       id="related-transaction"
+                      aria-haspopup="listbox"
+                      aria-expanded={rtDropdownOpen}
                       onClick={() => {
                         if (!isReadOnly) {
                           setRtDropdownOpen((v) => !v);
@@ -815,9 +819,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                             autoFocus
                           />
                         </div>
-                        <div className="max-h-60 overflow-auto">
+                        <div className="max-h-60 overflow-auto" role="listbox">
                           <button
                             type="button"
+                            role="option"
+                            aria-selected={!selectedRtPath}
                             onClick={() => {
                               handleEndpointDataChange('relatedTransaction', '');
                               setRtDropdownOpen(false);
@@ -837,6 +843,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               return (
                                 <button
                                   type="button"
+                                  role="option"
+                                  aria-selected={selectedRtPath === path}
                                   key={path}
                                   onClick={() => {
                                     handleEndpointDataChange('relatedTransaction', path);

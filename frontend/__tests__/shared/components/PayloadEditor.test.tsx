@@ -1533,11 +1533,11 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: /pacs\.008/ }),
+        screen.getByRole('option', { name: /pacs\.008/ }),
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByRole('button', { name: /pain\.001/ }),
+      screen.getByRole('option', { name: /pain\.001/ }),
     ).toBeInTheDocument();
   });
 
@@ -1599,11 +1599,11 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: /pacs\.008/ }),
+        screen.getByRole('option', { name: /pacs\.008/ }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /pacs\.008/ }));
+    fireEvent.click(screen.getByRole('option', { name: /pacs\.008/ }));
 
     await waitFor(() => {
       expect(onEndpointDataChange).toHaveBeenCalledWith(
