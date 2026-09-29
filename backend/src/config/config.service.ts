@@ -6,8 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { EventType } from '../enums/events.enum';
 import { NotificationService } from '../notification/notification.service';
@@ -33,11 +31,6 @@ import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
   private readonly rbacService = new RbacService();
-  private readonly ajv: Ajv = (() => {
-    const a = new Ajv({ allErrors: true, strict: false });
-    addFormats(a);
-    return a;
-  })();
 
   constructor(
     private readonly configRepository: ConfigRepository,
