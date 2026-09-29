@@ -33,6 +33,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from 'react';
 import ReactJson from 'react-json-view';
@@ -310,26 +311,32 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       setShowInferredFields(true);
     }, []);
 
+    const lastPushedFieldsRef = useRef<InferredField[] | null>(null);
+    const lastPushedAdjustmentsRef = useRef<InferredField[] | null>(null);
+
     useEffect(() => {
-      if (onFieldAdjustmentsChange && inferredFields.length > 0) {
-        const fieldAdjustments = inferredFields.map((field) => ({
-          path: field.path,
-          type: field.type.toUpperCase() as
-            | 'STRING'
-            | 'NUMBER'
-            | 'BOOLEAN'
-            | 'OBJECT'
-            | 'ARRAY',
-          isRequired: field.required,
-        }));
-        onFieldAdjustmentsChange(fieldAdjustments);
-      }
+      if (!onFieldAdjustmentsChange) return;
+      if (inferredFields.length === 0) return;
+      if (lastPushedAdjustmentsRef.current === inferredFields) return;
+      lastPushedAdjustmentsRef.current = inferredFields;
+      const fieldAdjustments = inferredFields.map((field) => ({
+        path: field.path,
+        type: field.type.toUpperCase() as
+          | 'STRING'
+          | 'NUMBER'
+          | 'BOOLEAN'
+          | 'OBJECT'
+          | 'ARRAY',
+        isRequired: field.required,
+      }));
+      onFieldAdjustmentsChange(fieldAdjustments);
     }, [inferredFields, onFieldAdjustmentsChange]);
 
     useEffect(() => {
-      if (onSchemaChange) {
-        onSchemaChange(inferredFields);
-      }
+      if (!onSchemaChange) return;
+      if (lastPushedFieldsRef.current === inferredFields) return;
+      lastPushedFieldsRef.current = inferredFields;
+      onSchemaChange(inferredFields);
     }, [inferredFields, onSchemaChange]);
 
     const handleGenerateFields = (): void => {
