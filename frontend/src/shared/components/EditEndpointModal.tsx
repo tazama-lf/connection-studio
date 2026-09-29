@@ -872,7 +872,11 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const shouldCreateNew = !createdEndpoint && !existingConfig && isNewEndpoint;
 
   const existingSchemaFieldsProp = useMemo(() => {
-    if (currentSchema && Array.isArray(currentSchema)) {
+    if (
+      currentSchema &&
+      Array.isArray(currentSchema) &&
+      currentSchema.length > 0
+    ) {
       return currentSchema;
     }
 
