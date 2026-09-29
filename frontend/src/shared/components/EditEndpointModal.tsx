@@ -1943,7 +1943,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                 })}
               </Stepper>
             </Box>
-
             <div className="space-y-8" data-id="element-739">
               {currentStep === 'payload' && (
                 <>
@@ -1965,7 +1964,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     onEndpointDataChange={setEndpointData}
                     onSchemaChange={setCurrentSchema}
                     configId={createdEndpoint?.id || existingConfig?.id}
-                    isEditMode={!isNewEndpoint} // Only allow editing for truly new endpoints (not clone or edit)
+                    isEditMode={!isNewEndpoint}
                     tenantId={tenantId}
                     readOnly={readOnly}
                     isCloning={isCloning}
