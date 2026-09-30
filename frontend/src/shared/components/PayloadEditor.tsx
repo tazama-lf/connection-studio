@@ -461,6 +461,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       
       if (field === 'msgFam') {
         updatedData.relatedTransaction = '';
+        setRtSearch('');
+        setRtDropdownOpen(false);
       }
       setEndpointData(updatedData);
       if (onEndpointDataChange) {
