@@ -9,6 +9,7 @@ import {
 import * as xml2js from 'xml2js';
 import Ajv from 'ajv';
 import * as _ from 'lodash';
+import { getFieldValue, validateMappings } from '../utils/mapping-validation';
 
 import type {
   SimulatePayloadDto,
@@ -361,7 +362,7 @@ export class SimulationService {
     payload: Record<string, unknown>,
     mappings: unknown[],
   ): ValidationStage {
-    const errors = this.validateMappings(payload, mappings);
+    const errors = validateMappings(payload, mappings);
 
     if (errors.length > 0) {
       return {
@@ -909,98 +910,6 @@ export class SimulationService {
     return errors;
   }
 
-  private validateMappings(
-    payload: Record<string, unknown>,
-    mappings: unknown[],
-  ): SimulationError[] {
-    const errors: SimulationError[] = [];
-
-    const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
-
-    for (let i = 0; i < mappings.length; i += 1) {
-      const mapping = mappings[i] as Record<string, unknown>; // Type assertion for complex mapping validation
-      let sources: string[] = [];
-      const { sources: mappingSources, source } = mapping;
-      if (mappingSources && Array.isArray(mappingSources)) {
-        sources = mappingSources;
-      } else if (source) {
-        sources = Array.isArray(source) ? source : [source];
-      }
-      if (
-        mapping.transformation === 'CONSTANT' ||
-        mapping.constantValue !== undefined
-      ) {
-        continue;
-      }
-
-      let anySourceExists = false;
-      const missingSources: string[] = [];
-      const allSourcesAreRuntimeContext = sources.every((src: string) =>
-        runtimeContextFields.includes(src),
-      );
-
-      for (const source of sources) {
-        if (runtimeContextFields.includes(source)) {
-          anySourceExists = true;
-          break;
-        }
-
-        const fieldValue = this.getFieldValue(payload, source);
-        if (fieldValue === undefined || fieldValue === null) {
-          this.logger.debug(`Field not found: ${source}`);
-          this.logger.debug(
-            `Available root keys: ${Object.keys(payload).join(', ')}`,
-          );
-          if (Object.keys(payload).length === 1) {
-            const [rootKey] = Object.keys(payload);
-            const suggestedPath = `${rootKey}.${source}`;
-            const suggestedValue = this.getFieldValue(payload, suggestedPath);
-            if (suggestedValue !== undefined) {
-              this.logger.warn(
-                `Field '${source}' not found, but '${suggestedPath}' exists. ` +
-                  'For XML payloads, include the root element in the path.',
-              );
-            }
-          }
-        }
-
-        if (fieldValue !== undefined && fieldValue !== null) {
-          anySourceExists = true;
-          break;
-        } else {
-          missingSources.push(source);
-        }
-      }
-      if (
-        !anySourceExists &&
-        sources.length > 0 &&
-        !allSourcesAreRuntimeContext
-      ) {
-        const nonRuntimeMissing = missingSources.filter(
-          (src) => !runtimeContextFields.includes(src),
-        );
-
-        if (nonRuntimeMissing.length > 0) {
-          errors.push({
-            field: 'mapping',
-            message: `Mapping #${i + 1}: None of the source fields exist in payload: ${nonRuntimeMissing.join(', ')}`,
-            path: `mappings[${i}]`,
-            value: mapping,
-          });
-        }
-      }
-      if (!mapping.destination) {
-        errors.push({
-          field: 'mapping',
-          message: `Mapping #${i + 1}: Missing destination field`,
-          path: `mappings[${i}]`,
-        });
-      }
-    }
-
-    return errors;
-  }
-
   private isArrayPath(obj: unknown, path: string): boolean {
     if (!path) return false;
     const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
@@ -1026,11 +935,7 @@ export class SimulationService {
   }
 
   private getFieldValue(obj: unknown, path: string): unknown {
-    if (!path) return undefined;
-
-    const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
-
-    return _.get(obj, normalizedPath);
+    return getFieldValue(obj, path);
   }
 
   private enforceStrictSchema(schema: unknown, config?: Config): unknown {

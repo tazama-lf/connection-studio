@@ -12,7 +12,12 @@ import { NotificationService } from '../notification/notification.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { DemsClient } from '../services/dems-client.service';
 import { SftpService } from '../sftp/sftp.service';
+import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { validatePayloadContent } from '../utils/helpers';
+import {
+  validateMappingDestinations,
+  validateMappings,
+} from '../utils/mapping-validation';
 import { RbacService } from '../utils/rbac/rbacHelper';
 import { ConfigUtilsService } from './config-utils.service';
 import { ConfigWorkflowService } from './config-workflow.service';
@@ -40,6 +45,7 @@ export class ConfigService {
     private readonly demsClient: DemsClient,
     private readonly notificationService: NotificationService,
     private readonly adminServiceClient: AdminServiceClient,
+    private readonly tazamaDataModelService: TazamaDataModelService,
   ) {}
 
   private async getConfigOrThrow(
@@ -816,8 +822,43 @@ export class ConfigService {
   async addMappingViaService(
     id: number,
     mappingData: Record<string, unknown>,
+    tenantId: string,
     token: string,
   ): Promise<unknown> {
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const payload = this.parsePayloadForValidation(config.payload);
+    if (payload) {
+      const sourceErrors = validateMappings(payload, [mappingData]);
+      if (sourceErrors.length) {
+        throw new BadRequestException({
+          message: 'Invalid mapping sources',
+          details: sourceErrors,
+        });
+      }
+    }
+
+    const dataModel = await this.tazamaDataModelService.getDataModelJson(
+      tenantId,
+      token,
+    );
+    if (dataModel) {
+      const destErrors = validateMappingDestinations(dataModel, [mappingData]);
+      if (destErrors.length) {
+        throw new BadRequestException({
+          message: 'Invalid mapping destinations',
+          details: destErrors,
+        });
+      }
+    }
+
     const result = await this.configRepository.addMapping(
       id,
       mappingData,
@@ -825,6 +866,23 @@ export class ConfigService {
     );
 
     return result;
+  }
+
+  private parsePayloadForValidation(
+    payload: string | Record<string, unknown> | undefined,
+  ): Record<string, unknown> | null {
+    if (!payload) return null;
+    if (typeof payload === 'object') return payload;
+    try {
+      const parsed: unknown = JSON.parse(payload);
+      return typeof parsed === 'object' && parsed !== null
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      // Non-JSON (e.g. XML) payloads can't be validated with this path
+      // resolver; skip source validation rather than fail the request.
+      return null;
+    }
   }
 
   async removeMappingViaService(
