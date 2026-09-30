@@ -672,16 +672,20 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         return cleanFieldPath === pathStr;
       });
 
-      if (matchingField?.path?.includes('[0]')) {
-        return matchingField.path.replace(/\[0\]/g, '.0');
+      if (matchingField?.path) {
+        // Source paths use canonical [0] bracket notation everywhere else in
+        // the frontend and the backend mapping-create endpoint - do not
+        // convert to dot-index form.
+        return matchingField.path;
       }
     }
     return pathStr;
   };
 
-
+  // Tree node ids never contain array markers (buildSourceTreeFromArray
+  // strips [0] entirely), so drop bracket segments to match them.
   const cleanSourcePath = (pathStr: string): string =>
-    pathStr.split('.').filter((part) => part !== '0').join('.');
+    pathStr.replace(/\[0\]/g, '');
 
   const handleSourceSelect = (path: string[]) => {
     const pathStr = path[0] || path.join('.');

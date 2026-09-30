@@ -1306,6 +1306,57 @@ describe('MappingUtility', () => {
       });
     });
 
+    it('saves a mapping for an array-of-objects field using [0] bracket notation, not dot-index', async () => {
+      mockConfigApi.getConfig.mockResolvedValueOnce({
+        success: true,
+        config: { id: 123, mapping: [] },
+      } as any);
+      mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
+        success: true,
+        data: simpleDestinationJson,
+      } as any);
+
+      renderComponent({
+        sourceSchema: simpleSourceSchema as any,
+        existingMappings: [],
+        configId: 123,
+      });
+
+      await openModal();
+
+      // Expand the 'items' parent node to reveal the 'code' leaf
+      const chevrons = screen.getAllByTestId('chevron-right-icon');
+      fireEvent.click(chevrons[0].closest('button')!);
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /code \(string\)/i }),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'targetField (string)' }),
+      );
+
+      const addButtons = screen.getAllByRole('button', { name: 'Add Mapping' });
+      const modalAddButton = addButtons[addButtons.length - 1];
+      expect(modalAddButton).not.toBeDisabled();
+      fireEvent.click(modalAddButton);
+
+      await waitFor(() => {
+        expect(mockConfigApi.addMapping).toHaveBeenCalledWith(
+          123,
+          expect.objectContaining({
+            source: 'items[0].code',
+            destination: 'targetField',
+          }),
+        );
+      });
+
+      const [, requestBody] = mockConfigApi.addMapping.mock.calls[
+        mockConfigApi.addMapping.mock.calls.length - 1
+      ];
+      expect(requestBody.source).not.toContain('.0.');
+      expect(requestBody.source).not.toMatch(/\.0$/);
+    });
+
     it('saves constant mapping and preserves string value when destination type lookup is unavailable', async () => {
       mockConfigApi.getConfig.mockResolvedValueOnce({
         success: true,
