@@ -11,9 +11,8 @@ import { IsValidPayload } from '../../decorators/is-valid-payload.decorator';
 
 export class CreateConfigDto {
   @IsString()
-  @IsOptional()
   @IsNotEmpty()
-  msgFam?: string;
+  msgFam!: string;
 
   @IsString()
   @IsNotEmpty()
