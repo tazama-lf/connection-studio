@@ -725,6 +725,13 @@ describe('ConfigService', () => {
     expect(loggerErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining('DEMS down'),
     );
+    expect(mockNotification.sendWorkflowNotification).toHaveBeenCalledWith(
+      EventType.PublisherActivate,
+      user,
+      { id: 1 },
+      token,
+      'Publishing status changed to active',
+    );
   });
 
   it('reports deactivation (not activation) in the DEMS failure log for inactive status', async () => {
@@ -751,6 +758,13 @@ describe('ConfigService', () => {
       expect.stringContaining(
         'DEMS notification failed for config 2 on deactivation',
       ),
+    );
+    expect(mockNotification.sendWorkflowNotification).toHaveBeenCalledWith(
+      EventType.PublisherDeactivate,
+      user,
+      { id: 2 },
+      token,
+      'Publishing status changed to inactive',
     );
   });
   it('removes function via service', async () => {
