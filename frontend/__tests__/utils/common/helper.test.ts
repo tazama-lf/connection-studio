@@ -221,7 +221,7 @@ describe('utils/common/helper.ts', () => {
       });
     });
 
-    it('handles array fields with payload', () => {
+    it('walks only the first array element as a template', () => {
       const result = convertSchemaToFields(
         [
           {
@@ -242,17 +242,14 @@ describe('utils/common/helper.ts', () => {
         { items: [{ id: 1 }, { id: 2 }] },
       );
       expect(result.some((f) => f.path === 'items[0]')).toBe(true);
-      expect(result.some((f) => f.path === 'items[1]')).toBe(true);
-      // child paths are rewritten with the array index
+      expect(result.some((f) => f.path === 'items[1]')).toBe(false);
       expect(
-        result.some((f) => f.path === 'items[0].id' && f.parent === 'items[0]'),
+        result.some((f) => f.path === 'items.id' && f.parent === 'items[0]'),
       ).toBe(true);
-      expect(
-        result.some((f) => f.path === 'items[1].id' && f.parent === 'items[1]'),
-      ).toBe(true);
+      expect(result.some((f) => f.path === 'items[1].id')).toBe(false);
     });
 
-    it('reindexes generated array object child paths without duplicating representative indexes', () => {
+    it('produces a single template row per array field with no duplicate paths', () => {
       const payload = {
         users: [
           { id: 1, name: 'alice' },
@@ -266,18 +263,58 @@ describe('utils/common/helper.ts', () => {
       );
       const paths = result.map((field) => field.path);
 
-      expect(paths).toEqual(
-        expect.arrayContaining([
-          'users[0]',
-          'users[0].id',
-          'users[0].name',
-          'users[1]',
-          'users[1].id',
-          'users[1].name',
-        ]),
+      expect(paths).toEqual(['users[0]', 'users[0].id', 'users[0].name']);
+    });
+
+    it('walks nested array-of-array-of-objects using [0] template at every level', () => {
+      const payload = {
+        outer: [
+          {
+            inner: [{ x: 1 }, { x: 2 }],
+          },
+          {
+            inner: [{ x: 3 }],
+          },
+        ],
+      };
+
+      const result = convertSchemaToFields(
+        generateJSONSchema(payload),
+        payload,
       );
-      expect(paths).not.toContain('users[0][0].id');
-      expect(paths).not.toContain('users[1][0].id');
+      const paths = result.map((field) => field.path);
+
+      expect(paths).toEqual([
+        'outer[0]',
+        'outer[0].inner[0]',
+        'outer[0].inner[0].x',
+      ]);
+    });
+
+    it('produces stable field count and no duplicate paths for a deeply nested array payload', () => {
+      const payload = {
+        ChrgsInf: [
+          { Amt: { Amt: '1', Ccy: 'USD' } },
+          { Amt: { Amt: '2', Ccy: 'EUR' } },
+          { Amt: { Amt: '3', Ccy: 'GBP' } },
+        ],
+      };
+
+      const result = convertSchemaToFields(
+        generateJSONSchema(payload),
+        payload,
+      );
+      const paths = result.map((field) => field.path);
+
+      expect(paths).toEqual([
+        'ChrgsInf[0]',
+        'ChrgsInf[0].Amt',
+        'ChrgsInf[0].Amt.Amt',
+        'ChrgsInf[0].Amt.Ccy',
+      ]);
+      // no per-index duplicates regardless of how many elements the array has
+      expect(paths.filter((p) => p === 'ChrgsInf[0].Amt.Amt')).toHaveLength(1);
+      expect(paths.filter((p) => p === 'ChrgsInf[0].Amt.Ccy')).toHaveLength(1);
     });
 
     it('handles array field with parentPath', () => {
