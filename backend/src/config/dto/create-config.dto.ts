@@ -11,9 +11,8 @@ import { IsValidPayload } from '../../decorators/is-valid-payload.decorator';
 
 export class CreateConfigDto {
   @IsString()
-  @IsOptional()
   @IsNotEmpty()
-  msgFam?: string;
+  msgFam!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -32,8 +31,7 @@ export class CreateConfigDto {
   contentType?: ContentType;
 
   @IsObject()
-  @IsOptional()
-  schema?: Record<string, unknown>;
+  schema!: Record<string, unknown>;
 
   @IsValidPayload()
   payload!: string | Record<string, unknown>;

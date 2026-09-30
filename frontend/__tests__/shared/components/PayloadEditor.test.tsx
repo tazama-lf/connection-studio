@@ -1053,7 +1053,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
-  it('generates indexed schema fields from XML array elements', async () => {
+  it('generates a single template schema field from XML array elements', async () => {
     const { onSchemaChange } = renderEditor({
       value: '<root><item><id>1</id></item><item><id>2</id></item></root>',
       endpointData: {
@@ -1077,6 +1077,10 @@ describe('shared/components/PayloadEditor.tsx', () => {
       expect(onSchemaChange).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ path: 'root.item[0].id' }),
+        ]),
+      );
+      expect(onSchemaChange).not.toHaveBeenCalledWith(
+        expect.arrayContaining([
           expect.objectContaining({ path: 'root.item[1].id' }),
         ]),
       );
@@ -1217,7 +1221,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
-  it('emits an empty schema when generated fields are empty', async () => {
+  it('does not emit an empty schema when generated fields are empty', async () => {
     const { onSchemaChange } = renderEditor({
       value: '{}',
       endpointData: {
@@ -1238,8 +1242,12 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
 
     await waitFor(() => {
-      expect(onSchemaChange).toHaveBeenCalledWith([]);
+      expect(
+        screen.queryByText('Failed to generate schema from payload'),
+      ).not.toBeInTheDocument();
     });
+
+    expect(onSchemaChange).not.toHaveBeenCalledWith([]);
   });
 
   it('handles invalid JSON and XML during file upload validation', async () => {
@@ -1289,7 +1297,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
   it('allows valid key presses on Event Type input (alphanumeric)', () => {
     renderEditor();
-    const eventTypeInput = screen.getByLabelText('Event Type');
+    const eventTypeInput = screen.getByLabelText(/Event Type/i);
     fireEvent.keyPress(eventTypeInput, { key: 'a', charCode: 97 });
     fireEvent.keyPress(eventTypeInput, { key: '1', charCode: 49 });
     fireEvent.keyPress(eventTypeInput, { key: '_', charCode: 95 });
@@ -1836,7 +1844,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
       isValid = Boolean(ref.current?.validateAllFields());
     });
 
-    expect(isValid).toBe(true);
+    expect(isValid).toBe(false);
   });
 
   it('skips existingSchemaFields useEffect when user has manually edited fields', async () => {
