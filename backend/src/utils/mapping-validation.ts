@@ -116,8 +116,8 @@ export function validateMappingDestinations(
     }
 
     const missingDestinations = destinations.filter((dest) => {
-      const fieldValue = getFieldValue(dataModel, dest);
-      return fieldValue === undefined || fieldValue === null;
+      const normalizedDest = dest.replace(/\[(\d+)\]/g, '.$1');
+      return !_.has(dataModel, normalizedDest);
     });
 
     if (missingDestinations.length > 0) {
