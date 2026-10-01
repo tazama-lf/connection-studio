@@ -1024,7 +1024,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
-  it('generates indexed schema fields from XML array elements', async () => {
+  it('generates a single template schema field from XML array elements', async () => {
     const { onSchemaChange } = renderEditor({
       value: '<root><item><id>1</id></item><item><id>2</id></item></root>',
       endpointData: {
@@ -1048,6 +1048,10 @@ describe('shared/components/PayloadEditor.tsx', () => {
       expect(onSchemaChange).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ path: 'root.item[0].id' }),
+        ]),
+      );
+      expect(onSchemaChange).not.toHaveBeenCalledWith(
+        expect.arrayContaining([
           expect.objectContaining({ path: 'root.item[1].id' }),
         ]),
       );
