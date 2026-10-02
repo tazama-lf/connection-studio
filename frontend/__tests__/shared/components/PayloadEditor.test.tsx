@@ -1549,15 +1549,15 @@ describe('shared/components/PayloadEditor.tsx', () => {
     ).toBeInTheDocument();
   });
 
-  it('handles configApi.getRelatedTransactions rejection gracefully (catch branch)', async () => {
+  it('handles configApi.getConfigsByMsgFam rejection gracefully (catch branch)', async () => {
     const mockModule = jest.requireMock(
       '../../../src/features/config/services/configApi',
     ) as {
       configApi: {
-        getRelatedTransactions: { mockRejectedValueOnce: (v: unknown) => void };
+        getConfigsByMsgFam: { mockRejectedValueOnce: (v: unknown) => void };
       };
     };
-    mockModule.configApi.getRelatedTransactions.mockRejectedValueOnce(
+    mockModule.configApi.getConfigsByMsgFam.mockRejectedValueOnce(
       new Error('Network error'),
     );
 
@@ -1567,12 +1567,20 @@ describe('shared/components/PayloadEditor.tsx', () => {
         transactionType: 'acmt_023',
         description: '',
         contentType: 'application/json',
-        msgFam: '',
+        msgFam: 'iso',
       },
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Endpoint Path Preview/i)).toBeInTheDocument();
+      expect(mockModule.configApi.getConfigsByMsgFam).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText('Related Transaction'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/No matching transaction types/i),
+      ).toBeInTheDocument();
     });
   });
 
