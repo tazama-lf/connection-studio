@@ -69,11 +69,13 @@ interface PayloadEditorProps {
 interface FormattedJsonSectionProps {
   value: Record<string, unknown> | string | null;
   onChange: (value: Record<string, unknown> | string | null) => void;
+  readOnly?: boolean;
 }
 
 const FormattedJsonSection: React.FC<FormattedJsonSectionProps> = ({
   value,
   onChange,
+  readOnly = false,
 }) => {
   const parseResult = safeJsonParse(value);
   if (
@@ -85,15 +87,27 @@ const FormattedJsonSection: React.FC<FormattedJsonSectionProps> = ({
     return (
       <ReactJson
         src={parseResult.data}
-        onEdit={(e) => {
-          onChange(e.updated_src as Record<string, unknown>);
-        }}
-        onAdd={(e) => {
-          onChange(e.updated_src as Record<string, unknown>);
-        }}
-        onDelete={(e) => {
-          onChange(e.updated_src as Record<string, unknown>);
-        }}
+        onEdit={
+          readOnly
+            ? false
+            : (e) => {
+                onChange(e.updated_src as Record<string, unknown>);
+              }
+        }
+        onAdd={
+          readOnly
+            ? false
+            : (e) => {
+                onChange(e.updated_src as Record<string, unknown>);
+              }
+        }
+        onDelete={
+          readOnly
+            ? false
+            : (e) => {
+                onChange(e.updated_src as Record<string, unknown>);
+              }
+        }
         theme="rjv-default"
         name={false}
         displayDataTypes={false}
@@ -300,10 +314,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         (!existingSchemaFields || existingSchemaFields.length === 0)
       ) {
         setShowInferredFields(true);
-        setInferredFields([]);
+        setInferredFields((prev) => (prev.length === 0 ? prev : []));
       } else if (!configId) {
         setShowInferredFields(true);
-        setInferredFields([]);
+        setInferredFields((prev) => (prev.length === 0 ? prev : []));
       }
     }, [existingSchemaFields, configId]);
 
@@ -794,7 +808,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 )}
               </h3>
               <div className="flex items-center space-x-2">
-                {!isEditMode && !value && (
+                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive, #139 */}
+                {!isEditMode && !value && !readOnly && (
                   <div className="flex space-x-2">
                     <Button
                       variant="secondary"
@@ -821,7 +836,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     </Button>
                   </div>
                 )}
-                {!isEditMode && value && (
+                {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive, #139 */}
+                {!isEditMode && value && !readOnly && (
                   <Button
                     variant="secondary"
                     size="sm"
@@ -836,7 +852,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   </Button>
                 )}
                 <div className="">
-                  {!isEditMode && (
+                  {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive, #139 */}
+                  {!isEditMode && !readOnly && (
                     <>
                       <input
                         type="file"
@@ -938,7 +955,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           </div>
         )}
         {}
-        {!isEditMode && (shouldCreateNew || isCloning) && (
+        {(shouldCreateNew || isCloning) && (
           <>
             <div className="flex gap-5 w-full">
               {}
@@ -973,7 +990,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     Preview
                   </h4>
                   <div className="border rounded-md relative bg-white p-4 h-[400px] overflow-auto">
-                    <FormattedJsonSection value={value} onChange={onChange} />
+                    <FormattedJsonSection
+                      value={value}
+                      onChange={onChange}
+                      readOnly={readOnly}
+                    />
                   </div>
                 </div>
               )}
