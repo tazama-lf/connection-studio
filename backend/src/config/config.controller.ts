@@ -71,6 +71,7 @@ export class ConfigController {
     return (await this.configService.addMappingViaService(
       id,
       mappingData,
+      user.tenantId,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
