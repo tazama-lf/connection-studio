@@ -9,6 +9,7 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  DefaultValuePipe,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -133,8 +134,8 @@ export class ConfigController {
   async getConfigsByMsgFam(
     @Param('msgFam') msgFam: string,
     @User() user: AuthenticatedUser,
-    @Query('limit') limit: string,
-    @Query('offset') offset: string,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
     @Query('transactionType') transactionType?: string,
   ): Promise<{
     success: boolean;
@@ -147,8 +148,8 @@ export class ConfigController {
     return await this.configService.getConfigsByMsgFam(
       msgFam,
       user,
-      parseInt(limit, 10),
-      parseInt(offset, 10),
+      limit,
+      offset,
       transactionType,
     );
   }
