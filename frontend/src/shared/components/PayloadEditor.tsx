@@ -181,23 +181,33 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const [rtSearching, setRtSearching] = useState(false);
 
     const fetchRtPage = useCallback(
-      (msgFamValue: string, offset: number): void => {
+      (
+        msgFamValue: string,
+        offset: number,
+        isStale: () => boolean,
+      ): void => {
         configApi
           .getConfigsByMsgFam(msgFamValue, RT_PAGE_SIZE, offset)
           .then((res) => {
+            if (isStale()) {
+              return;
+            }
             const page = Array.isArray(res.data) ? res.data : [];
             setMsgFamConfigs((prev) => (offset === 0 ? page : [...prev, ...page]));
             setRtOffset(offset + page.length);
             setRtTotal(res.total ?? 0);
           })
           .catch(() => {
-            if (offset === 0) {
-              setMsgFamConfigs([]);
-              setRtTotal(0);
+            if (isStale() || offset !== 0) {
+              return;
             }
+            setMsgFamConfigs([]);
+            setRtTotal(0);
           })
           .finally(() => {
-            setRtLoadingMore(false);
+            if (!isStale()) {
+              setRtLoadingMore(false);
+            }
           });
       },
       [],
@@ -206,6 +216,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     useEffect(() => {
       const msgFamValue = (endpointData.msgFam ?? '').trim();
       const search = rtSearch.trim();
+      let cancelled = false;
 
       if (rtSearchDebounceRef.current) {
         clearTimeout(rtSearchDebounceRef.current);
@@ -233,6 +244,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         configApi
           .getConfigsByMsgFam(msgFamValue, RT_PAGE_SIZE, 0, search)
           .then((res) => {
+            if (cancelled) {
+              return;
+            }
             const page = Array.isArray(res.data) ? res.data : [];
             setMsgFamConfigs((prev) => {
               const merged = [...prev];
@@ -247,11 +261,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           .catch(() => {
           })
           .finally(() => {
-            setRtSearching(false);
+            if (!cancelled) {
+              setRtSearching(false);
+            }
           });
       }, 400);
 
       return () => {
+        cancelled = true;
         if (rtSearchDebounceRef.current) {
           clearTimeout(rtSearchDebounceRef.current);
         }
@@ -261,6 +278,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
     useEffect(() => {
       const msgFamValue = (endpointData.msgFam ?? '').trim();
+      let cancelled = false;
 
       if (msgFamDebounceRef.current) {
         clearTimeout(msgFamDebounceRef.current);
@@ -276,10 +294,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       }
 
       msgFamDebounceRef.current = setTimeout(() => {
-        fetchRtPage(msgFamValue, 0);
+        fetchRtPage(msgFamValue, 0, () => cancelled);
       }, 500);
 
       return () => {
+        cancelled = true;
         if (msgFamDebounceRef.current) {
           clearTimeout(msgFamDebounceRef.current);
         }
@@ -293,7 +312,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         return;
       }
       setRtLoadingMore(true);
-      fetchRtPage(msgFamValue, rtOffset);
+      fetchRtPage(msgFamValue, rtOffset, () => false);
     };
 
     // Close related-transaction dropdown on outside click
