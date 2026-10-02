@@ -559,13 +559,32 @@ export class ConfigApiService {
     }>(response);
   }
 
-  async getConfigsByMsgFam(msgFam: string): Promise<{
+  async getConfigsByMsgFam(
+    msgFam: string,
+    limit?: number,
+    offset?: number,
+    transactionType?: string,
+  ): Promise<{
     success: boolean;
     data: string[];
     total: number;
+    limit: number;
+    offset: number;
+    pages: number;
   }> {
+    const params = new URLSearchParams();
+    if (limit !== undefined) {
+      params.set('limit', String(limit));
+    }
+    if (offset !== undefined) {
+      params.set('offset', String(offset));
+    }
+    if (transactionType !== undefined && transactionType !== '') {
+      params.set('transactionType', transactionType);
+    }
+    const query = params.toString();
     const response = await fetch(
-      `${this.baseURL}/config/tcs/by-msg-fam/${encodeURIComponent(msgFam)}`,
+      `${this.baseURL}/config/tcs/by-msg-fam/${encodeURIComponent(msgFam)}${query ? `?${query}` : ''}`,
       {
         method: 'GET',
         headers: ConfigApiService.getAuthHeaders(),
@@ -575,6 +594,9 @@ export class ConfigApiService {
       success: boolean;
       data: string[];
       total: number;
+      limit: number;
+      offset: number;
+      pages: number;
     }>(response);
   }
 

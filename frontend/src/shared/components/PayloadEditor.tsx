@@ -162,55 +162,139 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const [showInferredFields, setShowInferredFields] = useState(false);
     const hasUserEditedRef = React.useRef(false);
 
-    // Debounced fetch of configs by msgFam (Event Type)
-    // Stores endpoint paths returned by the admin service, e.g. /v1/tcs/pacs.008
+
+    const RT_PAGE_SIZE = 50;
     const [msgFamConfigs, setMsgFamConfigs] = useState<string[]>([]);
-    // Related Transaction searchable dropdown state
+    const [rtOffset, setRtOffset] = useState(0);
+    const [rtTotal, setRtTotal] = useState(0);
+    const [rtLoadingMore, setRtLoadingMore] = useState(false);
+
     const [rtDropdownOpen, setRtDropdownOpen] = useState(false);
     const [rtSearch, setRtSearch] = useState('');
     const rtDropdownRef = useRef<HTMLDivElement>(null);
     const msgFamDebounceRef = React.useRef<ReturnType<
       typeof setTimeout
     > | null>(null);
+    const rtSearchDebounceRef = React.useRef<ReturnType<
+      typeof setTimeout
+    > | null>(null);
+    const [rtSearching, setRtSearching] = useState(false);
+
+    const fetchRtPage = useCallback(
+      (msgFamValue: string, offset: number): void => {
+        configApi
+          .getConfigsByMsgFam(msgFamValue, RT_PAGE_SIZE, offset)
+          .then((res) => {
+            const page = Array.isArray(res.data) ? res.data : [];
+            setMsgFamConfigs((prev) => (offset === 0 ? page : [...prev, ...page]));
+            setRtOffset(offset + page.length);
+            setRtTotal(res.total ?? 0);
+          })
+          .catch(() => {
+            if (offset === 0) {
+              setMsgFamConfigs([]);
+              setRtTotal(0);
+            }
+          })
+          .finally(() => {
+            setRtLoadingMore(false);
+          });
+      },
+      [],
+    );
 
     useEffect(() => {
       const msgFamValue = (endpointData.msgFam ?? '').trim();
-      let cancelled = false;
+      const search = rtSearch.trim();
+
+      if (rtSearchDebounceRef.current) {
+        clearTimeout(rtSearchDebounceRef.current);
+      }
+
+      if (!msgFamValue || !search) {
+        setRtSearching(false);
+        return;
+      }
+
+      const hasLocalMatch = msgFamConfigs.some((path) => {
+        const txtp = path.split('/').filter(Boolean).pop() ?? path;
+        return (
+          txtp.toLowerCase().includes(search.toLowerCase()) ||
+          path.toLowerCase().includes(search.toLowerCase())
+        );
+      });
+      if (hasLocalMatch) {
+        setRtSearching(false);
+        return;
+      }
+
+      rtSearchDebounceRef.current = setTimeout(() => {
+        setRtSearching(true);
+        configApi
+          .getConfigsByMsgFam(msgFamValue, RT_PAGE_SIZE, 0, search)
+          .then((res) => {
+            const page = Array.isArray(res.data) ? res.data : [];
+            setMsgFamConfigs((prev) => {
+              const merged = [...prev];
+              for (const path of page) {
+                if (!merged.includes(path)) {
+                  merged.push(path);
+                }
+              }
+              return merged;
+            });
+          })
+          .catch(() => {
+          })
+          .finally(() => {
+            setRtSearching(false);
+          });
+      }, 400);
+
+      return () => {
+        if (rtSearchDebounceRef.current) {
+          clearTimeout(rtSearchDebounceRef.current);
+        }
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rtSearch, endpointData.msgFam]);
+
+    useEffect(() => {
+      const msgFamValue = (endpointData.msgFam ?? '').trim();
 
       if (msgFamDebounceRef.current) {
         clearTimeout(msgFamDebounceRef.current);
       }
 
       setMsgFamConfigs([]);
+      setRtOffset(0);
+      setRtTotal(0);
+      setRtSearch('');
 
       if (!msgFamValue) {
         return;
       }
 
       msgFamDebounceRef.current = setTimeout(() => {
-        configApi
-          .getConfigsByMsgFam(msgFamValue)
-          .then((res) => {
-            if (cancelled) {
-              return;
-            }
-            setMsgFamConfigs(Array.isArray(res.data) ? res.data : []);
-          })
-          .catch(() => {
-            if (cancelled) {
-              return;
-            }
-            setMsgFamConfigs([]);
-          });
+        fetchRtPage(msgFamValue, 0);
       }, 500);
 
       return () => {
-        cancelled = true;
         if (msgFamDebounceRef.current) {
           clearTimeout(msgFamDebounceRef.current);
         }
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [endpointData.msgFam]);
+
+    const handleLoadMoreRt = (): void => {
+      const msgFamValue = (endpointData.msgFam ?? '').trim();
+      if (!msgFamValue || rtLoadingMore || rtOffset >= rtTotal) {
+        return;
+      }
+      setRtLoadingMore(true);
+      fetchRtPage(msgFamValue, rtOffset);
+    };
 
     // Close related-transaction dropdown on outside click
     useEffect(() => {
@@ -458,7 +542,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         sanitizedValue = newValue.replace(/\s/g, '');
       }
       const updatedData = { ...endpointData, [field]: sanitizedValue };
-      
+
       if (field === 'msgFam') {
         updatedData.relatedTransaction = '';
         setRtSearch('');
@@ -605,14 +689,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
     return (
       <div className="space-y-4">
-        {}
+        { }
         <div className="">
           <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900 mb-4">
             <Settings2 className="text-blue-500" size={16} /> Endpoint
             Configuration
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {}
+            { }
             <div>
               <label
                 htmlFor="version"
@@ -641,13 +725,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="1.0.0"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${
-                      isReadOnly
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.version
                           ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
                           : 'bg-white border-gray-300'
-                    }`}
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -658,7 +741,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="msgFam"
@@ -683,13 +766,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="iso-20022"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.eventType
                           ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
                           : 'bg-white border-gray-300'
-                    }`}
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -699,9 +781,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   {fieldErrors.eventType}
                 </p>
               )}
-         
+
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="transaction-type"
@@ -729,13 +811,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="e.g., pacs.008, pain.001"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.transactionType
                           ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
                           : 'bg-white border-gray-300'
-                    }`}
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -746,7 +827,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="content-type"
@@ -763,11 +844,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     onChange={(e) => {
                       handleEndpointDataChange('contentType', e.target.value);
                     }}
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : 'bg-white border-gray-300'
-                    }`}
+                      }`}
                     disabled={isReadOnly}
                   >
                     <option value="application/json">application/json</option>
@@ -799,8 +879,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                         }
                       }}
                       className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-left [&:-webkit-autofill]:bg-white ${isReadOnly
-                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                          : 'bg-white border-gray-300'
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'bg-white border-gray-300'
                         }`}
                       disabled={isReadOnly}
                     >
@@ -842,7 +922,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                           >
                             -- Select Related Transaction --
                           </button>
-                          {filteredRtConfigs.length === 0 ? (
+                          {rtSearching ? (
+                            <div className="px-3 py-2 text-sm text-gray-400 text-center">
+                              Searching...
+                            </div>
+                          ) : filteredRtConfigs.length === 0 ? (
                             <div className="px-3 py-2 text-sm text-gray-400 text-center">
                               No matching transaction types
                             </div>
@@ -871,6 +955,18 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               );
                             })
                           )}
+                          {rtOffset < rtTotal && (
+                            <button
+                              type="button"
+                              onClick={handleLoadMoreRt}
+                              disabled={rtLoadingMore}
+                              className="block w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-gray-50 disabled:text-gray-400"
+                            >
+                              {rtLoadingMore
+                                ? 'Loading...'
+                                : `Load more (${rtTotal - rtOffset} remaining)`}
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -879,9 +975,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               })()}
             </div>
           </div>
-          {}
-          {}
-          {}
+          { }
+          { }
+          { }
           {endpointData.transactionType && (
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start gap-3">
@@ -904,7 +1000,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   <h4 className="text-sm font-medium text-blue-900 mb-2">
                     Endpoint Path Preview
                   </h4>
-                  {}
+                  { }
                   <div className="bg-white border border-blue-200 rounded px-3 py-2 font-mono text-sm text-gray-900">
                     /{tenantId}/{endpointData.version || 'v1'}/
                     {endpointData.msgFam ? `${endpointData.msgFam}/` : ''}
@@ -944,9 +1040,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                         onChange(
                           endpointData.contentType === 'application/json'
                             ? (JSON.parse(sampleJsonPayload) as Record<
-                                string,
-                                unknown
-                              >)
+                              string,
+                              unknown
+                            >)
                             : sampleXmlPayload,
                         );
                       }}
@@ -1048,26 +1144,24 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </div>
             )}
-            {}
+            { }
             {!isEditMode &&
               (payloadValidationMessage || fieldErrors.payload) && (
                 <div
-                  className={`p-3 border rounded-md mb-3 mt-5 ${
-                    fieldErrors.payload
+                  className={`p-3 border rounded-md mb-3 mt-5 ${fieldErrors.payload
                       ? 'bg-red-50 border-red-200'
                       : isPayloadValid
                         ? 'bg-green-50 border-green-200'
                         : 'bg-yellow-50 border-yellow-200'
-                  }`}
+                    }`}
                 >
                   <p
-                    className={`text-sm ${
-                      fieldErrors.payload
+                    className={`text-sm ${fieldErrors.payload
                         ? 'text-red-700'
                         : isPayloadValid
                           ? 'text-green-700'
                           : 'text-yellow-700'
-                    }`}
+                      }`}
                   >
                     {fieldErrors.payload || payloadValidationMessage}
                   </p>
@@ -1075,11 +1169,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               )}
           </div>
         )}
-        {}
+        { }
         {!isEditMode && (shouldCreateNew || isCloning) && (
           <>
             <div className="flex gap-5 w-full">
-              {}
+              { }
               <div className="flex-1">
                 <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
                   <Terminal className="text-blue-500" size={16} /> Raw Input
@@ -1103,7 +1197,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   />
                 </div>
               </div>
-              {}
+              { }
               {endpointData.contentType === 'application/json' && (
                 <div className="flex-1">
                   <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
@@ -1116,14 +1210,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               )}
             </div>
-            {}
+            { }
             <div className="my-6">
               {fieldGenerationError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
                   {fieldGenerationError}
                 </div>
               )}
-              {}
+              { }
               {value && isPayloadValid && (
                 <div className="text-center mb-4">
                   <Button
@@ -1153,7 +1247,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             </div>
           </>
         )}
-        {}
+        { }
         {isEditMode && !readOnly && (
           <div className="my-5 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
@@ -1184,7 +1278,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             </div>
           </div>
         )}
-        {}
+        { }
         {showInferredFields && (
           <div className="mt-6 space-y-4">
             {(isEditMode || readOnly || inferredFields.length > 0) && (
@@ -1205,12 +1299,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </div>
             )}
-            {}
+            { }
             {inferredFields.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                {}
-                {}
-                {}
+                { }
+                { }
+                { }
                 {!readOnly && (
                   <div className="mt-4">
                     {showAddFieldForm ? (
@@ -1219,7 +1313,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                           Add Your First Field
                         </h4>
                         <div className="space-y-3">
-                          {}
+                          { }
                           <div>
                             <label
                               htmlFor="empty-field-path"
@@ -1244,7 +1338,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Use dots for nested fields (parent.child)
                             </p>
                           </div>
-                          {}
+                          { }
                           <div>
                             <label
                               htmlFor="empty-field-type"
@@ -1270,7 +1364,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               <option value="Array">Array</option>
                             </select>
                           </div>
-                          {}
+                          { }
                           <div className="flex items-center">
                             <input
                               id="empty-field-required"
@@ -1291,7 +1385,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Required field
                             </label>
                           </div>
-                          {}
+                          { }
                           <div className="flex justify-center space-x-2 mt-4">
                             <button
                               onClick={() => {
@@ -1344,7 +1438,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               </div>
             ) : (
               <>
-                {}
+                { }
                 <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-3">
@@ -1554,8 +1648,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </>
             )}
-            {}
-            {}
+            { }
+            { }
           </div>
         )}
       </div>

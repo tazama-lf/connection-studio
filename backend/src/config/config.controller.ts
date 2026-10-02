@@ -133,8 +133,24 @@ export class ConfigController {
   async getConfigsByMsgFam(
     @Param('msgFam') msgFam: string,
     @User() user: AuthenticatedUser,
-  ): Promise<{ success: boolean; data: string[]; total: number }> {
-    return await this.configService.getConfigsByMsgFam(msgFam, user);
+    @Query('limit') limit: string,
+    @Query('offset') offset: string,
+    @Query('transactionType') transactionType?: string,
+  ): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  }> {
+    return await this.configService.getConfigsByMsgFam(
+      msgFam,
+      user,
+      parseInt(limit, 10),
+      parseInt(offset, 10),
+      transactionType,
+    );
   }
 
   @Get(':id')

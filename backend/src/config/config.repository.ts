@@ -204,7 +204,23 @@ export class ConfigRepository {
   async getConfigsByMsgFam(
     msgFam: string,
     token: string,
-  ): Promise<{ success: boolean; data: string[]; total: number }> {
-    return await this.adminServiceClient.getConfigsByMsgFam(msgFam, token);
+    limit?: number,
+    offset?: number,
+    transactionType?: string,
+  ): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  }> {
+    return await this.adminServiceClient.getConfigsByMsgFam(
+      msgFam,
+      token,
+      limit,
+      offset,
+      transactionType,
+    );
   }
 }

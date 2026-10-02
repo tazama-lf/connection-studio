@@ -1023,11 +1023,29 @@ export class AdminServiceClient {
   async getConfigsByMsgFam(
     msgFam: string,
     token: string,
-  ): Promise<{ success: boolean; data: string[]; total: number }> {
+    limit?: number,
+    offset?: number,
+    transactionType?: string,
+  ): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  }> {
     return await this.executeHttpRequest<{
       success: boolean;
       data: string[];
       total: number;
-    }>('POST', `${CONFIG_URL}/msg-fam`, token, { msgFam });
+      limit: number;
+      offset: number;
+      pages: number;
+    }>('POST', `${CONFIG_URL}/msg-fam`, token, {
+      msgFam,
+      ...(limit !== undefined && { limit }),
+      ...(offset !== undefined && { offset }),
+      ...(transactionType !== undefined && { transactionType }),
+    });
   }
 }

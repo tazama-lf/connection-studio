@@ -973,11 +973,24 @@ export class ConfigService {
   async getConfigsByMsgFam(
     msgFam: string,
     user: AuthenticatedUser,
-  ): Promise<{ success: boolean; data: string[]; total: number }> {
+    limit?: number,
+    offset?: number,
+    transactionType?: string,
+  ): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  }> {
     try {
       return await this.configRepository.getConfigsByMsgFam(
         msgFam,
         user.token.tokenString,
+        limit,
+        offset,
+        transactionType,
       );
     } catch (error) {
       this.logger.error(
