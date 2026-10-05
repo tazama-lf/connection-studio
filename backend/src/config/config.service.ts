@@ -1,30 +1,36 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
-  BadRequestException,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
-import { ConfigRepository } from './config.repository';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
-import { DemsClient } from '../services/dems-client.service';
+import { AuthenticatedUser } from '../auth/auth.types';
+import { EventType } from '../enums/events.enum';
 import { NotificationService } from '../notification/notification.service';
-import { ConfigWorkflowService } from './config-workflow.service';
-import { ConfigUtilsService } from './config-utils.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
+import { DemsClient } from '../services/dems-client.service';
 import { SftpService } from '../sftp/sftp.service';
+import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
+import { validatePayloadContent } from '../utils/helpers';
+import {
+  validateMappingDestinations,
+  validateMappings,
+} from '../utils/mapping-validation';
 import { RbacService } from '../utils/rbac/rbacHelper';
+import { ConfigUtilsService } from './config-utils.service';
+import { ConfigWorkflowService } from './config-workflow.service';
 import {
   Config,
-  CreateConfigDto,
   ConfigResponseDto,
-  ContentType,
   ConfigStatus,
+  ContentType,
+  CreateConfigDto,
   WorkflowAction,
 } from './config.interfaces';
-import { WorkflowActionDto, SftpConfigDataDto } from './dto';
-import { EventType } from '../enums/events.enum';
-import { AuthenticatedUser } from '../auth/auth.types';
-import { AdminServiceClient } from '../services/admin-service-client.service';
+import { ConfigRepository } from './config.repository';
+import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 
 @Injectable()
 export class ConfigService {
@@ -39,6 +45,7 @@ export class ConfigService {
     private readonly demsClient: DemsClient,
     private readonly notificationService: NotificationService,
     private readonly adminServiceClient: AdminServiceClient,
+    private readonly tazamaDataModelService: TazamaDataModelService,
   ) {}
 
   private async getConfigOrThrow(
@@ -132,6 +139,20 @@ export class ConfigService {
     };
     try {
       const { version } = dto;
+      const contentType = dto.contentType ?? ContentType.JSON;
+      const payloadValue: unknown = dto.payload;
+
+      const payloadValidation = validatePayloadContent(
+        dto.payload,
+        contentType,
+      );
+      if (!payloadValidation.isValid) {
+        return {
+          success: false,
+          message: payloadValidation.message,
+        };
+      }
+
       const msgFam = dto.msgFam ?? 'unknown';
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
@@ -163,14 +184,13 @@ export class ConfigService {
       );
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: dto.msgFam ?? '',
+        msgFam,
         transactionType: dto.transactionType,
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
-        payload: dto.payload,
+        payload: payloadValue as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
-        mapping: dto.mapping,
         functions: dto.functions,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
@@ -205,13 +225,12 @@ export class ConfigService {
         error.stack,
       );
 
-      const msgFam = dto.msgFam ?? 'unknown';
-      const { transactionType } = dto;
+      const { msgFam, transactionType } = dto;
       const { version } = dto;
 
       const userMessage = this.configUtils.buildUserErrorMessage(
         error,
-        msgFam,
+        msgFam ?? 'unknown',
         transactionType,
         version,
       );
@@ -368,17 +387,8 @@ export class ConfigService {
 
       case 'approve': {
         const approvalDto = actionDto.data;
-        const updatedConfig =
-          await this.configRepository.getupdateConfigByStatus(
-            id,
-            ConfigStatus.APPROVED,
-            token,
-            approvalDto.comment,
-          );
 
-        if (updatedConfig) {
-          const config = updatedConfig;
-
+        try {
           const { transactionType } = config;
 
           if (transactionType) {
@@ -419,11 +429,31 @@ export class ConfigService {
 
             await Promise.all(tableCreationPromises);
           }
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `Failed to create table(s) during approve: ${errMsg}`,
+          );
+          throw new BadRequestException(
+            `Failed to approve configuration: ${errMsg}`,
+          );
+        }
+
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.APPROVED,
+            token,
+            approvalDto.comment,
+          );
+
+        if (updatedConfig) {
+          const approvedConfig = updatedConfig;
 
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
-            config,
+            approvedConfig,
             token,
             approvalDto.comment,
           );
@@ -664,7 +694,12 @@ export class ConfigService {
     }
 
     try {
-      await this.demsClient.notifyDems(id.toString(), tenantId, publishingStatus, token);
+      await this.demsClient.notifyDems(
+        id.toString(),
+        tenantId,
+        publishingStatus,
+        token,
+      );
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(
@@ -787,8 +822,43 @@ export class ConfigService {
   async addMappingViaService(
     id: number,
     mappingData: Record<string, unknown>,
+    tenantId: string,
     token: string,
   ): Promise<unknown> {
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const payload = this.parsePayloadForValidation(config.payload);
+    if (payload) {
+      const sourceErrors = validateMappings(payload, [mappingData]);
+      if (sourceErrors.length) {
+        throw new BadRequestException({
+          message: 'Invalid mapping sources',
+          details: sourceErrors,
+        });
+      }
+    }
+
+    const dataModel = await this.tazamaDataModelService.getDataModelJson(
+      tenantId,
+      token,
+    );
+    if (dataModel) {
+      const destErrors = validateMappingDestinations(dataModel, [mappingData]);
+      if (destErrors.length) {
+        throw new BadRequestException({
+          message: 'Invalid mapping destinations',
+          details: destErrors,
+        });
+      }
+    }
+
     const result = await this.configRepository.addMapping(
       id,
       mappingData,
@@ -796,6 +866,23 @@ export class ConfigService {
     );
 
     return result;
+  }
+
+  private parsePayloadForValidation(
+    payload: string | Record<string, unknown> | undefined,
+  ): Record<string, unknown> | null {
+    if (!payload) return null;
+    if (typeof payload === 'object') return payload;
+    try {
+      const parsed: unknown = JSON.parse(payload);
+      return typeof parsed === 'object' && parsed !== null
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      // Non-JSON (e.g. XML) payloads can't be validated with this path
+      // resolver; skip source validation rather than fail the request.
+      return null;
+    }
   }
 
   async removeMappingViaService(
