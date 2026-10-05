@@ -24,6 +24,7 @@ import {
   CreateConfigDto,
   WorkflowAction,
 } from './config.interfaces';
+import type { CloneConfigDto } from './dto/clone-config.dto';
 import { ConfigRepository } from './config.repository';
 import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 
@@ -123,6 +124,20 @@ export class ConfigService {
   // ======================== CRUD OPERATIONS ========================
 
   async createConfig(
+    dto: CreateConfigDto,
+    user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return await this.saveNewConfig(dto, user);
+  }
+
+  async cloneConfig(
+    dto: CloneConfigDto,
+    user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return await this.saveNewConfig(dto as unknown as CreateConfigDto, user);
+  }
+
+  private async saveNewConfig(
     dto: CreateConfigDto,
     user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {

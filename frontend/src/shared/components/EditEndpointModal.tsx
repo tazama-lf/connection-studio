@@ -1733,10 +1733,15 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       const isCloningOperation = isCloning && existingConfig;
       const action = shouldCreate || isCloningOperation ? 'create' : 'update';
 
-      if (shouldCreate || isCloningOperation || isCloneMode) {
-        saveResponse = await configApi.createConfig({
+      if (isCloningOperation || isCloneMode) {
+        saveResponse = await configApi.cloneConfigWithData({
           ...createRequest,
           mapping: existingConfig?.mapping,
+          functions: existingConfig?.functions,
+        });
+      } else if (shouldCreate) {
+        saveResponse = await configApi.createConfig({
+          ...createRequest,
           functions: existingConfig?.functions,
         });
       } else {

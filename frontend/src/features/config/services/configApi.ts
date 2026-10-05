@@ -23,6 +23,8 @@ export interface CloneConfigRequest {
   newMsgFam?: string;
 }
 
+export type CloneConfigWithDataRequest = CreateConfigRequest;
+
 export interface FieldMapping {
   source?: string | string[]; // string[] for CONCAT/SUM transformations
   destination?: string | string[]; // string[] for SPLIT transformation
@@ -159,6 +161,19 @@ export class ConfigApiService {
   }
 
   async cloneConfig(data: CloneConfigRequest): Promise<ConfigResponse> {
+    const response = await fetch(`${this.baseURL}/config/clone`, {
+      method: 'POST',
+      headers: ConfigApiService.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
+  }
+
+  async cloneConfigWithData(
+    data: CloneConfigWithDataRequest,
+  ): Promise<ConfigResponse> {
     const response = await fetch(`${this.baseURL}/config/clone`, {
       method: 'POST',
       headers: ConfigApiService.getAuthHeaders(),

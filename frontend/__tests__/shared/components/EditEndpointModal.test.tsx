@@ -20,6 +20,7 @@ const mockSetIsInCloneMode = jest.fn();
 
 const mockGetConfig = jest.fn();
 const mockCreateConfig = jest.fn();
+const mockCloneConfigWithData = jest.fn();
 const mockUpdateConfig = jest.fn();
 const mockSubmitForApproval = jest.fn();
 const mockApproveConfig = jest.fn();
@@ -57,6 +58,8 @@ jest.mock('../../../src/features/config/services/configApi', () => ({
   configApi: {
     getConfig: (...args: any[]) => mockGetConfig(...args),
     createConfig: (...args: any[]) => mockCreateConfig(...args),
+    cloneConfigWithData: (...args: any[]) =>
+      mockCloneConfigWithData(...args),
     updateConfig: (...args: any[]) => mockUpdateConfig(...args),
     submitForApproval: (...args: any[]) => mockSubmitForApproval(...args),
     approveConfig: (...args: any[]) => mockApproveConfig(...args),
@@ -612,7 +615,8 @@ describe('EditEndpointModal', () => {
     fireEvent.click(screen.getByText('Save and Next'));
 
     await waitFor(() => {
-      expect(mockCreateConfig).toHaveBeenCalled();
+      expect(mockCloneConfigWithData).toHaveBeenCalled();
+      expect(mockCreateConfig).not.toHaveBeenCalled();
     });
   });
 
@@ -3715,12 +3719,12 @@ describe('EditEndpointModal', () => {
     });
   });
 
-  it('uses createConfig in clone mode with existing config', async () => {
+  it('uses cloneConfigWithData in clone mode with existing config', async () => {
     mockGetConfig.mockResolvedValue({
       success: true,
       config: { ...baseConfig },
     });
-    mockCreateConfig.mockResolvedValue({
+    mockCloneConfigWithData.mockResolvedValue({
       success: true,
       config: { ...baseConfig, id: 100 },
     });
@@ -3736,7 +3740,7 @@ describe('EditEndpointModal', () => {
     fireEvent.click(screen.getByText('Save and Next'));
 
     await waitFor(() => {
-      expect(mockCreateConfig).toHaveBeenCalled();
+      expect(mockCloneConfigWithData).toHaveBeenCalled();
       expect(mockShowSuccess).toHaveBeenCalledWith(
         'Configuration saved successfully!',
       );
@@ -4906,7 +4910,7 @@ describe('EditEndpointModal', () => {
     });
   });
 
-  it('creates config via createConfig in clone mode with existing mapping and functions', async () => {
+  it('clones config via cloneConfigWithData in clone mode with existing mapping and functions', async () => {
     mockGetConfig.mockResolvedValue({
       success: true,
       config: {
@@ -4915,7 +4919,7 @@ describe('EditEndpointModal', () => {
         functions: [{ functionName: 'addAccount', params: ['redis.dbtrAcctId'] }],
       },
     });
-    mockCreateConfig.mockResolvedValue({
+    mockCloneConfigWithData.mockResolvedValue({
       success: true,
       config: { ...baseConfig, id: 200 },
     });
@@ -4931,8 +4935,8 @@ describe('EditEndpointModal', () => {
     fireEvent.click(screen.getByText('Save and Next'));
 
     await waitFor(() => {
-      expect(mockCreateConfig).toHaveBeenCalled();
-      const createCall = mockCreateConfig.mock.calls[0][0];
+      expect(mockCloneConfigWithData).toHaveBeenCalled();
+      const createCall = mockCloneConfigWithData.mock.calls[0][0];
       expect(createCall.mapping).toBeDefined();
       expect(createCall.functions).toBeDefined();
     });

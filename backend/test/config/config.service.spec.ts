@@ -143,7 +143,7 @@ describe('ConfigService', () => {
     expect(res.success).toBe(true);
   });
 
-  it('forwards mapping through to configRepository.createConfig when cloning a config with existing mappings (issue #136)', async () => {
+  it('cloneConfig forwards mapping to configRepository.createConfig (issue #136)', async () => {
     mockRepo.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
       null,
     );
@@ -155,7 +155,7 @@ describe('ConfigService', () => {
       { source: ['Document.MsgId'], destination: 'transactionDetails.MsgId' },
     ];
 
-    const res = await service.createConfig(
+    const res = await service.cloneConfig(
       {
         msgFam: 'iso',
         transactionType: 'pacs.008',
@@ -173,6 +173,29 @@ describe('ConfigService', () => {
       expect.objectContaining({ mapping: clonedMapping }),
       token,
     );
+  });
+
+  it('createConfig does not write mapping', async () => {
+    mockRepo.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+      null,
+    );
+    mockUtils.generateEndpointPath.mockReturnValue('/path');
+    mockRepo.createConfig.mockResolvedValue(1);
+    mockRepo.findConfigById.mockResolvedValue({ id: 1 });
+
+    await service.createConfig(
+      {
+        msgFam: 'iso',
+        transactionType: 'pacs.008',
+        version: '1.0.0',
+        schema: {},
+        payload: { sample: 'value' },
+        contentType: ContentType.JSON,
+      } as any,
+      user,
+    );
+
+    expect(mockRepo.createConfig.mock.calls[0][0].mapping).toBeUndefined();
   });
 
   it('returns duplicate message if config exists', async () => {
