@@ -910,7 +910,17 @@ export class ConfigService {
 
     const newFunctionName = functionData.functionName as string;
 
-    if (newFunctionName === 'addDataModelTable') {
+    if (newFunctionName === 'saveTransactionDetails') {
+      const hasExisting = existingFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'saveTransactionDetails',
+      );
+      if (hasExisting) {
+        throw new BadRequestException(
+          'Save Transaction Details can only be added once. Remove the existing one first to change its parameters.',
+        );
+      }
+    } else if (newFunctionName === 'addDataModelTable') {
       const newTableName = (
         (functionData.tableName as string | undefined) ?? ''
       )

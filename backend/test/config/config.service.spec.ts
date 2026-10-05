@@ -905,6 +905,51 @@ describe('ConfigService', () => {
     expect(result).toEqual({ success: true });
   });
 
+  it('rejects adding a second saveTransactionDetails regardless of params', async () => {
+    const functionData = {
+      functionName: 'saveTransactionDetails',
+      params: ['transactionDetails.Amt', 'transactionDetails.Ccy'],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      functions: [
+        {
+          functionName: 'saveTransactionDetails',
+          params: ['transactionDetails.msgId'],
+        },
+      ],
+    });
+    mockRepo.addFunction = jest.fn();
+
+    await expect(
+      service.addFunctionViaService(1, functionData, user, token),
+    ).rejects.toThrow(
+      'Save Transaction Details can only be added once. Remove the existing one first to change its parameters.',
+    );
+    expect(mockRepo.addFunction).not.toHaveBeenCalled();
+  });
+
+  it('allows adding saveTransactionDetails when none exists yet', async () => {
+    const functionData = {
+      functionName: 'saveTransactionDetails',
+      params: ['transactionDetails.msgId'],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({ id: 1, functions: [] });
+    mockRepo.addFunction = jest.fn().mockResolvedValue({ success: true });
+
+    const result = await service.addFunctionViaService(
+      1,
+      functionData,
+      user,
+      token,
+    );
+
+    expect(mockRepo.addFunction).toHaveBeenCalledWith(1, functionData, token);
+    expect(result).toEqual({ success: true });
+  });
+
   it('rejects adding a duplicate data model table', async () => {
     const functionData = {
       functionName: 'addDataModelTable',
