@@ -178,6 +178,9 @@ jest.mock('../../../src/shared/components/PayloadEditor', () => {
         {props.existingSchemaFields && (
           <span data-testid="has-schema-fields">yes</span>
         )}
+        <span data-testid="related-transaction-value">
+          {props.endpointData?.relatedTransaction ?? ''}
+        </span>
         PayloadEditor
       </div>
     );
@@ -416,6 +419,27 @@ describe('EditEndpointModal', () => {
       expect(mockGetConfig).toHaveBeenCalledWith(42);
     });
     expect(screen.getByText('Edit Configuration')).toBeInTheDocument();
+  });
+
+  it('pre-populates Related Transaction from a camelCase-shaped config', async () => {
+    mockGetConfig.mockResolvedValue({
+      success: true,
+      config: {
+        ...baseConfig,
+        relatedTransaction: 'pacs.008',
+      },
+    });
+    renderModal({ endpointId: 42 });
+
+    await waitFor(() => {
+      expect(mockGetConfig).toHaveBeenCalledWith(42);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('related-transaction-value')).toHaveTextContent(
+        'pacs.008',
+      );
+    });
   });
 
   it('handles loadExistingConfig when response has direct config format', async () => {
