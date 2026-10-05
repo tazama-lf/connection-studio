@@ -143,6 +143,10 @@ export class ConfigService {
     return await this.saveNewConfig(dto as unknown as CreateConfigDto, user);
   }
 
+  // NOTE: `CreateConfigDto` here is the @tazama-lf/tcs-lib interface re-exported
+  // by ./config.interfaces, and it declares `mapping?`. It is NOT the validated
+  // class of the same name in ./dto/create-config.dto.ts that POST /config binds
+  // to, which has no `mapping`. Only the clone path (CloneConfigDto) can carry one.
   private async saveNewConfig(
     dto: CreateConfigDto,
     user: AuthenticatedUser,

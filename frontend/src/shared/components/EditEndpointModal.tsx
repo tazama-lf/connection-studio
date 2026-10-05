@@ -1734,8 +1734,25 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       const action = shouldCreate || isCloningOperation ? 'create' : 'update';
 
       if (isCloningOperation || isCloneMode) {
+        const { msgFam, version, schema, payload: clonePayload } = createRequest;
+        if (
+          msgFam === undefined ||
+          schema === undefined ||
+          schema === null ||
+          clonePayload === undefined ||
+          version === undefined
+        ) {
+          setError(
+            'Event type, version, schema and payload are required to clone a configuration',
+          );
+          return;
+        }
         saveResponse = await configApi.cloneConfigWithData({
           ...createRequest,
+          msgFam,
+          version,
+          schema,
+          payload: clonePayload,
           mapping: existingConfig?.mapping,
           functions: existingConfig?.functions,
         });

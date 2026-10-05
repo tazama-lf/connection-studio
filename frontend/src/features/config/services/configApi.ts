@@ -23,7 +23,18 @@ export interface CloneConfigRequest {
   newMsgFam?: string;
 }
 
-export type CloneConfigWithDataRequest = CreateConfigRequest;
+// Mirrors the backend CloneConfigDto: these four fields are required there and
+// fieldAdjustments is not an accepted property (forbidNonWhitelisted).
+export interface CloneConfigWithDataRequest
+  extends Omit<
+    CreateConfigRequest,
+    'msgFam' | 'version' | 'schema' | 'payload' | 'fieldAdjustments'
+  > {
+  msgFam: string;
+  version: string;
+  schema: NonNullable<CreateConfigRequest['schema']>;
+  payload: NonNullable<CreateConfigRequest['payload']>;
+}
 
 export interface FieldMapping {
   source?: string | string[]; // string[] for CONCAT/SUM transformations
