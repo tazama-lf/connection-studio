@@ -9,6 +9,7 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  DefaultValuePipe,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -70,6 +71,7 @@ export class ConfigController {
     return (await this.configService.addMappingViaService(
       id,
       mappingData,
+      user.tenantId,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
@@ -121,6 +123,36 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
   ): Promise<{ related_transactions: string[] }> {
     return await this.configService.getRelatedTransactions(user);
+  }
+
+  @Get('/tcs/by-msg-fam/:msgFam')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async getConfigsByMsgFam(
+    @Param('msgFam') msgFam: string,
+    @User() user: AuthenticatedUser,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+    @Query('transactionType') transactionType?: string,
+  ): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  }> {
+    return await this.configService.getConfigsByMsgFam(
+      msgFam,
+      user,
+      limit,
+      offset,
+      transactionType,
+    );
   }
 
   @Get(':id')

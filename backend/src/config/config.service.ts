@@ -12,7 +12,12 @@ import { NotificationService } from '../notification/notification.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { DemsClient } from '../services/dems-client.service';
 import { SftpService } from '../sftp/sftp.service';
+import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { validatePayloadContent } from '../utils/helpers';
+import {
+  validateMappingDestinations,
+  validateMappings,
+} from '../utils/mapping-validation';
 import { RbacService } from '../utils/rbac/rbacHelper';
 import { ConfigUtilsService } from './config-utils.service';
 import { ConfigWorkflowService } from './config-workflow.service';
@@ -40,6 +45,7 @@ export class ConfigService {
     private readonly demsClient: DemsClient,
     private readonly notificationService: NotificationService,
     private readonly adminServiceClient: AdminServiceClient,
+    private readonly tazamaDataModelService: TazamaDataModelService,
   ) {}
 
   private async getConfigOrThrow(
@@ -214,10 +220,8 @@ export class ConfigService {
         config,
       };
     } catch (error) {
-      this.logger.error(
-        `Failed to create config: ${error.message}`,
-        error.stack,
-      );
+      const err = error as Error;
+      this.logger.error(`Failed to create config: ${err.message}`, err.stack);
 
       const { msgFam, transactionType } = dto;
       const { version } = dto;
@@ -295,7 +299,7 @@ export class ConfigService {
         config = configData as unknown as Config;
       } catch (error) {
         throw new BadRequestException(
-          `Cannot read config ${id} from SFTP: ${error.message}`,
+          `Cannot read config ${id} from SFTP: ${(error as Error).message}`,
         );
       }
     } else {
@@ -531,10 +535,11 @@ export class ConfigService {
             config: result as Config | undefined,
           };
         } catch (error) {
-          this.logger.error(`Failed to export config: ${error.message}`);
+          const err = error as Error;
+          this.logger.error(`Failed to export config: ${err.message}`);
 
           throw new BadRequestException(
-            `Failed to export config: ${error.message}`,
+            `Failed to export config: ${err.message}`,
           );
         }
       }
@@ -555,7 +560,7 @@ export class ConfigService {
             )) as unknown as SftpConfigDataDto;
           } catch (error) {
             throw new BadRequestException(
-              `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
+              `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${(error as Error).message}`,
             );
           }
         }
@@ -589,7 +594,7 @@ export class ConfigService {
             );
           } catch (insertError) {
             this.logger.error(
-              `Failed to insert deployed config: ${insertError.message}`,
+              `Failed to insert deployed config: ${(insertError as Error).message}`,
             );
             throw insertError;
           }
@@ -820,8 +825,43 @@ export class ConfigService {
   async addMappingViaService(
     id: number,
     mappingData: Record<string, unknown>,
+    tenantId: string,
     token: string,
   ): Promise<unknown> {
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const payload = this.parsePayloadForValidation(config.payload);
+    if (payload) {
+      const sourceErrors = validateMappings(payload, [mappingData]);
+      if (sourceErrors.length) {
+        throw new BadRequestException({
+          message: 'Invalid mapping sources',
+          details: sourceErrors,
+        });
+      }
+    }
+
+    const dataModel = await this.tazamaDataModelService.getDataModelJson(
+      tenantId,
+      token,
+    );
+    if (dataModel) {
+      const destErrors = validateMappingDestinations(dataModel, [mappingData]);
+      if (destErrors.length) {
+        throw new BadRequestException({
+          message: 'Invalid mapping destinations',
+          details: destErrors,
+        });
+      }
+    }
+
     const result = await this.configRepository.addMapping(
       id,
       mappingData,
@@ -829,6 +869,23 @@ export class ConfigService {
     );
 
     return result;
+  }
+
+  private parsePayloadForValidation(
+    payload: string | Record<string, unknown> | undefined,
+  ): Record<string, unknown> | null {
+    if (!payload) return null;
+    if (typeof payload === 'object') return payload;
+    try {
+      const parsed: unknown = JSON.parse(payload);
+      return typeof parsed === 'object' && parsed !== null
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      // Non-JSON (e.g. XML) payloads can't be validated with this path
+      // resolver; skip source validation rather than fail the request.
+      return null;
+    }
   }
 
   async removeMappingViaService(
@@ -968,8 +1025,42 @@ export class ConfigService {
         user.token.tokenString,
       );
     } catch (error) {
-      this.logger.error(`Failed to get related transactions: ${error.message}`);
+      this.logger.error(
+        `Failed to get related transactions: ${(error as Error).message}`,
+      );
       throw new BadRequestException('Failed to retrieve related transactions');
+    }
+  }
+
+  async getConfigsByMsgFam(
+    msgFam: string,
+    user: AuthenticatedUser,
+    limit?: number,
+    offset?: number,
+    transactionType?: string,
+  ): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  }> {
+    try {
+      return await this.configRepository.getConfigsByMsgFam(
+        msgFam,
+        user.token.tokenString,
+        limit,
+        offset,
+        transactionType,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get configs by msgFam '${msgFam}': ${(error as Error).message}`,
+      );
+      throw new BadRequestException(
+        `Failed to retrieve configs for event type '${msgFam}'`,
+      );
     }
   }
 }

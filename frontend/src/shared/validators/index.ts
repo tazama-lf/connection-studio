@@ -23,6 +23,6 @@ export const transactionTypeSchema = yup
   .string()
   .required('Transaction Type is required')
   .matches(
-    /^[a-z_][a-z0-9_]*$/,
-    'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, or underscores',
+    /^[a-z_][a-z0-9_]*(?:\.[a-z0-9_]+)*$/,
+    'Transaction Type must start with a lowercase letter or underscore, contain only lowercase letters, numbers, or underscores, and may use dots to separate segments (e.g: pacs.008)',
   );

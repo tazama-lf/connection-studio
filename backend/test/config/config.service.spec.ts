@@ -14,6 +14,7 @@ import {
 import { ConfigStatus, ContentType } from '../../src/config/config.interfaces';
 import { EventType } from '../../src/enums/events.enum';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
+import { TazamaDataModelService } from '../../src/tazama-data-model/tazama-data-model.service';
 
 describe('ConfigService', () => {
   let service: ConfigService;
@@ -62,6 +63,10 @@ describe('ConfigService', () => {
 
   const mockAdminServiceClient = {};
 
+  const mockTazamaDataModelService = {
+    getDataModelJson: jest.fn(),
+  };
+
   const mockAuditLogger = {
     log: jest.fn(),
     error: jest.fn(),
@@ -97,6 +102,10 @@ describe('ConfigService', () => {
         { provide: DemsClient, useValue: mockNotify },
         { provide: NotificationService, useValue: mockNotification },
         { provide: AdminServiceClient, useValue: mockAdminServiceClient },
+        {
+          provide: TazamaDataModelService,
+          useValue: mockTazamaDataModelService,
+        },
         { provide: 'AUDIT_LOGGER', useValue: mockAuditLogger },
       ],
     }).compile();
@@ -788,20 +797,102 @@ describe('ConfigService', () => {
     expect(result).toEqual({ success: true });
   });
 
-  it('adds mapping via service', async () => {
+  describe('addMappingViaService', () => {
     const mappingData = {
       source: 'amount',
       destination: 'transactionAmount',
     };
 
-    mockRepo.addMapping = jest.fn().mockResolvedValue({
-      success: true,
+    beforeEach(() => {
+      mockRepo.findConfigById.mockResolvedValue({
+        id: 1,
+        payload: { amount: 100 },
+      });
+      mockTazamaDataModelService.getDataModelJson.mockResolvedValue({
+        transactionAmount: 0,
+      });
+      mockRepo.addMapping = jest.fn().mockResolvedValue({ success: true });
     });
 
-    const result = await service.addMappingViaService(1, mappingData, token);
+    it('adds mapping via service when source and destination both resolve', async () => {
+      const result = await service.addMappingViaService(
+        1,
+        mappingData,
+        'tenant_001',
+        token,
+      );
 
-    expect(mockRepo.addMapping).toHaveBeenCalledWith(1, mappingData, token);
-    expect(result).toEqual({ success: true });
+      expect(mockRepo.findConfigById).toHaveBeenCalledWith(
+        1,
+        'tenant_001',
+        token,
+      );
+      expect(mockTazamaDataModelService.getDataModelJson).toHaveBeenCalledWith(
+        'tenant_001',
+        token,
+      );
+      expect(mockRepo.addMapping).toHaveBeenCalledWith(1, mappingData, token);
+      expect(result).toEqual({ success: true });
+    });
+
+    it('throws NotFoundException when the config does not exist', async () => {
+      mockRepo.findConfigById.mockResolvedValue(null);
+
+      await expect(
+        service.addMappingViaService(1, mappingData, 'tenant_001', token),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockRepo.addMapping).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException with details when the source does not resolve in the stored payload', async () => {
+      mockRepo.findConfigById.mockResolvedValue({
+        id: 1,
+        payload: { somethingElse: 1 },
+      });
+
+      await expect(
+        service.addMappingViaService(1, mappingData, 'tenant_001', token),
+      ).rejects.toMatchObject({
+        response: {
+          message: 'Invalid mapping sources',
+          details: [expect.objectContaining({ message: expect.any(String) })],
+        },
+      });
+      expect(mockRepo.addMapping).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException with details when the destination does not resolve in the data model', async () => {
+      mockTazamaDataModelService.getDataModelJson.mockResolvedValue({
+        somethingElse: 1,
+      });
+
+      await expect(
+        service.addMappingViaService(1, mappingData, 'tenant_001', token),
+      ).rejects.toMatchObject({
+        response: {
+          message: 'Invalid mapping destinations',
+          details: [expect.objectContaining({ message: expect.any(String) })],
+        },
+      });
+      expect(mockRepo.addMapping).not.toHaveBeenCalled();
+    });
+
+    it('skips source validation when the stored payload is a non-JSON string (e.g. XML)', async () => {
+      mockRepo.findConfigById.mockResolvedValue({
+        id: 1,
+        payload: '<root><amount>100</amount></root>',
+      });
+
+      const result = await service.addMappingViaService(
+        1,
+        mappingData,
+        'tenant_001',
+        token,
+      );
+
+      expect(mockRepo.addMapping).toHaveBeenCalledWith(1, mappingData, token);
+      expect(result).toEqual({ success: true });
+    });
   });
   it('updates config via write', async () => {
     const updateData = {
