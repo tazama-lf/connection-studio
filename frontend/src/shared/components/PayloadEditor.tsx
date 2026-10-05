@@ -161,20 +161,189 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
     const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
     const [showInferredFields, setShowInferredFields] = useState(false);
     const hasUserEditedRef = React.useRef(false);
-    const [relatedTransactions, setRelatedTransactions] = useState<string[]>(
+
+
+    const RT_PAGE_SIZE = 50;
+    const [msgFamConfigs, setMsgFamConfigs] = useState<string[]>([]);
+    const [rtOffset, setRtOffset] = useState(0);
+    const [rtTotal, setRtTotal] = useState(0);
+    const [rtLoadingMore, setRtLoadingMore] = useState(false);
+
+    const [rtDropdownOpen, setRtDropdownOpen] = useState(false);
+    const [rtSearch, setRtSearch] = useState('');
+    const rtDropdownRef = useRef<HTMLDivElement>(null);
+    const msgFamDebounceRef = React.useRef<ReturnType<
+      typeof setTimeout
+    > | null>(null);
+    const rtSearchDebounceRef = React.useRef<ReturnType<
+      typeof setTimeout
+    > | null>(null);
+    const [rtSearching, setRtSearching] = useState(false);
+
+    const fetchRtPage = useCallback(
+      (
+        msgFamValue: string,
+        offset: number,
+        isStale: () => boolean,
+      ): void => {
+        configApi
+          .getConfigsByMsgFam(msgFamValue, RT_PAGE_SIZE, offset)
+          .then((res) => {
+            if (isStale()) {
+              return;
+            }
+            const page = Array.isArray(res.data) ? res.data : [];
+            setMsgFamConfigs((prev) => (offset === 0 ? page : [...prev, ...page]));
+            setRtOffset(offset + page.length);
+            setRtTotal(res.total ?? 0);
+          })
+          .catch(() => {
+            if (isStale() || offset !== 0) {
+              return;
+            }
+            setMsgFamConfigs([]);
+            setRtTotal(0);
+          })
+          .finally(() => {
+            if (!isStale()) {
+              setRtLoadingMore(false);
+            }
+          });
+      },
       [],
     );
 
     useEffect(() => {
-      configApi
-        .getRelatedTransactions()
-        .then((res) => {
-          setRelatedTransactions(Array.isArray(res.data) ? res.data : []);
-        })
-        .catch(() => {
-          setRelatedTransactions([]);
-        });
-    }, []);
+      const msgFamValue = (endpointData.msgFam ?? '').trim();
+      const search = rtSearch.trim();
+      let cancelled = false;
+
+      if (rtSearchDebounceRef.current) {
+        clearTimeout(rtSearchDebounceRef.current);
+      }
+
+      if (!msgFamValue || !search) {
+        setRtSearching(false);
+        return;
+      }
+
+      const hasLocalMatch = msgFamConfigs.some((path) => {
+        const txtp = path.split('/').filter(Boolean).pop() ?? path;
+        return (
+          txtp.toLowerCase().includes(search.toLowerCase()) ||
+          path.toLowerCase().includes(search.toLowerCase())
+        );
+      });
+      if (hasLocalMatch) {
+        setRtSearching(false);
+        return;
+      }
+
+      rtSearchDebounceRef.current = setTimeout(() => {
+        setRtSearching(true);
+        configApi
+          .getConfigsByMsgFam(msgFamValue, RT_PAGE_SIZE, 0, search)
+          .then((res) => {
+            if (cancelled) {
+              return;
+            }
+            const page = Array.isArray(res.data) ? res.data : [];
+            setMsgFamConfigs((prev) => {
+              const merged = [...prev];
+              for (const path of page) {
+                if (!merged.includes(path)) {
+                  merged.push(path);
+                }
+              }
+              return merged;
+            });
+          })
+          .catch(() => {
+          })
+          .finally(() => {
+            if (!cancelled) {
+              setRtSearching(false);
+            }
+          });
+      }, 400);
+
+      return () => {
+        cancelled = true;
+        if (rtSearchDebounceRef.current) {
+          clearTimeout(rtSearchDebounceRef.current);
+        }
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rtSearch, endpointData.msgFam]);
+
+    useEffect(() => {
+      const msgFamValue = (endpointData.msgFam ?? '').trim();
+      let cancelled = false;
+
+      if (msgFamDebounceRef.current) {
+        clearTimeout(msgFamDebounceRef.current);
+      }
+
+      setMsgFamConfigs([]);
+      setRtOffset(0);
+      setRtTotal(0);
+      setRtSearch('');
+
+      if (!msgFamValue) {
+        return;
+      }
+
+      msgFamDebounceRef.current = setTimeout(() => {
+        fetchRtPage(msgFamValue, 0, () => cancelled);
+      }, 500);
+
+      return () => {
+        cancelled = true;
+        if (msgFamDebounceRef.current) {
+          clearTimeout(msgFamDebounceRef.current);
+        }
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [endpointData.msgFam]);
+
+    const handleLoadMoreRt = (): void => {
+      const msgFamValue = (endpointData.msgFam ?? '').trim();
+      if (!msgFamValue || rtLoadingMore || rtOffset >= rtTotal) {
+        return;
+      }
+      setRtLoadingMore(true);
+      fetchRtPage(msgFamValue, rtOffset, () => false);
+    };
+
+    // Close related-transaction dropdown on outside click
+    useEffect(() => {
+      if (!rtDropdownOpen) return;
+      const handler = (e: MouseEvent): void => {
+        if (
+          rtDropdownRef.current &&
+          !rtDropdownRef.current.contains(e.target as Node)
+        ) {
+          setRtDropdownOpen(false);
+        }
+      };
+      document.addEventListener('mousedown', handler);
+      return () => {
+        document.removeEventListener('mousedown', handler);
+      };
+    }, [rtDropdownOpen]);
+
+    // Derived values for related-transaction dropdown
+    const selectedRtPath = endpointData.relatedTransaction ?? '';
+    const selectedRtTxtp = selectedRtPath
+      ? (selectedRtPath.split('/').filter(Boolean).pop() ?? selectedRtPath)
+      : '';
+    const filteredRtConfigs = msgFamConfigs.filter((path) => {
+      const txtp = path.split('/').filter(Boolean).pop() ?? path;
+      return (
+        txtp.toLowerCase().includes(rtSearch.toLowerCase()) ||
+        path.toLowerCase().includes(rtSearch.toLowerCase())
+      );
+    });
     const [fieldGenerationError, setFieldGenerationError] = useState<
       string | null
     >(null);
@@ -392,6 +561,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         sanitizedValue = newValue.replace(/\s/g, '');
       }
       const updatedData = { ...endpointData, [field]: sanitizedValue };
+
+      if (field === 'msgFam') {
+        updatedData.relatedTransaction = '';
+        setRtSearch('');
+        setRtDropdownOpen(false);
+      }
       setEndpointData(updatedData);
       if (onEndpointDataChange) {
         onEndpointDataChange(updatedData);
@@ -533,14 +708,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
 
     return (
       <div className="space-y-4">
-        {}
+        { }
         <div className="">
           <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900 mb-4">
             <Settings2 className="text-blue-500" size={16} /> Endpoint
             Configuration
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {}
+            { }
             <div>
               <label
                 htmlFor="version"
@@ -569,13 +744,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="1.0.0"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${
-                      isReadOnly
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.version
                           ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
                           : 'bg-white border-gray-300'
-                    }`}
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -586,7 +760,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="msgFam"
@@ -611,13 +785,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="iso-20022"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.eventType
                           ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
                           : 'bg-white border-gray-300'
-                    }`}
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -627,8 +800,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   {fieldErrors.eventType}
                 </p>
               )}
+
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="transaction-type"
@@ -670,13 +844,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="e.g., pacs.008, pain.001"
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.transactionType
                           ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
                           : 'bg-white border-gray-300'
-                    }`}
+                      }`}
                     readOnly={isReadOnly}
                   />
                 );
@@ -687,7 +860,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </p>
               )}
             </div>
-            {}
+            { }
             <div>
               <label
                 htmlFor="content-type"
@@ -704,11 +877,10 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     onChange={(e) => {
                       handleEndpointDataChange('contentType', e.target.value);
                     }}
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
+                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : 'bg-white border-gray-300'
-                    }`}
+                      }`}
                     disabled={isReadOnly}
                   >
                     <option value="application/json">application/json</option>
@@ -717,8 +889,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 );
               })()}
             </div>
-            {}
-            <div>
+            { }
+            <div className="md:col-span-2">
               <label
                 htmlFor="related-transaction"
                 className="block text-sm font-medium text-gray-700 mb-2"
@@ -728,36 +900,117 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               {(() => {
                 const isReadOnly = readOnly || (!isCloning && !!configId);
                 return (
-                  <select
-                    id="related-transaction"
-                    value={endpointData.relatedTransaction ?? ''}
-                    onChange={(e) => {
-                      handleEndpointDataChange(
-                        'relatedTransaction',
-                        e.target.value,
-                      );
-                    }}
-                    className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                      isReadOnly
+                  <div ref={rtDropdownRef} className="relative">
+                    <button
+                      type="button"
+                      id="related-transaction"
+                      aria-haspopup="listbox"
+                      aria-expanded={rtDropdownOpen}
+                      onClick={() => {
+                        if (!isReadOnly) {
+                          setRtDropdownOpen((v) => !v);
+                        }
+                      }}
+                      className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-left [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : 'bg-white border-gray-300'
-                    }`}
-                    disabled={isReadOnly}
-                  >
-                    <option value="">-- Select Related Transaction --</option>
-                    {relatedTransactions.map((rt) => (
-                      <option key={rt} value={rt}>
-                        {rt}
-                      </option>
-                    ))}
-                  </select>
+                        }`}
+                      disabled={isReadOnly}
+                    >
+                      {selectedRtPath ? (
+                        <span className="font-mono">
+                          <span className="font-bold">{selectedRtTxtp}</span>
+                          {' - '}
+                          {selectedRtPath}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-- Select Related Transaction --</span>
+                      )}
+                    </button>
+                    {rtDropdownOpen && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg">
+                        <div className="p-2 border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={rtSearch}
+                            onChange={(e) => {
+                              setRtSearch(e.target.value);
+                            }}
+                            placeholder="Search transaction type..."
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-60 overflow-auto" role="listbox">
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={!selectedRtPath}
+                            onClick={() => {
+                              handleEndpointDataChange('relatedTransaction', '');
+                              setRtDropdownOpen(false);
+                              setRtSearch('');
+                            }}
+                            className="block w-full px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-50"
+                          >
+                            -- Select Related Transaction --
+                          </button>
+                          {rtSearching ? (
+                            <div className="px-3 py-2 text-sm text-gray-400 text-center">
+                              Searching...
+                            </div>
+                          ) : filteredRtConfigs.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-gray-400 text-center">
+                              No matching transaction types
+                            </div>
+                          ) : (
+                            filteredRtConfigs.map((path) => {
+                              const txtp = path.split('/').filter(Boolean).pop() ?? path;
+                              return (
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={selectedRtPath === path}
+                                  key={path}
+                                  onClick={() => {
+                                    handleEndpointDataChange('relatedTransaction', path);
+                                    setRtDropdownOpen(false);
+                                    setRtSearch('');
+                                  }}
+                                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-blue-50 ${selectedRtPath === path ? 'bg-blue-50' : ''}`}
+                                >
+                                  <span className="font-mono">
+                                    <span className="font-bold">{txtp}</span>
+                                    {' - '}
+                                    {path}
+                                  </span>
+                                </button>
+                              );
+                            })
+                          )}
+                          {rtOffset < rtTotal && (
+                            <button
+                              type="button"
+                              onClick={handleLoadMoreRt}
+                              disabled={rtLoadingMore}
+                              className="block w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-gray-50 disabled:text-gray-400"
+                            >
+                              {rtLoadingMore
+                                ? 'Loading...'
+                                : `Load more (${rtTotal - rtOffset} remaining)`}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })()}
             </div>
           </div>
-          {}
-          {}
-          {}
+          { }
+          { }
+          { }
           {endpointData.transactionType && (
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start gap-3">
@@ -780,7 +1033,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   <h4 className="text-sm font-medium text-blue-900 mb-2">
                     Endpoint Path Preview
                   </h4>
-                  {}
+                  { }
                   <div className="bg-white border border-blue-200 rounded px-3 py-2 font-mono text-sm text-gray-900">
                     /{tenantId}/{endpointData.version || 'v1'}/
                     {endpointData.msgFam ? `${endpointData.msgFam}/` : ''}
@@ -820,9 +1073,9 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                         onChange(
                           endpointData.contentType === 'application/json'
                             ? (JSON.parse(sampleJsonPayload) as Record<
-                                string,
-                                unknown
-                              >)
+                              string,
+                              unknown
+                            >)
                             : sampleXmlPayload,
                         );
                       }}
@@ -924,26 +1177,24 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </div>
             )}
-            {}
+            { }
             {!isEditMode &&
               (payloadValidationMessage || fieldErrors.payload) && (
                 <div
-                  className={`p-3 border rounded-md mb-3 mt-5 ${
-                    fieldErrors.payload
+                  className={`p-3 border rounded-md mb-3 mt-5 ${fieldErrors.payload
                       ? 'bg-red-50 border-red-200'
                       : isPayloadValid
                         ? 'bg-green-50 border-green-200'
                         : 'bg-yellow-50 border-yellow-200'
-                  }`}
+                    }`}
                 >
                   <p
-                    className={`text-sm ${
-                      fieldErrors.payload
+                    className={`text-sm ${fieldErrors.payload
                         ? 'text-red-700'
                         : isPayloadValid
                           ? 'text-green-700'
                           : 'text-yellow-700'
-                    }`}
+                      }`}
                   >
                     {fieldErrors.payload || payloadValidationMessage}
                   </p>
@@ -951,11 +1202,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               )}
           </div>
         )}
-        {}
+        { }
         {!isEditMode && (shouldCreateNew || isCloning) && (
           <>
             <div className="flex gap-5 w-full">
-              {}
+              { }
               <div className="flex-1">
                 <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
                   <Terminal className="text-blue-500" size={16} /> Raw Input
@@ -979,7 +1230,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                   />
                 </div>
               </div>
-              {}
+              { }
               {endpointData.contentType === 'application/json' && (
                 <div className="flex-1">
                   <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
@@ -992,14 +1243,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               )}
             </div>
-            {}
+            { }
             <div className="my-6">
               {fieldGenerationError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
                   {fieldGenerationError}
                 </div>
               )}
-              {}
+              { }
               {value && isPayloadValid && (
                 <div className="text-center mb-4">
                   <Button
@@ -1029,7 +1280,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             </div>
           </>
         )}
-        {}
+        { }
         {isEditMode && !readOnly && (
           <div className="my-5 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
@@ -1060,7 +1311,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
             </div>
           </div>
         )}
-        {}
+        { }
         {showInferredFields && (
           <div className="mt-6 space-y-4">
             {(isEditMode || readOnly || inferredFields.length > 0) && (
@@ -1081,12 +1332,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </div>
             )}
-            {}
+            { }
             {inferredFields.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                {}
-                {}
-                {}
+                { }
+                { }
+                { }
                 {!readOnly && (
                   <div className="mt-4">
                     {showAddFieldForm ? (
@@ -1095,7 +1346,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                           Add Your First Field
                         </h4>
                         <div className="space-y-3">
-                          {}
+                          { }
                           <div>
                             <label
                               htmlFor="empty-field-path"
@@ -1120,7 +1371,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Use dots for nested fields (parent.child)
                             </p>
                           </div>
-                          {}
+                          { }
                           <div>
                             <label
                               htmlFor="empty-field-type"
@@ -1146,7 +1397,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               <option value="Array">Array</option>
                             </select>
                           </div>
-                          {}
+                          { }
                           <div className="flex items-center">
                             <input
                               id="empty-field-required"
@@ -1167,7 +1418,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                               Required field
                             </label>
                           </div>
-                          {}
+                          { }
                           <div className="flex justify-center space-x-2 mt-4">
                             <button
                               onClick={() => {
@@ -1220,7 +1471,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
               </div>
             ) : (
               <>
-                {}
+                { }
                 <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-3">
@@ -1430,8 +1681,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                 </div>
               </>
             )}
-            {}
-            {}
+            { }
+            { }
           </div>
         )}
       </div>
