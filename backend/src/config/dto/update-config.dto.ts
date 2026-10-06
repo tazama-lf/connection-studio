@@ -11,13 +11,13 @@ import { ContentType } from '@tazama-lf/tcs-lib';
 
 export class UpdateConfigDto {
   @IsString()
-  @IsOptional()
+  @ValidateIf((o) => o.msgFam !== undefined)
   @MinLength(1)
   @MaxLength(50)
   msgFam?: string;
 
   @IsString()
-  @IsOptional()
+  @ValidateIf((o) => o.transactionType !== undefined)
   @MinLength(1)
   @MaxLength(50)
   transactionType?: string;

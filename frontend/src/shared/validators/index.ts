@@ -3,6 +3,7 @@ import * as yup from 'yup';
 export const eventTypeSchema = yup
   .string()
   .required('Event Type is required')
+  .max(50, 'Event Type must not exceed 50 characters')
   .test(
     'format',
     'Event Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
