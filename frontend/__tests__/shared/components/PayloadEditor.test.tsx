@@ -247,7 +247,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
     const versionInput = screen.getByLabelText('Version *') as HTMLInputElement;
     const eventTypeInput = screen.getByLabelText(
-      'Event Type',
+      'Event Type *',
     ) as HTMLInputElement;
     const txTypeInput = screen.getByLabelText(
       'Transaction Type (TxTp)*',
