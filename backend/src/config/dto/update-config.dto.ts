@@ -30,12 +30,6 @@ export class UpdateConfigDto {
   @IsOptional()
   endpointPath?: string;
 
-  @IsString()
-  @IsOptional()
-  @MinLength(1)
-  @MaxLength(50)
-  version?: string;
-
   @IsEnum(ContentType)
   @IsOptional()
   contentType?: ContentType;
