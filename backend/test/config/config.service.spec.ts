@@ -14,6 +14,7 @@ import {
 import { ConfigStatus, ContentType } from '../../src/config/config.interfaces';
 import { EventType } from '../../src/enums/events.enum';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
+import { TazamaDataModelService } from '../../src/tazama-data-model/tazama-data-model.service';
 
 describe('ConfigService', () => {
   let service: ConfigService;
@@ -62,6 +63,10 @@ describe('ConfigService', () => {
 
   const mockAdminServiceClient = {};
 
+  const mockTazamaDataModelService = {
+    getDataModelJson: jest.fn(),
+  };
+
   const mockAuditLogger = {
     log: jest.fn(),
     error: jest.fn(),
@@ -97,6 +102,10 @@ describe('ConfigService', () => {
         { provide: DemsClient, useValue: mockNotify },
         { provide: NotificationService, useValue: mockNotification },
         { provide: AdminServiceClient, useValue: mockAdminServiceClient },
+        {
+          provide: TazamaDataModelService,
+          useValue: mockTazamaDataModelService,
+        },
         { provide: 'AUDIT_LOGGER', useValue: mockAuditLogger },
       ],
     }).compile();
@@ -134,6 +143,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs.008',
         version: '1.0.0',
         schema: {},
+        payload: { sample: 'value' },
         contentType: ContentType.JSON,
       } as any,
       user,
@@ -151,6 +161,7 @@ describe('ConfigService', () => {
         msgFam: 'iso',
         transactionType: 'pacs',
         version: '1',
+        payload: { sample: 'value' },
       } as any,
       user,
     );
@@ -374,6 +385,7 @@ describe('ConfigService', () => {
       transactionType: 'pacs',
       version: '1.0.0',
       schema: {},
+      payload: { sample: 'value' },
     };
 
     const result = await service.createConfig(dto as any, user);
@@ -543,35 +555,6 @@ describe('ConfigService', () => {
       'txn_table',
       token,
     );
-  });
-  it('creates multiple datamodel tables from function array', async () => {
-    mockSftp.readFile.mockResolvedValue({
-      id: 1,
-      transactionType: 'pacs',
-      version: '1',
-      functions: [
-        {
-          functionName: 'addDataModelTable',
-          tableName: 'table1',
-          columns: [],
-        },
-        {
-          functionName: 'addDataModelTable',
-          tableName: 'table2',
-          columns: [],
-        },
-      ],
-      status: ConfigStatus.READY_FOR_DEPLOYMENT,
-    });
-
-    await service.handleWorkflowAction(
-      1,
-      { action: 'deploy', data: {} },
-      publisherUser as any,
-      token,
-    );
-
-    expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledTimes(2);
   });
   it('deletes file from SFTP after deploy', async () => {
     mockSftp.readFile.mockResolvedValue({
@@ -772,20 +755,102 @@ describe('ConfigService', () => {
     expect(result).toEqual({ success: true });
   });
 
-  it('adds mapping via service', async () => {
+  describe('addMappingViaService', () => {
     const mappingData = {
       source: 'amount',
       destination: 'transactionAmount',
     };
 
-    mockRepo.addMapping = jest.fn().mockResolvedValue({
-      success: true,
+    beforeEach(() => {
+      mockRepo.findConfigById.mockResolvedValue({
+        id: 1,
+        payload: { amount: 100 },
+      });
+      mockTazamaDataModelService.getDataModelJson.mockResolvedValue({
+        transactionAmount: 0,
+      });
+      mockRepo.addMapping = jest.fn().mockResolvedValue({ success: true });
     });
 
-    const result = await service.addMappingViaService(1, mappingData, token);
+    it('adds mapping via service when source and destination both resolve', async () => {
+      const result = await service.addMappingViaService(
+        1,
+        mappingData,
+        'tenant_001',
+        token,
+      );
 
-    expect(mockRepo.addMapping).toHaveBeenCalledWith(1, mappingData, token);
-    expect(result).toEqual({ success: true });
+      expect(mockRepo.findConfigById).toHaveBeenCalledWith(
+        1,
+        'tenant_001',
+        token,
+      );
+      expect(mockTazamaDataModelService.getDataModelJson).toHaveBeenCalledWith(
+        'tenant_001',
+        token,
+      );
+      expect(mockRepo.addMapping).toHaveBeenCalledWith(1, mappingData, token);
+      expect(result).toEqual({ success: true });
+    });
+
+    it('throws NotFoundException when the config does not exist', async () => {
+      mockRepo.findConfigById.mockResolvedValue(null);
+
+      await expect(
+        service.addMappingViaService(1, mappingData, 'tenant_001', token),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockRepo.addMapping).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException with details when the source does not resolve in the stored payload', async () => {
+      mockRepo.findConfigById.mockResolvedValue({
+        id: 1,
+        payload: { somethingElse: 1 },
+      });
+
+      await expect(
+        service.addMappingViaService(1, mappingData, 'tenant_001', token),
+      ).rejects.toMatchObject({
+        response: {
+          message: 'Invalid mapping sources',
+          details: [expect.objectContaining({ message: expect.any(String) })],
+        },
+      });
+      expect(mockRepo.addMapping).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException with details when the destination does not resolve in the data model', async () => {
+      mockTazamaDataModelService.getDataModelJson.mockResolvedValue({
+        somethingElse: 1,
+      });
+
+      await expect(
+        service.addMappingViaService(1, mappingData, 'tenant_001', token),
+      ).rejects.toMatchObject({
+        response: {
+          message: 'Invalid mapping destinations',
+          details: [expect.objectContaining({ message: expect.any(String) })],
+        },
+      });
+      expect(mockRepo.addMapping).not.toHaveBeenCalled();
+    });
+
+    it('skips source validation when the stored payload is a non-JSON string (e.g. XML)', async () => {
+      mockRepo.findConfigById.mockResolvedValue({
+        id: 1,
+        payload: '<root><amount>100</amount></root>',
+      });
+
+      const result = await service.addMappingViaService(
+        1,
+        mappingData,
+        'tenant_001',
+        token,
+      );
+
+      expect(mockRepo.addMapping).toHaveBeenCalledWith(1, mappingData, token);
+      expect(result).toEqual({ success: true });
+    });
   });
   it('updates config via write', async () => {
     const updateData = {
@@ -1014,6 +1079,11 @@ describe('ConfigService', () => {
     mockRepo.findConfigById.mockResolvedValue({
       id: 1,
       status: ConfigStatus.UNDER_REVIEW,
+      transactionType: 'pacs.008',
+      functions: [
+        { functionName: 'addDataModelTable', tableName: 'dm_tbl' },
+        { functionName: 'other', tableName: 'x' },
+      ],
     });
 
     mockRepo.getupdateConfigByStatus.mockResolvedValue({
@@ -1040,6 +1110,43 @@ describe('ConfigService', () => {
     expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledWith(
       'dm_tbl',
       token,
+    );
+  });
+
+  it('wraps createTazamaDataModelTable errors in BadRequestException on approve', async () => {
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      status: ConfigStatus.UNDER_REVIEW,
+      functions: [{ functionName: 'addDataModelTable', tableName: 'dm_tbl' }],
+    });
+
+    mockRepo.getupdateConfigByStatus.mockResolvedValue({
+      id: 1,
+      functions: [{ functionName: 'addDataModelTable', tableName: 'dm_tbl' }],
+    });
+
+    mockRepo.createTazamaDataModelTable.mockRejectedValue(
+      new Error('Table "dm_tbl" already exists'),
+    );
+
+    await expect(
+      service.handleWorkflowAction(
+        1,
+        { action: 'approve', data: { comment: 'lgtm' } },
+        approverUser as any,
+        token,
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      service.handleWorkflowAction(
+        1,
+        { action: 'approve', data: { comment: 'lgtm' } },
+        approverUser as any,
+        token,
+      ),
+    ).rejects.toThrow(
+      'Failed to approve configuration: Table "dm_tbl" already exists',
     );
   });
 
@@ -1826,6 +1933,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs.008',
         version: '1.0.0',
         schema: {},
+        payload: { sample: 'value' },
       } as any,
       user,
     );
@@ -1949,7 +2057,7 @@ describe('ConfigService', () => {
     );
   });
 
-  // ===== branch: msgFam ?? 'unknown' in error path =====
+  // ===== branch: missing msgFam in error path =====
 
   it('uses default msgFam in error path when not provided', async () => {
     mockRepo.findConfigByMsgFamVersionAndTransactionType.mockRejectedValue(
@@ -1958,7 +2066,11 @@ describe('ConfigService', () => {
     mockUtils.buildUserErrorMessage.mockReturnValue('error');
 
     const res = await service.createConfig(
-      { transactionType: 'pacs', version: '1' } as any,
+      {
+        transactionType: 'pacs',
+        version: '1',
+        payload: { sample: 'value' },
+      } as any,
       user,
     );
 

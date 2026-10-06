@@ -9,7 +9,7 @@ import {
   XCircle,
   XIcon,
 } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as yup from 'yup';
 import { useAuth } from '../../features/auth';
 import {
@@ -40,15 +40,17 @@ import { isStatus } from '../utils/statusColors';
 import { Button } from './Button';
 import { DeploymentConfirmation } from './DeploymentConfirmation';
 import { MappingUtility } from './MappingUtility';
-import { PayloadEditor, type PayloadEditorRef } from './PayloadEditor';
+import { PayloadEditor } from './PayloadEditor';
+import type { PayloadEditorRef } from '@shared/types';
 import { SimulationPanel } from './SimulationPanel';
 
-import { Backdrop, Button as MuiButton } from '@mui/material';
+import { Backdrop, Button as MuiButton, Checkbox } from '@mui/material';
 import Box from '@mui/material/Box';
 import Step from '@mui/material/Step';
 import type { StepIconProps } from '@mui/material/StepIcon';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 // Custom Step Icon Component
 const CustomStepIcon = (props: StepIconProps) => {
@@ -81,14 +83,15 @@ interface FunctionSelectionFormProps {
   onAddFunction: (functionData: any, selectedFunction?: any) => void;
   onClose: () => void;
   currentSchema?: any; // Add currentSchema prop
+  currentMappings?: any[]; // Mappings from the Mapping step, used to filter Select Data to mapped payload fields
 }
 
 const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   onAddFunction,
   onClose,
   currentSchema,
+  currentMappings = [],
 }) => {
-  const tenantId = useAuth().user?.tenantId ?? '';
   const [selectedFunction, setSelectedFunction] =
     useState<AllowedFunctionName>('addAccount');
   const [selectedConfiguration, setSelectedConfiguration] = useState('');
@@ -160,7 +163,71 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       .filter((f) => f.type.toLowerCase() === 'object')
       .map((f) => ({ label: f.path, value: f.path, group: f.group }));
 
-  const jsonBOptions = () => {
+  // Source paths (leaf fields) used in the Mapping step, normalized to dot
+  // notation (e.g. "ChrgsInf[0].Amt.Amt" -> "chrgsinf.0.amt.amt") for
+  // case-insensitive comparison against schema paths, which use [n] brackets.
+  const getMappedSourcePaths = (): Set<string> => {
+    const paths = new Set<string>();
+    currentMappings.forEach((mapping: any) => {
+      const addSource = (src: unknown) => {
+        if (typeof src === 'string' && src.trim()) {
+          paths.add(src.replace(/\[(\d+)\]/g, '.$1').toLowerCase());
+        }
+      };
+      if (Array.isArray(mapping.source)) {
+        mapping.source.forEach(addSource);
+      } else {
+        addSource(mapping.source);
+      }
+    });
+    return paths;
+  };
+
+  // A payload object is only relevant for Select Data if a mapping actually
+  // pulls one of its descendant fields from the payload.
+  const isPayloadObjectMapped = (
+    objectPath: string,
+    mappedSourcePaths: Set<string>,
+  ): boolean => {
+    const normalized = objectPath.replace(/\[(\d+)\]/g, '.$1').toLowerCase();
+    for (const src of mappedSourcePaths) {
+      if (src === normalized || src.startsWith(`${normalized}.`)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // The immediate parent path of each mapped source field, Used to
+  // show only the closest containing object in Select Data, not every
+  // ancestor up to the root.
+  const getMappedSourceParentPaths = (
+    mappedSourcePaths: Set<string>,
+  ): Set<string> => {
+    const parents = new Set<string>();
+    mappedSourcePaths.forEach((src) => {
+      const idx = src.lastIndexOf('.');
+      if (idx > -1) parents.add(src.slice(0, idx));
+    });
+    return parents;
+  };
+
+  // A payload object should appear in Select Data only when it is the
+  // direct/immediate parent of a mapped field, not merely an ancestor of one
+  // several levels up.
+  const isImmediateParentOfMappedField = (
+    objectPath: string,
+    mappedSourceParentPaths: Set<string>,
+  ): boolean => {
+    const normalized = objectPath.replace(/\[(\d+)\]/g, '.$1').toLowerCase();
+    return mappedSourceParentPaths.has(normalized);
+  };
+
+  const buildPayloadFields = (): {
+    path: string;
+    type: string;
+    group: string;
+  }[] => {
     const payloadFields: { path: string; type: string; group: string }[] = [];
 
     if (Array.isArray(currentSchema)) {
@@ -189,13 +256,52 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       traverseSchema(currentSchema.properties);
     }
 
+    return payloadFields;
+  };
+
+  const isRootPath = (path: string): boolean =>
+    !path.includes('.') && !path.includes('[');
+
+  // Top-level (non-nested) payload fields that are scalars (string, number,
+  // boolean, ...) and used as a mapping source. Root scalars like a message
+  // id or amount often make sense as the primary key even when "data" is a
+  // different nested object.
+  const getMappedPayloadRootScalarFields = (): {
+    path: string;
+    type: string;
+    group: string;
+  }[] => {
+    const mappedSourcePaths = getMappedSourcePaths();
+    return buildPayloadFields().filter(
+      (f) =>
+        isRootPath(f.path) &&
+        f.type.toLowerCase() !== 'object' &&
+        f.type.toLowerCase() !== 'array' &&
+        isPayloadObjectMapped(f.path, mappedSourcePaths),
+    );
+  };
+
+  const jsonBOptions = () => {
+    const payloadFields = buildPayloadFields();
+
     const excludedTopLevelKeys = ['redis', 'transactiondetails'];
     const filteredDataModelFields = flatDataModelFields.filter(
       (f) => !excludedTopLevelKeys.includes(f.path.split('.')[0].toLowerCase()),
     );
 
+    const mappedSourcePaths = getMappedSourcePaths();
+    const mappedSourceParentPaths = getMappedSourceParentPaths(mappedSourcePaths);
+    const mappedPayloadObjects = getObjectsFromFlatSchema(payloadFields).filter(
+      (option) =>
+        isImmediateParentOfMappedField(option.value, mappedSourceParentPaths),
+    );
+    const mappedPayloadRootScalars = getMappedPayloadRootScalarFields().map(
+      (f) => ({ label: f.path, value: f.path, group: f.group }),
+    );
+
     return [
-      ...getObjectsFromFlatSchema(payloadFields),
+      ...mappedPayloadObjects,
+      ...mappedPayloadRootScalars,
       ...getObjectsFromFlatSchema(filteredDataModelFields),
     ];
   };
@@ -211,6 +317,16 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedPath = parsed?.value ?? '';
       const selectedGroup = parsed?.group ?? '';
       if (!selectedPath) return [];
+
+      // If a root-level mapped scalar field was picked directly as the Data
+      // object (e.g. "cnic" or "amount"), it has no children — it is its own
+      // primary key.
+      if (
+        selectedGroup === 'Payload' &&
+        getMappedPayloadRootScalarFields().some((f) => f.path === selectedPath)
+      ) {
+        return [{ value: selectedPath, label: selectedPath, group: 'Fields' }];
+      }
 
       let childFields: { path: string; type: string }[] = [];
 
@@ -239,7 +355,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           if (node?.properties) {
             Object.entries(node.properties).forEach(
               ([key, val]: [string, any]) => {
-                childFields.push({ path: key, type: val.type ?? '' });
+                childFields.push({
+                  path: `${selectedPath}.${key}`,
+                  type: val.type ?? '',
+                });
               },
             );
           }
@@ -250,11 +369,18 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           .map((f) => ({ path: f.path, type: f.type }));
       }
 
+      const mappedSourcePaths =
+        selectedGroup === 'Payload' ? getMappedSourcePaths() : null;
+
       const keyOptions = childFields
         .filter(
           (f) =>
             f.type.toLowerCase() !== 'object' &&
             f.type.toLowerCase() !== 'array',
+        )
+        .filter(
+          (f) =>
+            !mappedSourcePaths || isPayloadObjectMapped(f.path, mappedSourcePaths),
         )
         .map((f) => {
           const key =
@@ -286,18 +412,41 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedGroup = jsonKeyparsed?.group ?? '';
       const datasource = selectedGroup === 'Payload' ? 'payload' : 'dataModel';
       const primaryKeyName = dataModelForm?.primaryKey ?? '';
-      const primaryKeyPath =
-        selectedPath && primaryKeyName
+      // A root-level mapped scalar field (e.g. a top-level message id or
+      // amount) can be picked as the primary key even when it isn't nested
+      // under the selected Data object, so it must not be prefixed with
+      // selectedPath.
+      const isRootPrimaryKey =
+        selectedGroup === 'Payload' &&
+        getMappedPayloadRootScalarFields().some(
+          (f) => f.path === primaryKeyName,
+        );
+      const primaryKeyPath = isRootPrimaryKey
+        ? primaryKeyName
+        : selectedPath && primaryKeyName
           ? `${selectedPath}.${primaryKeyName}`
           : primaryKeyName;
       let primaryKeyType = 'string';
-      if (primaryKeyName && selectedPath) {
+      if (isRootPrimaryKey) {
+        const rootField = getMappedPayloadRootScalarFields().find(
+          (f) => f.path === primaryKeyName,
+        );
+        if (rootField?.type) primaryKeyType = rootField.type.toLowerCase();
+      } else if (primaryKeyName && selectedPath) {
         if (selectedGroup === 'Payload' && Array.isArray(currentSchema)) {
           const field = (currentSchema as any[]).find(
             (f) =>
               f.parent === selectedPath &&
               (f.path === primaryKeyPath ||
                 f.path?.split('.').pop() === primaryKeyName),
+          );
+          if (field?.type) primaryKeyType = field.type.toLowerCase();
+        } else if (selectedGroup === 'Payload') {
+          // currentSchema is a JSON Schema object (not the flat array form
+          // above) — resolve the nested field's type via buildPayloadFields()
+          // instead of leaving primaryKeyType at its 'string' default.
+          const field = buildPayloadFields().find(
+            (f) => f.path === primaryKeyPath,
           );
           if (field?.type) primaryKeyType = field.type.toLowerCase();
         } else if (selectedGroup === 'Data Model') {
@@ -551,8 +700,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 <div
                   key={config.name}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedConfiguration === config.name
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-gray-400'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-300 hover:border-gray-400'
                     }`}
                   onClick={() => {
                     setSelectedConfiguration(config.name);
@@ -592,8 +741,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                     <div
                       key={param.name}
                       className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedOptionalParams.includes(param.name)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
                         }`}
                       onClick={() => {
                         handleOptionalParamToggle(param.name);
@@ -696,7 +845,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const [currentStep, setCurrentStep] = useState<
     'payload' | 'mapping' | 'functions' | 'simulation' | 'deploy'
   >('payload');
-  const [payload, setPayload] = useState('');
+  const [payload, setPayload] = useState<Record<string, unknown> | string | null>(null);
 
   const [isMappingValid, setIsMappingValid] = useState(false);
   const [isSimulationSuccess, setIsSimulationSuccess] = useState(false);
@@ -722,7 +871,113 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
   const shouldCreateNew = !createdEndpoint && !existingConfig && isNewEndpoint;
 
+  const existingSchemaFieldsProp = useMemo(() => {
+    if (
+      currentSchema &&
+      Array.isArray(currentSchema) &&
+      currentSchema.length > 0
+    ) {
+      return currentSchema;
+    }
+
+    const schemaToUse =
+      createdEndpoint?.schema || inferredSchema || existingConfig?.schema;
+
+    if (!schemaToUse) {
+      return undefined;
+    }
+
+    const convertAjvToSchemaFields = (
+      ajvSchema: any,
+      parentPath = '',
+    ): any[] => {
+      if (!ajvSchema || typeof ajvSchema !== 'object') {
+        return [];
+      }
+
+      const schemaFields: any[] = [];
+
+      if (ajvSchema.properties) {
+        Object.entries(ajvSchema.properties).forEach(
+          ([fieldName, fieldSchema]: [string, any]) => {
+            const fieldPath = parentPath
+              ? `${parentPath}.${fieldName}`
+              : fieldName;
+
+            let fieldType = 'string';
+            if (fieldSchema.type) {
+              switch (fieldSchema.type) {
+                case 'string':
+                  fieldType = 'string';
+                  break;
+                case 'number':
+                case 'integer':
+                  fieldType = 'number';
+                  break;
+                case 'boolean':
+                  fieldType = 'boolean';
+                  break;
+                case 'object':
+                  fieldType = 'object';
+                  break;
+                case 'array':
+                  fieldType = 'array';
+                  break;
+                default:
+                  fieldType = 'string';
+              }
+            }
+
+            const schemaField: any = {
+              name: fieldName,
+              path: fieldPath,
+              type: fieldType,
+              isRequired:
+                ajvSchema.required?.includes(fieldName) || false,
+            };
+
+            if (fieldType === 'object' && fieldSchema.properties) {
+              schemaField.children = convertAjvToSchemaFields(
+                fieldSchema,
+                fieldPath,
+              );
+            }
+
+            if (fieldType === 'array' && fieldSchema.items) {
+              if (
+                fieldSchema.items.type === 'object' &&
+                fieldSchema.items.properties
+              ) {
+                schemaField.arrayElementType = 'object';
+                schemaField.children = convertAjvToSchemaFields(
+                  fieldSchema.items,
+                  `${fieldPath}[0]`,
+                );
+              } else {
+                schemaField.arrayElementType =
+                  fieldSchema.items.type || 'string';
+              }
+            }
+
+            schemaFields.push(schemaField);
+          },
+        );
+      }
+
+      return schemaFields;
+    };
+
+    return convertAjvToSchemaFields(schemaToUse);
+  }, [
+    currentSchema,
+    createdEndpoint?.schema,
+    inferredSchema,
+    existingConfig?.schema,
+  ]);
+
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
+  const validationInProgress = useRef(false); // Guard against repeated rapid clicks on Save & Next
+  const functionDeletionInProgress = useRef(false); // Guard shared by single/bulk function removal handlers
   // Function to update current mappings and sync with createdEndpoint
   const updateCurrentMappings = (newMappings: any[]) => {
     setCurrentMappings(newMappings);
@@ -746,6 +1001,10 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     FunctionDefinition[]
   >([]);
   const [showAddFunctionModal, setShowAddFunctionModal] = useState(false);
+  // Bulk-selection state for the functions list (stores indices)
+  const [selectedFunctionIndices, setSelectedFunctionIndices] = useState<
+    Set<number>
+  >(new Set());
   const steps = [
     {
       id: 'payload',
@@ -806,17 +1065,23 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               description: config.msgFam || '', // Using msgFam as description since there's no separate description field in backend
               contentType: config.contentType || 'application/json',
               msgFam: config.msgFam || '',
+              relatedTransaction:
+                config.related_transaction ?? config.relatedTransaction ?? '',
             });
 
             // Set existing payload if available
             // Note: We store AJV schema in DB, not original payload
             // For now, show the schema - user can modify or replace it
             if (config.payload) {
-              // If original payload is stored, use it
-              setPayload(config.payload);
+              // If original payload is stored, use it (may be stored as an object)
+              setPayload(
+                typeof config.payload === 'string'
+                  ? config.payload
+                  : JSON.stringify(config.payload, null, 2),
+              );
             } else if (config.schema) {
               // Otherwise, show the schema (user will need to replace with actual payload for editing)
-              setPayload(JSON.stringify(config.schema, null, 2));
+              setPayload(config.schema);
             }
 
             // Initialize currentMappings with existing mappings for consistency
@@ -874,7 +1139,27 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       }
     }
 
-    if (selectedFunction !== 'addDataModel') {
+    if (selectedFunction === 'addDataModel') {
+      // addDataModel functions all share functionName 'addDataModelTable', so
+      // the meaningful uniqueness key is the table name, not params.
+      // selectedFunctions already includes functions loaded from the saved
+      // config (see the `setSelectedFunctions(config.functions)` load above),
+      // so checking against it covers both "already added this session" and
+      // "already exists in the DB".
+      const newTableName = (functionData.tableName ?? '').trim().toLowerCase();
+      const isDuplicateTable = selectedFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'addDataModelTable' &&
+          (existingFunction.tableName ?? '').trim().toLowerCase() ===
+          newTableName,
+      );
+      if (isDuplicateTable) {
+        showError(
+          `A data model table named "${functionData.tableName}" has already been added. Please choose a different table name.`,
+        );
+        return;
+      }
+    } else {
       // Check for duplicate functions in local state first
       const isDuplicate = selectedFunctions.some((existingFunction) => {
         // Check if function name matches
@@ -927,11 +1212,43 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     }
   };
 
+  // Re-fetch the config from the server and resync local function state.
+  // Used after a partial deletion failure, where some indices were removed
+  // server-side but the local list can no longer be trusted to know which.
+  const reloadConfigAfterFunctionChange = async () => {
+    const configId = createdEndpoint?.id || existingConfig?.id;
+    if (!configId) return;
+    try {
+      const response = await configApi.getConfig(configId);
+      const config: any =
+        response.success && response.config
+          ? response.config
+          : (response as any).id
+            ? response
+            : null;
+      if (!config) return;
+      const refreshedFunctions = Array.isArray(config.functions)
+        ? config.functions
+        : [];
+      setSelectedFunctions(refreshedFunctions);
+      if (createdEndpoint) {
+        setCreatedEndpoint(config);
+      } else if (existingConfig) {
+        setExistingConfig(config);
+      }
+    } catch {
+      // Best effort — if the reload itself fails, local state stays as-is
+      // until the user retries or the modal is reopened.
+    }
+  };
+
   const handleRemoveFunction = async (index: number) => {
     if (!createdEndpoint?.id && !existingConfig?.id) {
       showError('No configuration ID available to remove function');
       return;
     }
+    if (functionDeletionInProgress.current) return;
+    functionDeletionInProgress.current = true;
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
@@ -942,6 +1259,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           (_, i) => i !== index,
         );
         setSelectedFunctions(updatedFunctions);
+        // Clear selection since indices have shifted
+        setSelectedFunctionIndices(new Set());
         // Update the config in state
         if (createdEndpoint) {
           setCreatedEndpoint({
@@ -963,7 +1282,97 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       showError(`Failed to remove function: ${errorMessage}`);
     } finally {
       setLoading(false);
+      functionDeletionInProgress.current = false;
     }
+  };
+
+  // Remove multiple functions at once. Indices are deleted from highest to
+  // lowest so that earlier deletions don't shift the remaining indices.
+  const handleRemoveSelectedFunctions = async () => {
+    if (selectedFunctionIndices.size === 0) return;
+    if (!createdEndpoint?.id && !existingConfig?.id) {
+      showError('No configuration ID available to remove function');
+      return;
+    }
+    if (functionDeletionInProgress.current) return;
+    functionDeletionInProgress.current = true;
+    try {
+      setLoading(true);
+      const configId = createdEndpoint?.id || existingConfig?.id;
+      // Sort descending so we delete from the end first — avoids index shift
+      const sortedIndices = Array.from(selectedFunctionIndices).sort(
+        (a, b) => b - a,
+      );
+      const deletedIndices = new Set<number>();
+      let hadFailure = false;
+      let lastErrorMsg = '';
+      for (const index of sortedIndices) {
+        const response = await deleteFunction(configId, index);
+        if (response.success) {
+          deletedIndices.add(index);
+        } else {
+          hadFailure = true;
+          lastErrorMsg = response.message;
+          break;
+        }
+      }
+      if (!hadFailure) {
+        // All deletions succeeded — rebuild the local list from survivors
+        const updatedFunctions = selectedFunctions.filter(
+          (_, i) => !deletedIndices.has(i),
+        );
+        setSelectedFunctions(updatedFunctions);
+        setSelectedFunctionIndices(new Set());
+        if (createdEndpoint) {
+          setCreatedEndpoint({
+            ...createdEndpoint,
+            functions: updatedFunctions,
+          });
+        } else if (existingConfig) {
+          setExistingConfig({
+            ...existingConfig,
+            functions: updatedFunctions,
+          });
+        }
+      } else {
+        showError(`Failed to remove some functions: ${lastErrorMsg}`);
+        setSelectedFunctionIndices(new Set());
+        // Some deletions may have already succeeded before the failure, so
+        // local indices/state can no longer be trusted — reload from the
+        // server instead of guessing which ones survived.
+        await reloadConfigAfterFunctionChange();
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
+      showError(`Failed to remove functions: ${errorMessage}`);
+      setSelectedFunctionIndices(new Set());
+      await reloadConfigAfterFunctionChange();
+    } finally {
+      setLoading(false);
+      functionDeletionInProgress.current = false;
+    }
+  };
+
+  const toggleFunctionSelection = (index: number) => {
+    setSelectedFunctionIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllFunctions = () => {
+    setSelectedFunctionIndices((prev) => {
+      if (prev.size === selectedFunctions.length) {
+        return new Set();
+      }
+      return new Set(selectedFunctions.map((_, i) => i));
+    });
   };
 
   // Validate that all function parameters have corresponding mappings
@@ -1045,18 +1454,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     return errors;
   };
 
-  // Step 4: Submit for Approval (simulation is handled by SimulationPanel)
-  const handleRunSimulation = async () => {
-    if (!isSimulationSuccess) {
-      setError('Please run the simulation first and ensure it passes');
-      return;
-    }
-
-    // Simply move to the next step since simulation is handled by SimulationPanel
-    setError(null); // Clear any previous errors before moving to next step
-    setCurrentStep('deploy');
-  };
-
   // Step 4: Submit for Approval
   const handleDeploy = async () => {
     if (!createdEndpoint?.id) {
@@ -1122,9 +1519,13 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         }
       } else {
         setError(`Failed to submit: ${response.message}`);
+        showError('Failed to submit configuration', response.message);
       }
     } catch (err) {
-      setError(`Submission failed: ${err}`);
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(`Submission failed: ${errorMessage}`);
+      showError('Submission failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -1144,8 +1545,13 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
       switch (currentStep) {
         case 'mapping': {
+          // Guard against repeated rapid clicks firing multiple toasts
+          if (validationInProgress.current) return;
+          validationInProgress.current = true;
+
           if (!isMappingValid) {
             showError('Please complete the mapping before proceeding');
+            validationInProgress.current = false;
             return;
           }
           const getDestsSaveAndNext = (
@@ -1172,12 +1578,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             showError(
               'Mappings for "transactionDetails.msgId" and "transactionDetails.CreDtTm" are both required. Please map source fields to these destinations before proceeding.',
             );
+            validationInProgress.current = false;
             return;
           }
           if (!hasMsgIdMapping) {
             showError(
               'Mapping for "transactionDetails.msgId" is required. Please map a source field to "transactionDetails.msgId" before proceeding.',
             );
+            validationInProgress.current = false;
             return;
           }
           if (!hasCreDtTmMapping) {
@@ -1185,8 +1593,10 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             showError(
               'Mapping for "transactionDetails.CreDtTm" is required. Please map a source field to "transactionDetails.CreDtTm" before proceeding.',
             );
+            validationInProgress.current = false;
             return;
           }
+          validationInProgress.current = false;
           setCurrentStep('functions');
           break;
         }
@@ -1231,8 +1641,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     if (endpointData.contentType === 'application/json') {
       try {
         if (typeof payload === 'string') {
-          const trimmedPayload = payload.trim();
-          parsedPayload = JSON.parse(trimmedPayload);
+          parsedPayload = JSON.parse(payload);
         } else {
           parsedPayload = payload;
         }
@@ -1305,7 +1714,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         );
       }
 
-      if (!existingConfig?.schema && payload.trim()) {
+      if (!existingConfig?.schema && payload) {
         try {
         } catch (error) {
           finalSchema = existingConfig?.schema;
@@ -1333,7 +1742,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           functions: existingConfig?.functions,
         });
       } else {
-        const { payload: _omitted, ...updateRequest } = createRequest;
+        const { payload: _omitted, version: _v, ...updateRequest } =
+          createRequest;
         saveResponse = await configApi.updateConfig(
           actualConfigId,
           updateRequest,
@@ -1518,7 +1928,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                   );
                   const isCurrentStep = index === currentStepIndex;
                   const isCompletedStep = index < currentStepIndex;
-                  const isFutureStep = index > currentStepIndex;
 
                   return (
                     <Step key={step.id}>
@@ -1541,7 +1950,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                 })}
               </Stepper>
             </Box>
-
             <div className="space-y-8" data-id="element-739">
               {currentStep === 'payload' && (
                 <>
@@ -1563,120 +1971,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     onEndpointDataChange={setEndpointData}
                     onSchemaChange={setCurrentSchema}
                     configId={createdEndpoint?.id || existingConfig?.id}
-                    isEditMode={!isNewEndpoint} // Only allow editing for truly new endpoints (not clone or edit)
+                    isEditMode={!isNewEndpoint}
                     tenantId={tenantId}
                     readOnly={readOnly}
                     isCloning={isCloning}
                     shouldCreateNew={shouldCreateNew}
                     payloadError={error}
                     setPayloadError={setError}
-                    existingSchemaFields={(() => {
-                      if (currentSchema) {
-                        if (Array.isArray(currentSchema)) {
-                          return currentSchema;
-                        }
-                      }
-
-                      const schemaToUse =
-                        createdEndpoint?.schema ||
-                        inferredSchema ||
-                        existingConfig?.schema;
-
-                      if (!schemaToUse) {
-                        return undefined;
-                      }
-                      const convertAjvToSchemaFields = (
-                        ajvSchema: any,
-                        parentPath = '',
-                      ): any[] => {
-                        if (!ajvSchema || typeof ajvSchema !== 'object') {
-                          return [];
-                        }
-
-                        const schemaFields: any[] = [];
-
-                        if (ajvSchema.properties) {
-                          Object.entries(ajvSchema.properties).forEach(
-                            ([fieldName, fieldSchema]: [string, any]) => {
-                              const fieldPath = parentPath
-                                ? `${parentPath}.${fieldName}`
-                                : fieldName;
-
-                              let fieldType = 'string';
-                              if (fieldSchema.type) {
-                                switch (fieldSchema.type) {
-                                  case 'string':
-                                    fieldType = 'string';
-                                    break;
-                                  case 'number':
-                                  case 'integer':
-                                    fieldType = 'number';
-                                    break;
-                                  case 'boolean':
-                                    fieldType = 'boolean';
-                                    break;
-                                  case 'object':
-                                    fieldType = 'object';
-                                    break;
-                                  case 'array':
-                                    fieldType = 'array';
-                                    break;
-                                  default:
-                                    fieldType = 'string';
-                                }
-                              }
-
-                              const schemaField: any = {
-                                name: fieldName,
-                                path: fieldPath,
-                                type: fieldType,
-                                isRequired:
-                                  ajvSchema.required?.includes(fieldName) ||
-                                  false,
-                              };
-
-                              // Handle nested objects
-                              if (
-                                fieldType === 'object' &&
-                                fieldSchema.properties
-                              ) {
-                                schemaField.children = convertAjvToSchemaFields(
-                                  fieldSchema,
-                                  fieldPath,
-                                );
-                              }
-
-                              // Handle arrays with object items
-                              if (fieldType === 'array' && fieldSchema.items) {
-                                if (
-                                  fieldSchema.items.type === 'object' &&
-                                  fieldSchema.items.properties
-                                ) {
-                                  schemaField.arrayElementType = 'object';
-                                  // For array elements, append [0] to the path for proper display
-                                  schemaField.children =
-                                    convertAjvToSchemaFields(
-                                      fieldSchema.items,
-                                      `${fieldPath}[0]`,
-                                    );
-                                } else {
-                                  schemaField.arrayElementType =
-                                    fieldSchema.items.type || 'string';
-                                }
-                              }
-
-                              schemaFields.push(schemaField);
-                            },
-                          );
-                        }
-
-                        return schemaFields;
-                      };
-
-                      const convertedFields =
-                        convertAjvToSchemaFields(schemaToUse);
-                      return convertedFields;
-                    })()}
+                    existingSchemaFields={existingSchemaFieldsProp}
                     data-id="element-740"
                   />
                 </>
@@ -1763,19 +2065,54 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         );
                       })()}
 
-                    {/* Add Function Button - Only show when not read-only */}
+                    {/* Add Function Button + Bulk Remove - Only show when not read-only */}
                     {!readOnly && (
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={() => {
-                            setShowAddFunctionModal(true);
-                          }}
-                          variant="secondary"
-                          size="sm"
-                          icon={<PlusIcon size={16} />}
-                        >
-                          Add Function
-                        </Button>
+                      <div className="flex justify-between items-center">
+                        {/* Select All checkbox — only visible when there are functions */}
+                        {selectedFunctions.length > 0 && (
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={
+                                  selectedFunctionIndices.size ===
+                                  selectedFunctions.length
+                                }
+                                indeterminate={
+                                  selectedFunctionIndices.size > 0 &&
+                                  selectedFunctionIndices.size <
+                                  selectedFunctions.length
+                                }
+                                onChange={toggleSelectAllFunctions}
+                                size="small"
+                                sx={{ padding: '4px' }}
+                              />
+                            }
+                            label="Select All"
+                            sx={{ margin: 0 }}
+                          />
+                        )}
+                        <div className="flex gap-2">
+                          {selectedFunctionIndices.size > 0 && (
+                            <Button
+                              onClick={handleRemoveSelectedFunctions}
+                              variant="secondary"
+                              size="sm"
+                              className="text-red-500 hover:bg-red-500 hover:text-white"
+                            >
+                              Remove Selected ({selectedFunctionIndices.size})
+                            </Button>
+                          )}
+                          <Button
+                            onClick={() => {
+                              setShowAddFunctionModal(true);
+                            }}
+                            variant="secondary"
+                            size="sm"
+                            icon={<PlusIcon size={16} />}
+                          >
+                            Add Function
+                          </Button>
+                        </div>
                       </div>
                     )}
 
@@ -1844,10 +2181,20 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             <div
                               key={index}
                               className={`p-4 rounded-lg border flex justify-between items-center ${unmappedParams?.length > 0
-                                  ? 'bg-red-50 border-red-200'
-                                  : 'bg-gray-50 border-gray-200'
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-gray-50 border-gray-200'
                                 }`}
                             >
+                              {/* Individual selection checkbox — only when not read-only */}
+                              {!readOnly && (
+                                <Checkbox
+                                  checked={selectedFunctionIndices.has(index)}
+                                  onChange={() => toggleFunctionSelection(index)}
+                                  size="small"
+                                  sx={{ marginRight: '8px', padding: '4px' }}
+                                  aria-label={`Select function ${func.functionName}`}
+                                />
+                              )}
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <h4 className="font-medium">
@@ -1916,7 +2263,10 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                     : func?.columns && func.columns.length > 0
                                       ? func.columns
                                         .map((column) => (
-                                          <span className="text-green-600">
+                                          <span
+                                            key={column.param}
+                                            className="text-green-600"
+                                          >
                                             {column.param}
                                           </span>
                                         ))
@@ -1990,6 +2340,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                               setShowAddFunctionModal(false);
                             }}
                             currentSchema={currentSchema}
+                            currentMappings={currentMappings}
                           />
                         </div>
                       </Backdrop>
@@ -2018,6 +2369,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     }
                     onSimulationComplete={setIsSimulationSuccess}
                     readOnly={readOnly}
+                    initialPayload={payload}
                     data-id="element-742"
                   />
                 </>

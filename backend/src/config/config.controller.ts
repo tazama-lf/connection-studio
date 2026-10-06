@@ -9,6 +9,7 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  DefaultValuePipe,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -28,13 +29,11 @@ import {
   DeploymentDto,
   StatusTransitionDto,
   WorkflowActionDto,
-} from './dto';
-import type {
   AddMappingDto,
   AddFunctionDto,
-  ConfigResponseDto,
-  Config,
-} from '../config/config.interfaces';
+  UpdatePublishingStatusDto,
+} from './dto';
+import type { ConfigResponseDto, Config } from '../config/config.interfaces';
 import {
   RequireClaims,
   TazamaClaims,
@@ -64,9 +63,15 @@ export class ConfigController {
     @Body() dto: AddMappingDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    const mappingData = {
+      source: dto.source,
+      destination: dto.destination,
+    };
+
     return (await this.configService.addMappingViaService(
       id,
-      dto as unknown as Record<string, unknown>,
+      mappingData,
+      user.tenantId,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
@@ -84,6 +89,7 @@ export class ConfigController {
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
+
   @Post()
   @RequireClaims(TazamaClaims.EDITOR)
   @Audit()
@@ -117,6 +123,36 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
   ): Promise<{ related_transactions: string[] }> {
     return await this.configService.getRelatedTransactions(user);
+  }
+
+  @Get('/tcs/by-msg-fam/:msgFam')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async getConfigsByMsgFam(
+    @Param('msgFam') msgFam: string,
+    @User() user: AuthenticatedUser,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+    @Query('transactionType') transactionType?: string,
+  ): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  }> {
+    return await this.configService.getConfigsByMsgFam(
+      msgFam,
+      user,
+      limit,
+      offset,
+      transactionType,
+    );
   }
 
   @Get(':id')
@@ -156,9 +192,16 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    const functionData = {
+      functionName: dto.functionName,
+      ...(dto.params !== undefined && { params: dto.params }),
+      ...(dto.columns !== undefined && { columns: dto.columns }),
+      ...(dto.tableName !== undefined && { tableName: dto.tableName }),
+    };
+
     return (await this.configService.addFunctionViaService(
       id,
-      dto as unknown as Record<string, unknown>,
+      functionData,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }
@@ -257,7 +300,7 @@ export class ConfigController {
   @Audit()
   async updatePublishingStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: { publishing_status: 'active' | 'inactive' },
+    @Body() dto: UpdatePublishingStatusDto,
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {

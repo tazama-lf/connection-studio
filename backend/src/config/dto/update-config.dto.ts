@@ -50,4 +50,8 @@ export class UpdateConfigDto {
   @IsObject()
   @IsOptional()
   payload?: string | Record<string, unknown>;
+
+  @IsString()
+  @IsOptional()
+  related_transaction?: string;
 }

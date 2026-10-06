@@ -84,7 +84,8 @@ CREATE TABLE config (
     status VARCHAR(255) NOT NULL DEFAULT 'inprogress',
     functions JSONB,
     publishing_status VARCHAR(8) DEFAULT 'active',
-    comments TEXT
+    comments TEXT,
+    related_transaction VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS tcs_cron_jobs (
