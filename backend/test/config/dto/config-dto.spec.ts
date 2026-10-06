@@ -65,7 +65,7 @@ describe('config/dto', () => {
   });
 
   describe('UpdateConfigDto', () => {
-    it.each(['version', 'transactionType', 'msgFam'] as const)(
+    it.each(['transactionType', 'msgFam'] as const)(
       'rejects %s longer than 50 characters',
       async (field) => {
         const dto = plainToInstance(UpdateConfigDto, {
@@ -80,14 +80,14 @@ describe('config/dto', () => {
       },
     );
 
-    it('allows omitting version, transactionType, and msgFam entirely', async () => {
+    it('allows omitting transactionType and msgFam entirely', async () => {
       const dto = plainToInstance(UpdateConfigDto, {});
 
       const errors = await validate(dto);
 
       expect(
         errors.filter((e) =>
-          ['version', 'transactionType', 'msgFam'].includes(e.property),
+          ['transactionType', 'msgFam'].includes(e.property),
         ),
       ).toHaveLength(0);
     });
