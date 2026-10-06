@@ -12,6 +12,8 @@ describe('config/dto', () => {
     const basePayload = {
       transactionType: 'pacs008',
       version: '1.0.0',
+      msgFam: 'iso20022',
+      schema: { foo: 'bar' },
       payload: { foo: 'bar' },
     };
 
@@ -25,7 +27,7 @@ describe('config/dto', () => {
 
         const errors = await validate(dto);
 
-        expect(errors.find((e) => e.property === field)).toBeUndefined();
+        expect(errors).toHaveLength(0);
       },
     );
 
