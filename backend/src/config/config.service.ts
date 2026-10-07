@@ -901,8 +901,69 @@ export class ConfigService {
   async addFunctionViaService(
     id: number,
     functionData: Record<string, unknown>,
+    user: AuthenticatedUser,
     token: string,
   ): Promise<unknown> {
+    const config = await this.getConfigOrThrow(id, user.tenantId, token);
+
+    const existingFunctions = (config.functions ?? []) as unknown as Array<{
+      functionName: string;
+      tableName?: string;
+      params?: string[];
+    }>;
+
+    const newFunctionName = functionData.functionName as string;
+
+    if (newFunctionName === 'saveTransactionDetails') {
+      const hasExisting = existingFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'saveTransactionDetails',
+      );
+      if (hasExisting) {
+        throw new BadRequestException(
+          'Save Transaction Details can only be added once. Remove the existing one first to change its parameters.',
+        );
+      }
+    } else if (newFunctionName === 'addDataModelTable') {
+      const newTableName = (
+        (functionData.tableName as string | undefined) ?? ''
+      )
+        .trim()
+        .toLowerCase();
+      const isDuplicateTable = existingFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'addDataModelTable' &&
+          (existingFunction.tableName ?? '').trim().toLowerCase() ===
+            newTableName,
+      );
+      if (isDuplicateTable) {
+        throw new BadRequestException(
+          `A data model table named "${functionData.tableName as string}" already exists on this configuration.`,
+        );
+      }
+    } else {
+      const newParams = ((functionData.params as string[] | undefined) ?? [])
+        .slice()
+        .sort();
+      const isDuplicate = existingFunctions.some((existingFunction) => {
+        if (existingFunction.functionName !== newFunctionName) {
+          return false;
+        }
+        const existingParams = (existingFunction.params ?? []).slice().sort();
+        if (existingParams.length !== newParams.length) {
+          return false;
+        }
+        return existingParams.every(
+          (param, index) => param === newParams[index],
+        );
+      });
+      if (isDuplicate) {
+        throw new BadRequestException(
+          'This function with the same parameters already exists on this configuration.',
+        );
+      }
+    }
+
     const result = await this.configRepository.addFunction(
       id,
       functionData,

@@ -202,6 +202,7 @@ export class ConfigController {
     return (await this.configService.addFunctionViaService(
       id,
       functionData,
+      user,
       user.token.tokenString,
     )) as ConfigResponseDto;
   }

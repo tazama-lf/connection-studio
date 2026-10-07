@@ -931,14 +931,146 @@ describe('ConfigService', () => {
       columns: [{ name: 'id', type: 'text' }],
     };
 
+    mockRepo.findConfigById.mockResolvedValue({ id: 1, functions: [] });
     mockRepo.addFunction = jest.fn().mockResolvedValue({
       success: true,
     });
 
-    const result = await service.addFunctionViaService(1, functionData, token);
+    const result = await service.addFunctionViaService(
+      1,
+      functionData,
+      user,
+      token,
+    );
 
     expect(mockRepo.addFunction).toHaveBeenCalledWith(1, functionData, token);
     expect(result).toEqual({ success: true });
+  });
+
+  it('rejects adding a second saveTransactionDetails regardless of params', async () => {
+    const functionData = {
+      functionName: 'saveTransactionDetails',
+      params: ['transactionDetails.Amt', 'transactionDetails.Ccy'],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      functions: [
+        {
+          functionName: 'saveTransactionDetails',
+          params: ['transactionDetails.msgId'],
+        },
+      ],
+    });
+    mockRepo.addFunction = jest.fn();
+
+    await expect(
+      service.addFunctionViaService(1, functionData, user, token),
+    ).rejects.toThrow(
+      'Save Transaction Details can only be added once. Remove the existing one first to change its parameters.',
+    );
+    expect(mockRepo.addFunction).not.toHaveBeenCalled();
+  });
+
+  it('allows adding saveTransactionDetails when none exists yet', async () => {
+    const functionData = {
+      functionName: 'saveTransactionDetails',
+      params: ['transactionDetails.msgId'],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({ id: 1, functions: [] });
+    mockRepo.addFunction = jest.fn().mockResolvedValue({ success: true });
+
+    const result = await service.addFunctionViaService(
+      1,
+      functionData,
+      user,
+      token,
+    );
+
+    expect(mockRepo.addFunction).toHaveBeenCalledWith(1, functionData, token);
+    expect(result).toEqual({ success: true });
+  });
+
+  it('rejects adding a duplicate data model table', async () => {
+    const functionData = {
+      functionName: 'addDataModelTable',
+      tableName: 'DM_Table',
+      columns: [{ name: 'id', type: 'text' }],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      functions: [{ functionName: 'addDataModelTable', tableName: 'dm_table' }],
+    });
+    mockRepo.addFunction = jest.fn();
+
+    await expect(
+      service.addFunctionViaService(1, functionData, user, token),
+    ).rejects.toThrow(
+      'A data model table named "DM_Table" already exists on this configuration.',
+    );
+    expect(mockRepo.addFunction).not.toHaveBeenCalled();
+  });
+
+  it('rejects adding a duplicate function with the same params', async () => {
+    const functionData = {
+      functionName: 'addAccount',
+      params: ['redis.dbtrAcctId', 'redis.dbtrNm'],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      functions: [
+        {
+          functionName: 'addAccount',
+          params: ['redis.dbtrNm', 'redis.dbtrAcctId'],
+        },
+      ],
+    });
+    mockRepo.addFunction = jest.fn();
+
+    await expect(
+      service.addFunctionViaService(1, functionData, user, token),
+    ).rejects.toThrow(
+      'This function with the same parameters already exists on this configuration.',
+    );
+    expect(mockRepo.addFunction).not.toHaveBeenCalled();
+  });
+
+  it('allows adding the same function name with different params', async () => {
+    const functionData = {
+      functionName: 'addAccount',
+      params: ['redis.dbtrAcctId'],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      functions: [{ functionName: 'addAccount', params: ['redis.dbtrNm'] }],
+    });
+    mockRepo.addFunction = jest.fn().mockResolvedValue({ success: true });
+
+    const result = await service.addFunctionViaService(
+      1,
+      functionData,
+      user,
+      token,
+    );
+
+    expect(mockRepo.addFunction).toHaveBeenCalledWith(1, functionData, token);
+    expect(result).toEqual({ success: true });
+  });
+
+  it('throws NotFoundException when config does not exist for addFunction', async () => {
+    const functionData = { functionName: 'addAccount', params: [] };
+
+    mockRepo.findConfigById.mockResolvedValue(null);
+    mockRepo.addFunction = jest.fn();
+
+    await expect(
+      service.addFunctionViaService(1, functionData, user, token),
+    ).rejects.toThrow('Config with ID 1 not found');
+    expect(mockRepo.addFunction).not.toHaveBeenCalled();
   });
 
   it('gets all configs', async () => {
