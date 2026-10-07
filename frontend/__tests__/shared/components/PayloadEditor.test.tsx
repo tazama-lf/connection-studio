@@ -124,7 +124,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
   });
 
-
   it('validates payload format and reports file type mismatch', async () => {
     renderEditor({ value: '{invalid-json' });
 

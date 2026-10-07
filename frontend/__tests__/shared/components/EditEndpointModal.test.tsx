@@ -178,6 +178,13 @@ jest.mock('../../../src/shared/components/PayloadEditor', () => {
         {props.existingSchemaFields && (
           <span data-testid="has-schema-fields">yes</span>
         )}
+        <span data-testid="existing-schema-fields-count">
+          {Array.isArray(props.existingSchemaFields)
+            ? props.existingSchemaFields.length
+            : props.existingSchemaFields
+              ? 'object'
+              : 'none'}
+        </span>
         <span data-testid="related-transaction-value">
           {props.endpointData?.relatedTransaction ?? ''}
         </span>
@@ -4071,6 +4078,29 @@ describe('EditEndpointModal', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('has-schema-fields')).toBeInTheDocument();
+    });
+  });
+
+  it('does not restore the saved schema when currentSchema is explicitly cleared to []', async () => {
+    mockGetConfig.mockResolvedValue({
+      success: true,
+      config: { ...baseConfig },
+    });
+    renderModal({ endpointId: 42 });
+    await waitFor(() => expect(mockGetConfig).toHaveBeenCalled());
+
+    await waitFor(() => {
+      expect(screen.getByTestId('existing-schema-fields-count')).toHaveTextContent(
+        '1',
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('set-schema-empty-array'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('existing-schema-fields-count')).toHaveTextContent(
+        '0',
+      );
     });
   });
 
