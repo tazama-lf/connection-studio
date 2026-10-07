@@ -102,6 +102,29 @@ describe('shared/components/PayloadEditor.tsx', () => {
     expect(onChangeWithValue).toHaveBeenCalledWith(null);
   });
 
+  it('clears generated schema fields when Clear is clicked after Generate Fields', async () => {
+    const { onChange, onSchemaChange, onFieldAdjustmentsChange } = renderEditor({
+      value: '{"user":{"name":"sam"}}',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/2\s+fields/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(onChange).toHaveBeenCalledWith(null);
+    expect(onSchemaChange).toHaveBeenCalledWith([]);
+    expect(onFieldAdjustmentsChange).toHaveBeenCalledWith([]);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/\d+\s+fields/i)).not.toBeInTheDocument();
+    });
+  });
+
+
   it('validates payload format and reports file type mismatch', async () => {
     renderEditor({ value: '{invalid-json' });
 
