@@ -692,6 +692,9 @@ export class ConfigService {
       );
     }
 
+    // DEMS notify is best-effort — the DB update above is authoritative.
+    // Log failures instead of throwing so a DEMS outage doesn't roll back a
+    // publishing-status change that has already been persisted.
     try {
       await this.demsClient.notifyDems(
         id.toString(),
@@ -701,10 +704,11 @@ export class ConfigService {
       );
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
+      const action =
+        publishingStatus === 'active' ? 'activation' : 'deactivation';
       this.logger.error(
-        `Failed to send NATS notification for config ${id}: ${errMsg}`,
+        `DEMS notification failed for config ${id} on ${action}. DB update succeeded; DEMS may be out of sync until reconciliation. Error: ${errMsg}`,
       );
-      throw new BadRequestException(`Failed to activate config: ${errMsg}`);
     }
     if (result.config) {
       const { config } = result;

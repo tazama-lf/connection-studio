@@ -706,33 +706,75 @@ describe('ConfigService', () => {
       ),
     ).rejects.toThrow('Config does not exist');
   });
-  it('throws BadRequestException when notifyDems fails', async () => {
+  it('returns success and logs the failure when notifyDems fails, without rolling back the DB update', async () => {
     mockRepo.updatePublishingStatus.mockResolvedValue({
       success: true,
       config: { id: 1 },
     });
 
-    mockNotify.notifyDems.mockRejectedValue(new Error('NATS down'));
+    mockNotify.notifyDems.mockRejectedValue(new Error('DEMS down'));
+    const loggerErrorSpy = jest
+      .spyOn((service as any).logger, 'error')
+      .mockImplementation(() => undefined);
 
-    await expect(
-      service.updatePublishingStatus(
-        1,
-        'active',
-        'tenant_001',
-        user as any,
-        token,
-      ),
-    ).rejects.toThrow(BadRequestException);
+    const res = await service.updatePublishingStatus(
+      1,
+      'active',
+      'tenant_001',
+      user as any,
+      token,
+    );
 
-    await expect(
-      service.updatePublishingStatus(
-        1,
-        'active',
-        'tenant_001',
-        user as any,
-        token,
+    expect(res.success).toBe(true);
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'DEMS notification failed for config 1 on activation',
       ),
-    ).rejects.toThrow('Failed to activate config: NATS down');
+    );
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('DEMS down'),
+    );
+    expect(mockNotification.sendWorkflowNotification).toHaveBeenCalledWith(
+      EventType.PublisherActivate,
+      user,
+      { id: 1 },
+      token,
+      'Publishing status changed to active',
+    );
+  });
+
+  it('reports deactivation (not activation) in the DEMS failure log for inactive status', async () => {
+    mockRepo.updatePublishingStatus.mockResolvedValue({
+      success: true,
+      config: { id: 2 },
+    });
+
+    mockNotify.notifyDems.mockRejectedValue(new Error('DEMS down'));
+    const loggerErrorSpy = jest
+      .spyOn((service as any).logger, 'error')
+      .mockImplementation(() => undefined);
+
+    const res = await service.updatePublishingStatus(
+      2,
+      'inactive',
+      'tenant_001',
+      user as any,
+      token,
+    );
+
+    expect(res.success).toBe(true);
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'DEMS notification failed for config 2 on deactivation',
+      ),
+    );
+    expect(mockNotification.sendWorkflowNotification).toHaveBeenCalledWith(
+      EventType.PublisherDeactivate,
+      user,
+      { id: 2 },
+      token,
+      'Publishing status changed to inactive',
+    );
   });
   it('removes function via service', async () => {
     mockRepo.removeFunction = jest.fn().mockResolvedValue({
@@ -2129,17 +2171,29 @@ describe('ConfigService', () => {
 
   // ===== updatePublishingStatus: notifyDems fails with non-Error =====
 
-  it('handles non-Error in notifyDems failure', async () => {
+  it('handles non-Error in notifyDems failure without rejecting', async () => {
     mockRepo.updatePublishingStatus.mockResolvedValue({
       success: true,
       config: { id: 1 },
     });
 
     mockNotify.notifyDems.mockRejectedValue('plain string');
+    const loggerErrorSpy = jest
+      .spyOn((service as any).logger, 'error')
+      .mockImplementation(() => undefined);
 
-    await expect(
-      service.updatePublishingStatus(1, 'active', 'tenant', user as any, token),
-    ).rejects.toThrow(BadRequestException);
+    const res = await service.updatePublishingStatus(
+      1,
+      'active',
+      'tenant',
+      user as any,
+      token,
+    );
+
+    expect(res.success).toBe(true);
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('plain string'),
+    );
   });
 
   // ===== updatePublishingStatus: NotFoundException without message =====
