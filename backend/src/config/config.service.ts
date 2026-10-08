@@ -13,6 +13,7 @@ import { AdminServiceClient } from '../services/admin-service-client.service';
 import { DemsClient } from '../services/dems-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
+import { SchemaValidationService } from '../simulation/schema-validation.service';
 import { validatePayloadContent } from '../utils/helpers';
 import {
   validateMappingDestinations,
@@ -32,6 +33,8 @@ import {
 import { ConfigRepository } from './config.repository';
 import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 
+const MAX_REPORTED_SCHEMA_ERRORS = 10;
+
 @Injectable()
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
@@ -46,6 +49,7 @@ export class ConfigService {
     private readonly notificationService: NotificationService,
     private readonly adminServiceClient: AdminServiceClient,
     private readonly tazamaDataModelService: TazamaDataModelService,
+    private readonly schemaValidationService: SchemaValidationService,
   ) {}
 
   private async getConfigOrThrow(
@@ -150,6 +154,22 @@ export class ConfigService {
         return {
           success: false,
           message: payloadValidation.message,
+        };
+      }
+
+      const schemaErrors =
+        await this.schemaValidationService.validateSchemaMatchesPayload(
+          dto.payload,
+          dto.schema,
+          contentType,
+        );
+      if (schemaErrors.length > 0) {
+        return {
+          success: false,
+          message: `Schema does not match payload: ${schemaErrors
+            .slice(0, MAX_REPORTED_SCHEMA_ERRORS)
+            .map((error) => `${error.field}: ${error.message}`)
+            .join('; ')}`,
         };
       }
 
