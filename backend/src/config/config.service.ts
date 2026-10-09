@@ -240,10 +240,8 @@ export class ConfigService {
         config,
       };
     } catch (error) {
-      this.logger.error(
-        `Failed to create config: ${error.message}`,
-        error.stack,
-      );
+      const err = error as Error;
+      this.logger.error(`Failed to create config: ${err.message}`, err.stack);
 
       const { msgFam, transactionType } = dto;
       const { version } = dto;
@@ -321,7 +319,7 @@ export class ConfigService {
         config = configData as unknown as Config;
       } catch (error) {
         throw new BadRequestException(
-          `Cannot read config ${id} from SFTP: ${error.message}`,
+          `Cannot read config ${id} from SFTP: ${(error as Error).message}`,
         );
       }
     } else {
@@ -557,10 +555,11 @@ export class ConfigService {
             config: result as Config | undefined,
           };
         } catch (error) {
-          this.logger.error(`Failed to export config: ${error.message}`);
+          const err = error as Error;
+          this.logger.error(`Failed to export config: ${err.message}`);
 
           throw new BadRequestException(
-            `Failed to export config: ${error.message}`,
+            `Failed to export config: ${err.message}`,
           );
         }
       }
@@ -581,7 +580,7 @@ export class ConfigService {
             )) as unknown as SftpConfigDataDto;
           } catch (error) {
             throw new BadRequestException(
-              `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
+              `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${(error as Error).message}`,
             );
           }
         }
@@ -615,7 +614,7 @@ export class ConfigService {
             );
           } catch (insertError) {
             this.logger.error(
-              `Failed to insert deployed config: ${insertError.message}`,
+              `Failed to insert deployed config: ${(insertError as Error).message}`,
             );
             throw insertError;
           }
@@ -713,6 +712,9 @@ export class ConfigService {
       );
     }
 
+    // DEMS notify is best-effort — the DB update above is authoritative.
+    // Log failures instead of throwing so a DEMS outage doesn't roll back a
+    // publishing-status change that has already been persisted.
     try {
       await this.demsClient.notifyDems(
         id.toString(),
@@ -722,10 +724,11 @@ export class ConfigService {
       );
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
+      const action =
+        publishingStatus === 'active' ? 'activation' : 'deactivation';
       this.logger.error(
-        `Failed to send NATS notification for config ${id}: ${errMsg}`,
+        `DEMS notification failed for config ${id} on ${action}. DB update succeeded; DEMS may be out of sync until reconciliation. Error: ${errMsg}`,
       );
-      throw new BadRequestException(`Failed to activate config: ${errMsg}`);
     }
     if (result.config) {
       const { config } = result;
@@ -918,8 +921,69 @@ export class ConfigService {
   async addFunctionViaService(
     id: number,
     functionData: Record<string, unknown>,
+    user: AuthenticatedUser,
     token: string,
   ): Promise<unknown> {
+    const config = await this.getConfigOrThrow(id, user.tenantId, token);
+
+    const existingFunctions = (config.functions ?? []) as unknown as Array<{
+      functionName: string;
+      tableName?: string;
+      params?: string[];
+    }>;
+
+    const newFunctionName = functionData.functionName as string;
+
+    if (newFunctionName === 'saveTransactionDetails') {
+      const hasExisting = existingFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'saveTransactionDetails',
+      );
+      if (hasExisting) {
+        throw new BadRequestException(
+          'Save Transaction Details can only be added once. Remove the existing one first to change its parameters.',
+        );
+      }
+    } else if (newFunctionName === 'addDataModelTable') {
+      const newTableName = (
+        (functionData.tableName as string | undefined) ?? ''
+      )
+        .trim()
+        .toLowerCase();
+      const isDuplicateTable = existingFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'addDataModelTable' &&
+          (existingFunction.tableName ?? '').trim().toLowerCase() ===
+            newTableName,
+      );
+      if (isDuplicateTable) {
+        throw new BadRequestException(
+          `A data model table named "${functionData.tableName as string}" already exists on this configuration.`,
+        );
+      }
+    } else {
+      const newParams = ((functionData.params as string[] | undefined) ?? [])
+        .slice()
+        .sort();
+      const isDuplicate = existingFunctions.some((existingFunction) => {
+        if (existingFunction.functionName !== newFunctionName) {
+          return false;
+        }
+        const existingParams = (existingFunction.params ?? []).slice().sort();
+        if (existingParams.length !== newParams.length) {
+          return false;
+        }
+        return existingParams.every(
+          (param, index) => param === newParams[index],
+        );
+      });
+      if (isDuplicate) {
+        throw new BadRequestException(
+          'This function with the same parameters already exists on this configuration.',
+        );
+      }
+    }
+
     const result = await this.configRepository.addFunction(
       id,
       functionData,
@@ -1042,8 +1106,42 @@ export class ConfigService {
         user.token.tokenString,
       );
     } catch (error) {
-      this.logger.error(`Failed to get related transactions: ${error.message}`);
+      this.logger.error(
+        `Failed to get related transactions: ${(error as Error).message}`,
+      );
       throw new BadRequestException('Failed to retrieve related transactions');
+    }
+  }
+
+  async getConfigsByMsgFam(
+    msgFam: string,
+    user: AuthenticatedUser,
+    limit?: number,
+    offset?: number,
+    transactionType?: string,
+  ): Promise<{
+    success: boolean;
+    data: string[];
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  }> {
+    try {
+      return await this.configRepository.getConfigsByMsgFam(
+        msgFam,
+        user.token.tokenString,
+        limit,
+        offset,
+        transactionType,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get configs by msgFam '${msgFam}': ${(error as Error).message}`,
+      );
+      throw new BadRequestException(
+        `Failed to retrieve configs for event type '${msgFam}'`,
+      );
     }
   }
 }

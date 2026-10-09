@@ -95,7 +95,7 @@
     "vite": "^7.1.6"
   },
   "lint-staged": {
-    "**/*.{js,ts,tsx}": [
+    "**/*.{js,ts}": [
       "npm run fix:eslint",
       "prettier --write"
     ]

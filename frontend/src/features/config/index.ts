@@ -17,6 +17,7 @@ export interface Config {
   updatedAt: string;
   mapping?: FieldMapping[];
   schema?: JsonSchema;
+  related_transaction?: string;
 }
 
 export interface ConfigFilters {

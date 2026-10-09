@@ -16,6 +16,7 @@ import {
 jest.mock('../../../src/features/config/services/configApi', () => ({
   configApi: {
     getRelatedTransactions: jest.fn().mockResolvedValue({ data: [] }),
+    getConfigsByMsgFam: jest.fn().mockResolvedValue({ data: [] }),
   },
 }));
 
@@ -1571,10 +1572,10 @@ describe('shared/components/PayloadEditor.tsx', () => {
       '../../../src/features/config/services/configApi',
     ) as {
       configApi: {
-        getRelatedTransactions: { mockResolvedValueOnce: (v: unknown) => void };
+        getConfigsByMsgFam: { mockResolvedValueOnce: (v: unknown) => void };
       };
     };
-    mockModule.configApi.getRelatedTransactions.mockResolvedValueOnce({
+    mockModule.configApi.getConfigsByMsgFam.mockResolvedValueOnce({
       data: ['pacs.008', 'pain.001'],
     });
 
@@ -1584,29 +1585,36 @@ describe('shared/components/PayloadEditor.tsx', () => {
         transactionType: 'acmt_023',
         description: '',
         contentType: 'application/json',
-        msgFam: '',
+        msgFam: 'iso',
       },
     });
 
+    // Wait for the debounced fetch to populate configs, then open the dropdown
+    await waitFor(() => {
+      expect(mockModule.configApi.getConfigsByMsgFam).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText('Related Transaction'));
+
     await waitFor(() => {
       expect(
-        screen.getByRole('option', { name: 'pacs.008' }),
+        screen.getByRole('option', { name: /pacs\.008/ }),
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByRole('option', { name: 'pain.001' }),
+      screen.getByRole('option', { name: /pain\.001/ }),
     ).toBeInTheDocument();
   });
 
-  it('handles configApi.getRelatedTransactions rejection gracefully (catch branch)', async () => {
+  it('handles configApi.getConfigsByMsgFam rejection gracefully (catch branch)', async () => {
     const mockModule = jest.requireMock(
       '../../../src/features/config/services/configApi',
     ) as {
       configApi: {
-        getRelatedTransactions: { mockRejectedValueOnce: (v: unknown) => void };
+        getConfigsByMsgFam: { mockRejectedValueOnce: (v: unknown) => void };
       };
     };
-    mockModule.configApi.getRelatedTransactions.mockRejectedValueOnce(
+    mockModule.configApi.getConfigsByMsgFam.mockRejectedValueOnce(
       new Error('Network error'),
     );
 
@@ -1616,12 +1624,20 @@ describe('shared/components/PayloadEditor.tsx', () => {
         transactionType: 'acmt_023',
         description: '',
         contentType: 'application/json',
-        msgFam: '',
+        msgFam: 'iso',
       },
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Endpoint Path Preview/i)).toBeInTheDocument();
+      expect(mockModule.configApi.getConfigsByMsgFam).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText('Related Transaction'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/No matching transaction types/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -1630,10 +1646,10 @@ describe('shared/components/PayloadEditor.tsx', () => {
       '../../../src/features/config/services/configApi',
     ) as {
       configApi: {
-        getRelatedTransactions: { mockResolvedValueOnce: (v: unknown) => void };
+        getConfigsByMsgFam: { mockResolvedValueOnce: (v: unknown) => void };
       };
     };
-    mockModule.configApi.getRelatedTransactions.mockResolvedValueOnce({
+    mockModule.configApi.getConfigsByMsgFam.mockResolvedValueOnce({
       data: ['pacs.008'],
     });
 
@@ -1643,19 +1659,24 @@ describe('shared/components/PayloadEditor.tsx', () => {
         transactionType: 'acmt_023',
         description: '',
         contentType: 'application/json',
-        msgFam: '',
+        msgFam: 'iso',
       },
     });
 
+    // Wait for the debounced fetch to populate configs, then open the dropdown
+    await waitFor(() => {
+      expect(mockModule.configApi.getConfigsByMsgFam).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText('Related Transaction'));
+
     await waitFor(() => {
       expect(
-        screen.getByRole('option', { name: 'pacs.008' }),
+        screen.getByRole('option', { name: /pacs\.008/ }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Related Transaction'), {
-      target: { value: 'pacs.008' },
-    });
+    fireEvent.click(screen.getByRole('option', { name: /pacs\.008/ }));
 
     await waitFor(() => {
       expect(onEndpointDataChange).toHaveBeenCalledWith(
@@ -1748,10 +1769,10 @@ describe('shared/components/PayloadEditor.tsx', () => {
       '../../../src/features/config/services/configApi',
     ) as {
       configApi: {
-        getRelatedTransactions: { mockResolvedValueOnce: (v: unknown) => void };
+        getConfigsByMsgFam: jest.Mock;
       };
     };
-    mockModule.configApi.getRelatedTransactions.mockResolvedValueOnce({
+    mockModule.configApi.getConfigsByMsgFam.mockResolvedValueOnce({
       data: 'not-an-array',
     });
 
@@ -1761,15 +1782,20 @@ describe('shared/components/PayloadEditor.tsx', () => {
         transactionType: 'acmt_023',
         description: '',
         contentType: 'application/json',
-        msgFam: '',
+        msgFam: 'iso',
       },
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Endpoint Path Preview/i)).toBeInTheDocument();
+      expect(mockModule.configApi.getConfigsByMsgFam).toHaveBeenCalled();
     });
+    await act(async () => {
+      await mockModule.configApi.getConfigsByMsgFam.mock.results[0].value;
+    });
+
+    expect(screen.getByText(/Endpoint Path Preview/i)).toBeInTheDocument();
     expect(
-      screen.getByRole('option', { name: '-- Select Related Transaction --' }),
+      screen.getByText('-- Select Related Transaction --'),
     ).toBeInTheDocument();
   });
 
