@@ -523,6 +523,27 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
       onSchemaChange(inferredFields);
     }, [inferredFields, onSchemaChange]);
 
+    const handleClearGeneratedFields = (): void => {
+      hasUserEditedRef.current = false;
+      setInferredFields([]);
+      setShowAddFieldForm(false);
+      setNewField({
+        path: '',
+        type: 'String',
+        required: false,
+      });
+      setFieldGenerationError(null);
+
+      lastPushedAdjustmentsRef.current = null;
+      lastPushedFieldsRef.current = null;
+      if (onFieldAdjustmentsChange) {
+        onFieldAdjustmentsChange([]);
+      }
+      if (onSchemaChange) {
+        onSchemaChange([]);
+      }
+    };
+
     const handleGenerateFields = (): void => {
       if (!value) {
         setFieldGenerationError('Please enter a payload first.');
@@ -1113,6 +1134,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                     className="cursor-pointer"
                     onClick={() => {
                       onChange(null);
+                      handleClearGeneratedFields();
                     }}
                   >
                     Clear
