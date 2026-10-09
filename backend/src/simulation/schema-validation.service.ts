@@ -217,13 +217,20 @@ export class SchemaValidationService {
     obj: unknown,
     schema?: unknown,
     path = '',
+    rootSchema: unknown = schema,
   ): unknown {
     if (!obj || typeof obj !== 'object') {
       return obj;
     }
     if (Array.isArray(obj)) {
+      const itemSchema = (schema as Record<string, unknown> | undefined)?.items;
       return obj.map((item) =>
-        this.normalizeXmlParsedObjectWithSchema(item, schema, path),
+        this.normalizeXmlParsedObjectWithSchema(
+          item,
+          itemSchema,
+          path,
+          rootSchema,
+        ),
       );
     }
 
@@ -234,6 +241,23 @@ export class SchemaValidationService {
         continue;
       }
       if (key === '#text') {
+        const schemaProperties = (schema as Record<string, unknown> | undefined)
+          ?.properties as Record<string, unknown> | undefined;
+        if (schemaProperties && '#text' in schemaProperties) {
+          const textSchema = schemaProperties['#text'] as
+            | Record<string, unknown>
+            | undefined;
+          const expectedTextType = textSchema?.type as string | undefined;
+          normalized['#text'] =
+            typeof value === 'string' &&
+            (expectedTextType === 'number' || expectedTextType === 'integer') &&
+            value.trim() !== '' &&
+            !Number.isNaN(Number(value))
+              ? Number(value)
+              : value;
+          continue;
+        }
+
         const hasAttributes = Object.keys(obj).some(
           (k) => k !== '#text' && !k.startsWith('@'),
         );
@@ -241,7 +265,7 @@ export class SchemaValidationService {
           (k) => k === '#text' || k.startsWith('@'),
         );
 
-        const expectedType = this.getSchemaTypeAtPath(schema, path);
+        const expectedType = this.getSchemaTypeAtPath(rootSchema, path);
 
         if (expectedType === 'string' && hasAttributes) {
           return value;
@@ -255,13 +279,14 @@ export class SchemaValidationService {
       }
       const currentPath = path ? `${path}.${key}` : key;
 
-      const fieldSchema = this.getSchemaAtPath(schema, currentPath);
+      const fieldSchema = this.getSchemaAtPath(rootSchema, currentPath);
 
       if (value && typeof value === 'object') {
         const normalizedValue = this.normalizeXmlParsedObjectWithSchema(
           value,
           fieldSchema,
           currentPath,
+          rootSchema,
         );
         if (
           fieldSchema?.type === 'string' &&
@@ -292,6 +317,9 @@ export class SchemaValidationService {
     let current = schema as Record<string, unknown>;
 
     for (const part of parts) {
+      if (current.type === 'array' && current.items) {
+        current = current.items as Record<string, unknown>;
+      }
       const props = current.properties as Record<string, unknown> | undefined;
       if (props?.[part]) {
         current = props[part] as Record<string, unknown>;
@@ -316,6 +344,9 @@ export class SchemaValidationService {
     let current = schema as Record<string, unknown>;
 
     for (const part of parts) {
+      if (current.type === 'array' && current.items) {
+        current = current.items as Record<string, unknown>;
+      }
       const props = current.properties as Record<string, unknown> | undefined;
       if (props?.[part]) {
         current = props[part] as Record<string, unknown>;
