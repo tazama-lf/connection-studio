@@ -1041,7 +1041,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             .includes(node.path.join('.'));
 
         const nodeType = node.id.startsWith('redis') ? 'redis' : type;
-  
+
         if (isSection) {
           return (
             <div key={node.id} data-id="element-section">
@@ -1601,13 +1601,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return maxDepth;
   };
 
-  // Note: null/undefined are intentionally NOT treated as empty here, some
-  // root fields (e.g. redis) are legitimately set to null to mean "no value
-  // yet" and that's handled separately by validateDestinationJson. Only
-  // blank/whitespace-only strings count as an "empty field" a user left
-  // unfilled while editing.
   const isEmptyFieldValue = (value: any): boolean =>
-    typeof value === 'string' && value.trim() === '';
+    value === null || value === undefined;
 
   const hasEmptyField = (json: any): boolean => {
     if (Array.isArray(json)) {
@@ -1627,7 +1622,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       if (value && typeof value === 'object') {
         return hasEmptyField(value);
       }
-      return isEmptyFieldValue(value);
+      return isEmptyFieldValue(value)
     });
   };
 

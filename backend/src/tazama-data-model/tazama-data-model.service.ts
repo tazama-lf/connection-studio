@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { TazamaDataModelRepository } from './tazama-data-model.repository';
 
 interface ErrorWithMessage {
@@ -14,12 +14,8 @@ export class TazamaDataModelService {
   constructor(private readonly repository: TazamaDataModelRepository) {}
   /* c8 ignore stop */
 
-  // Note: null/undefined are intentionally NOT treated as empty here, some
-  // root fields (e.g. redis) are legitimately set to null to mean "no value
-  // yet". Only blank/whitespace-only strings count as an "empty field" a
-  // user left unfilled while editing.
   private isEmptyValue(value: unknown): boolean {
-    return typeof value === 'string' && value.trim() === '';
+    return value === null || typeof value === 'undefined';
   }
 
   private hasEmptyField(json: unknown): boolean {
