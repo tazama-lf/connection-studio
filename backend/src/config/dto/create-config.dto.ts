@@ -5,17 +5,23 @@ import {
   IsNotEmpty,
   IsObject,
   IsArray,
+  MinLength,
+  MaxLength,
 } from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
 import { IsValidPayload } from '../../decorators/is-valid-payload.decorator';
 
 export class CreateConfigDto {
   @IsString()
+  @MinLength(1)
+  @MaxLength(50)
   @IsNotEmpty()
   msgFam!: string;
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(50)
   transactionType!: string;
 
   @IsString()
@@ -24,6 +30,8 @@ export class CreateConfigDto {
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(50)
   version!: string;
 
   @IsEnum(ContentType)

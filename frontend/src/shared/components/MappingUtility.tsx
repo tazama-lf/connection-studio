@@ -1041,7 +1041,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             .includes(node.path.join('.'));
 
         const nodeType = node.id.startsWith('redis') ? 'redis' : type;
-  
+
         if (isSection) {
           return (
             <div key={node.id} data-id="element-section">
@@ -1601,6 +1601,31 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return maxDepth;
   };
 
+  const isEmptyFieldValue = (value: any): boolean =>
+    value === null || value === undefined;
+
+  const hasEmptyField = (json: any): boolean => {
+    if (Array.isArray(json)) {
+      return json.some(
+        (item) => hasEmptyField(item) || isEmptyFieldValue(item),
+      );
+    }
+
+    if (!json || typeof json !== 'object') {
+      return false;
+    }
+
+    return Object.entries(json).some(([key, value]) => {
+      if (key.trim() === '') {
+        return true;
+      }
+      if (value && typeof value === 'object') {
+        return hasEmptyField(value);
+      }
+      return isEmptyFieldValue(value)
+    });
+  };
+
   const validateDestinationJson = (
     json: any,
   ): { valid: boolean; error?: string } => {
@@ -1667,6 +1692,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           error: `Object "${key}" has ${depth} levels of nesting. Maximum allowed nesting depth is ${MAX_NESTING_DEPTH} level. Please reduce the nesting depth.`,
         };
       }
+    }
+
+    if (hasEmptyField(json)) {
+      return {
+        valid: false,
+        error:
+          'JSON contains one or more empty field names or values. Please provide a name and value for every field before saving.',
+      };
     }
 
     return { valid: true };

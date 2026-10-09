@@ -558,7 +558,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         field === 'transactionType' ||
         field === 'msgFam'
       ) {
-        sanitizedValue = newValue.replace(/\s/g, '');
+        sanitizedValue = newValue.replace(/\s/g, '').slice(0, 50);
       }
       const updatedData = { ...endpointData, [field]: sanitizedValue };
 
@@ -744,6 +744,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="1.0.0"
+                    maxLength={50}
                     className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.version
@@ -785,6 +786,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="iso-20022"
+                    maxLength={50}
                     className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.eventType
@@ -844,6 +846,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
                       }
                     }}
                     placeholder="e.g., pacs.008, pain.001"
+                    maxLength={50}
                     className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : fieldErrors.transactionType

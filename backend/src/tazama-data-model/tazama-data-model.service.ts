@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { TazamaDataModelRepository } from './tazama-data-model.repository';
 
 interface ErrorWithMessage {
@@ -13,6 +13,34 @@ export class TazamaDataModelService {
   /* c8 ignore start */
   constructor(private readonly repository: TazamaDataModelRepository) {}
   /* c8 ignore stop */
+
+  private isEmptyValue(value: unknown): boolean {
+    return value === null || typeof value === 'undefined';
+  }
+
+  private hasEmptyField(json: unknown): boolean {
+    if (Array.isArray(json)) {
+      return json.some(
+        (item) => this.hasEmptyField(item) || this.isEmptyValue(item),
+      );
+    }
+
+    if (!json || typeof json !== 'object') {
+      return false;
+    }
+
+    return Object.entries(json as Record<string, unknown>).some(
+      ([key, value]) => {
+        if (key.trim() === '') {
+          return true;
+        }
+        if (value && typeof value === 'object') {
+          return this.hasEmptyField(value);
+        }
+        return this.isEmptyValue(value);
+      },
+    );
+  }
 
   async getDataModelJson(
     tenantId: string,
@@ -40,6 +68,15 @@ export class TazamaDataModelService {
     dataModelJson: Record<string, unknown>,
     token: string,
   ): Promise<{ tenant_id: string; updated_at: string }> {
+    if (this.hasEmptyField(dataModelJson)) {
+      this.logger.error(
+        `Rejected data model JSON with empty field(s) for tenant: ${tenantId}`,
+      );
+      throw new BadRequestException(
+        'Data model JSON contains one or more empty field names or values. Please provide a name and value for every field before saving.',
+      );
+    }
+
     try {
       this.logger.log(`Saving data model JSON for tenant: ${tenantId}`);
       const result = await this.repository.putDataModelJson(
