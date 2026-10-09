@@ -832,6 +832,36 @@ describe('shared/components/PayloadEditor.tsx', () => {
     expect(onChange).toHaveBeenCalledTimes(3);
   });
 
+  it('keeps the JSON preview read-only when cloning in read-only mode (CodeRabbit PR #145 finding)', async () => {
+    const onChange = jest.fn();
+    renderEditor({
+      onChange,
+      isCloning: true,
+      isEditMode: true,
+      shouldCreateNew: false,
+      readOnly: true,
+      value: '{"key":"value"}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('react-json-view')).toBeInTheDocument();
+    });
+
+    // The mock only renders these buttons when onEdit/onAdd/onDelete are
+    // truthy — their absence proves readOnly disabled them.
+    expect(screen.queryByTestId('rjv-edit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rjv-add')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rjv-delete')).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('blocks invalid key presses on version input', () => {
     renderEditor();
     const versionInput = screen.getByLabelText(/Version/i);
@@ -1435,6 +1465,33 @@ describe('shared/components/PayloadEditor.tsx', () => {
     await waitFor(() => {
       expect(screen.getByText(/Endpoint Path Preview/i)).toBeInTheDocument();
     });
+  });
+
+  it('shows the raw payload textarea and Generate Fields when cloning, even though isEditMode is true (issue #136 clone-payload regression)', async () => {
+    // A real "Clone" action always passes a real source endpointId, so
+    // EditEndpointModal derives isEditMode={!isNewEndpoint} = true for
+    // clone too — isCloning must still be enough to show this section on
+    // its own, independent of isEditMode.
+    renderEditor({
+      shouldCreateNew: false,
+      isCloning: true,
+      isEditMode: true,
+      value: '{"x":1}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/Enter your JSON payload/i),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Raw Input/i)).toBeInTheDocument();
   });
 
   it('endpoint path preview shows v1 fallback when version is empty (covers version || v1)', async () => {
