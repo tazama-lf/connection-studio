@@ -11,6 +11,7 @@ import { DemsClient } from '../services/dems-client.service';
 import { SftpModule } from '../sftp/sftp.module';
 import { NotificationModule } from '../notification/notification.module';
 import { LoggerModule } from '../logger-service/logger-service.module';
+import { SchemaValidationService } from '../simulation/schema-validation.service';
 
 @Module({
   imports: [
@@ -28,12 +29,14 @@ import { LoggerModule } from '../logger-service/logger-service.module';
     ConfigUtilsService,
     AdminServiceClient,
     DemsClient,
+    SchemaValidationService,
   ],
   exports: [
     ConfigService,
     ConfigRepository,
     ConfigWorkflowService,
     AdminServiceClient,
+    SchemaValidationService,
   ],
 })
 export class ConfigModule {}
