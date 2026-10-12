@@ -24,13 +24,12 @@ export class TazamaDataModelService {
       return true;
     }
     try {
-      JSON.parse(key);
-      return true;
+      const parsed = JSON.parse(key);
+      return typeof parsed === 'object' && parsed !== null;
     } catch {
       return false;
     }
   }
-
   private findInvalidArrayField(json: unknown[], path: string): string | null {
     for (const [index, item] of json.entries()) {
       const itemPath = `${path}[${index}]`;
