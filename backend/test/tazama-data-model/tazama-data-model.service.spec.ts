@@ -161,16 +161,17 @@ describe('TazamaDataModelService', () => {
     });
 
     it.each([
-      ['an empty string value', { model: '' }],
-      ['a whitespace-only value', { model: '   ' }],
+      ['a null value', { model: null }],
+      ['an undefined value', { model: undefined }],
       ['an empty key', { '': 'value' }],
       ['a whitespace-only key', { '   ': 'value' }],
-      ['an empty value nested one level deep', { redis: { amount: '' } }],
+      ['a JSON-object-shaped key', { '{"a":1}': 'value' }],
+      ['a null value nested one level deep', { redis: { amount: null } }],
       [
-        'an empty value nested inside an array',
-        { transactionDetails: [{ amt: '' }] },
+        'a null value nested inside an array',
+        { transactionDetails: [{ amt: null }] },
       ],
-      ['an empty string inside an array', { tags: ['ok', ''] }],
+      ['a null value inside an array', { tags: ['ok', null] }],
     ])(
       'should reject data model JSON with %s',
       async (_description, dataModelJson) => {
@@ -183,7 +184,9 @@ describe('TazamaDataModelService', () => {
 
         expect(repository.putDataModelJson).not.toHaveBeenCalled();
         expect(service['logger'].error).toHaveBeenCalledWith(
-          `Rejected data model JSON with empty field(s) for tenant: ${tenantId}`,
+          expect.stringContaining(
+            `Rejected data model JSON with invalid field`,
+          ),
         );
       },
     );
@@ -193,7 +196,8 @@ describe('TazamaDataModelService', () => {
       ['a non-empty nested object', { redis: { amount: 100 } }],
       ['an empty object as a value', { redis: {} }],
       ['a non-empty array', { tags: ['a', 'b'] }],
-      ['a null value (e.g. redis intentionally unset)', { redis: null }],
+      ['an empty string value', { model: '' }],
+      ['a whitespace-only value', { model: '   ' }],
     ])(
       'should accept data model JSON with %s',
       async (_description, dataModelJson) => {
@@ -222,5 +226,23 @@ describe('TazamaDataModelService', () => {
         );
       },
     );
+
+    it('rejects a non-object payload (e.g. an array)', async () => {
+      const tenantId = 'tenant123';
+      const token = 'token123';
+
+      await expect(
+        service.putDataModelJson(
+          tenantId,
+          [] as unknown as Record<string, unknown>,
+          token,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(repository.putDataModelJson).not.toHaveBeenCalled();
+      expect(service['logger'].error).toHaveBeenCalledWith(
+        expect.stringContaining('Rejected invalid data model JSON'),
+      );
+    });
   });
 });
