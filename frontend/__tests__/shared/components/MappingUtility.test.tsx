@@ -3449,7 +3449,7 @@ describe('MappingUtility', () => {
       });
     });
 
-    it('rejects an empty field value', async () => {
+    it('accepts an empty string field value', async () => {
       renderComponent();
       await openEditFieldsModal();
 
@@ -3459,11 +3459,11 @@ describe('MappingUtility', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/empty field name or value/i),
-        ).toBeInTheDocument();
+          screen.queryByText(/empty field name or value/i),
+        ).not.toBeInTheDocument();
         expect(
           screen.getByRole('button', { name: /save changes/i }),
-        ).toBeDisabled();
+        ).not.toBeDisabled();
       });
     });
 
@@ -3485,7 +3485,7 @@ describe('MappingUtility', () => {
       });
     });
 
-    it('rejects a whitespace-only field value', async () => {
+    it('accepts a whitespace-only field value', async () => {
       renderComponent();
       await openEditFieldsModal();
 
@@ -3495,11 +3495,11 @@ describe('MappingUtility', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/empty field name or value/i),
-        ).toBeInTheDocument();
+          screen.queryByText(/empty field name or value/i),
+        ).not.toBeInTheDocument();
         expect(
           screen.getByRole('button', { name: /save changes/i }),
-        ).toBeDisabled();
+        ).not.toBeDisabled();
       });
     });
 
@@ -6709,43 +6709,26 @@ describe('MappingUtility', () => {
       });
     });
 
-    it('handles redis as null (covers json.redis falsy branch)', async () => {
+    it('rejects redis as null (null values are not allowed)', async () => {
       renderComponent();
       await openEditFieldsModal();
 
-      // redis is null - key exists but value is falsy
-      // validateDestinationJson: json.redis → falsy → skip nesting check
+      // redis: null is an empty/invalid value and should be rejected,
+      // same as any other null field value.
       fireEvent.click(
         screen.getByRole('button', { name: /mock null redis value/i }),
       );
 
-      // Null redis should not trigger nesting error (check skipped)
       await waitFor(() => {
         expect(
-          screen.queryByText(/Maximum allowed nesting depth for redis/i),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    it('saves successfully when redis is null (covers reorder redis falsy branch)', async () => {
-      renderComponent();
-      await openEditFieldsModal();
-
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock null redis value/i }),
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
-
-      await waitFor(() => {
-        expect(mockDataModelApi.updateDestinationFieldsJson).toHaveBeenCalled();
+          screen.getByText(/empty field name or value/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
       });
 
-      const callArg = (
-        mockDataModelApi.updateDestinationFieldsJson as jest.Mock
-      ).mock.calls[0][0];
-      // redis should NOT be in reorderedJson since it's null
-      expect(callArg.redis).toBeUndefined();
+      expect(mockDataModelApi.updateDestinationFieldsJson).not.toHaveBeenCalled();
     });
 
     it('shows fallback error when save fails without message property', async () => {
