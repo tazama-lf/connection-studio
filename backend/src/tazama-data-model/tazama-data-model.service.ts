@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { TazamaDataModelRepository } from './tazama-data-model.repository';
-import { validatePayloadContent } from 'src/utils/helpers';
+import { validatePayloadContent } from '../utils/helpers';
 
 interface ErrorWithMessage {
   message: string;
