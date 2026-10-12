@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { TazamaDataModelRepository } from './tazama-data-model.repository';
+import { validatePayloadContent } from 'src/utils/helpers';
 
 interface ErrorWithMessage {
   message: string;
@@ -18,28 +19,61 @@ export class TazamaDataModelService {
     return value === null || typeof value === 'undefined';
   }
 
-  private hasEmptyField(json: unknown): boolean {
+  private isInvalidKey(key: string): boolean {
+    if (key.trim() === '') {
+      return true;
+    }
+    try {
+      JSON.parse(key);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private findInvalidArrayField(json: unknown[], path: string): string | null {
+    for (const [index, item] of json.entries()) {
+      const itemPath = `${path}[${index}]`;
+      if (this.isEmptyValue(item)) {
+        return itemPath;
+      }
+      const nestedInvalid = this.findInvalidField(item, itemPath);
+      if (nestedInvalid) {
+        return nestedInvalid;
+      }
+    }
+    return null;
+  }
+
+  private findInvalidField(json: unknown, path = ''): string | null {
     if (Array.isArray(json)) {
-      return json.some(
-        (item) => this.hasEmptyField(item) || this.isEmptyValue(item),
-      );
+      return this.findInvalidArrayField(json, path);
     }
 
     if (!json || typeof json !== 'object') {
-      return false;
+      return null;
     }
 
-    return Object.entries(json as Record<string, unknown>).some(
-      ([key, value]) => {
-        if (key.trim() === '') {
-          return true;
+    for (const [key, value] of Object.entries(
+      json as Record<string, unknown>,
+    )) {
+      const fieldPath = path ? `${path}.${key}` : key;
+
+      if (this.isInvalidKey(key)) {
+        return path ? `${path}.<empty key>` : '<empty key>';
+      }
+
+      if (value && typeof value === 'object') {
+        const nestedInvalid = this.findInvalidField(value, fieldPath);
+        if (nestedInvalid) {
+          return nestedInvalid;
         }
-        if (value && typeof value === 'object') {
-          return this.hasEmptyField(value);
-        }
-        return this.isEmptyValue(value);
-      },
-    );
+      } else if (this.isEmptyValue(value)) {
+        return fieldPath;
+      }
+    }
+
+    return null;
   }
 
   async getDataModelJson(
@@ -68,12 +102,24 @@ export class TazamaDataModelService {
     dataModelJson: Record<string, unknown>,
     token: string,
   ): Promise<{ tenant_id: string; updated_at: string }> {
-    if (this.hasEmptyField(dataModelJson)) {
+    const payloadValidation = validatePayloadContent(
+      dataModelJson,
+      'application/json',
+    );
+    if (!payloadValidation.isValid) {
       this.logger.error(
-        `Rejected data model JSON with empty field(s) for tenant: ${tenantId}`,
+        `Rejected invalid data model JSON for tenant: ${tenantId}: ${payloadValidation.message}`,
+      );
+      throw new BadRequestException(payloadValidation.message);
+    }
+
+    const invalidField = this.findInvalidField(dataModelJson);
+    if (invalidField) {
+      this.logger.error(
+        `Rejected data model JSON with invalid field "${invalidField}" for tenant: ${tenantId}`,
       );
       throw new BadRequestException(
-        'Data model JSON contains one or more empty field names or values. Please provide a name and value for every field before saving.',
+        `Field "${invalidField}" has an empty or invalid name/value. Please provide a valid name and value before saving.`,
       );
     }
 

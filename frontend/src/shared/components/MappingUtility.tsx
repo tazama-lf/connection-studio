@@ -1604,26 +1604,58 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const isEmptyFieldValue = (value: any): boolean =>
     value === null || value === undefined;
 
-  const hasEmptyField = (json: any): boolean => {
+  const isInvalidFieldKey = (key: string): boolean => {
+    if (key.trim() === '') {
+      return true;
+    }
+    try {
+      // A key that parses as JSON (object, array, number, boolean, or
+      // quoted string) is not a plain field name, so reject it.
+      JSON.parse(key);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const findInvalidField = (json: any, path = ''): string | null => {
     if (Array.isArray(json)) {
-      return json.some(
-        (item) => hasEmptyField(item) || isEmptyFieldValue(item),
-      );
+      for (let index = 0; index < json.length; index++) {
+        const item = json[index];
+        const itemPath = `${path}[${index}]`;
+        if (isEmptyFieldValue(item)) {
+          return itemPath;
+        }
+        const nestedInvalid = findInvalidField(item, itemPath);
+        if (nestedInvalid) {
+          return nestedInvalid;
+        }
+      }
+      return null;
     }
 
     if (!json || typeof json !== 'object') {
-      return false;
+      return null;
     }
 
-    return Object.entries(json).some(([key, value]) => {
-      if (key.trim() === '') {
-        return true;
+    for (const [key, value] of Object.entries(json)) {
+      const fieldPath = path ? `${path}.${key}` : key;
+
+      if (isInvalidFieldKey(key)) {
+        return path ? `${path}.<empty key>` : '<empty key>';
       }
+
       if (value && typeof value === 'object') {
-        return hasEmptyField(value);
+        const nestedInvalid = findInvalidField(value, fieldPath);
+        if (nestedInvalid) {
+          return nestedInvalid;
+        }
+      } else if (isEmptyFieldValue(value)) {
+        return fieldPath;
       }
-      return isEmptyFieldValue(value)
-    });
+    }
+
+    return null;
   };
 
   const validateDestinationJson = (
@@ -1694,11 +1726,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       }
     }
 
-    if (hasEmptyField(json)) {
+    const invalidField = findInvalidField(json);
+    if (invalidField) {
       return {
         valid: false,
-        error:
-          'JSON contains one or more empty field names or values. Please provide a name and value for every field before saving.',
+        error: `JSON contains one or more empty field name or value. Please provide a name and value for every field before saving.`,
       };
     }
 
@@ -1747,6 +1779,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
       if (tempEditedJson.redis) {
         reorderedJson.redis = tempEditedJson.redis;
+      }
+
+      const finalValidation = validateDestinationJson(reorderedJson);
+      if (!finalValidation.valid) {
+        setValidationError(
+          finalValidation.error ?? 'Invalid JSON structure',
+        );
+        return;
       }
 
       try {

@@ -3459,7 +3459,7 @@ describe('MappingUtility', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/empty field names or values/i),
+          screen.getByText(/empty field name or value/i),
         ).toBeInTheDocument();
         expect(
           screen.getByRole('button', { name: /save changes/i }),
@@ -3477,7 +3477,7 @@ describe('MappingUtility', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/empty field names or values/i),
+          screen.getByText(/empty field name or value/i),
         ).toBeInTheDocument();
         expect(
           screen.getByRole('button', { name: /save changes/i }),
@@ -3495,7 +3495,7 @@ describe('MappingUtility', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/empty field names or values/i),
+          screen.getByText(/empty field name or value/i),
         ).toBeInTheDocument();
         expect(
           screen.getByRole('button', { name: /save changes/i }),
@@ -3511,7 +3511,7 @@ describe('MappingUtility', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText(/empty field names or values/i),
+          screen.queryByText(/empty field name or value/i),
         ).not.toBeInTheDocument();
         expect(
           screen.getByRole('button', { name: /save changes/i }),
