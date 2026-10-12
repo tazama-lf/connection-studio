@@ -220,9 +220,9 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
       expect(store.size).toBe(0);
     });
 
-    // enforceStrictSchema sets additionalProperties: true, so both entry
-    // points tolerate extra fields and only enforce `required` and types.
-    it('both entry points accept a payload with extra fields', async () => {
+    // enforceStrictSchema closes every object (additionalProperties: false),
+    // so a field the schema does not describe is rejected at both entry points.
+    it('both entry points reject a payload with a field the schema does not describe', async () => {
       const created = await createConfig(
         jsonPayload,
         jsonSchema,
@@ -242,10 +242,45 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
         extended,
         'application/json',
       );
-      expect(schemaStage(result)?.status).toBe('PASSED');
-      expect(
-        (await createConfig(extended, jsonSchema, ContentType.JSON)).success,
-      ).toBe(true);
+      expect(schemaStage(result)?.status).toBe('FAILED');
+      expect(JSON.stringify(schemaStage(result)?.errors)).toContain(
+        "must NOT have additional properties 'UnexpectedBlock'",
+      );
+
+      const creationVerdict = await createConfig(
+        extended,
+        jsonSchema,
+        ContentType.JSON,
+      );
+      expect(creationVerdict.success).toBe(false);
+      expect(creationVerdict.message).toContain(
+        "/FIToFIPmtSts: must NOT have additional properties 'UnexpectedBlock'",
+      );
+      expect(store.size).toBe(1);
+    });
+
+    it('rejects a payload field missing from a minimal schema, naming the field', async () => {
+      const created = await createConfig(
+        { name: 'John', age: 25 },
+        { type: 'object', properties: { name: { type: 'string' } } },
+        ContentType.JSON,
+      );
+
+      expect(created.success).toBe(false);
+      expect(created.message).toBe(
+        "Schema does not match payload: root: must NOT have additional properties 'age'",
+      );
+      expect(store.size).toBe(0);
+    });
+
+    it('rejects a schema that declares no type', async () => {
+      const created = await createConfig(jsonPayload, {}, ContentType.JSON);
+
+      expect(created.success).toBe(false);
+      expect(created.message).toBe(
+        'Schema does not match payload: schema: Schema must declare a type',
+      );
+      expect(store.size).toBe(0);
     });
 
     it('both entry points reject a payload missing a required field or with a wrong type', async () => {
@@ -283,10 +318,10 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
 
   // ----------------------------------------------------------------- XML
 
-  // Limited to string leaves without attributes: the backend's xml2js parse
-  // yields numeric text as strings and moves the text of an attributed element
-  // to `textContent`, so frontend schemas typing leaves as `number` or
-  // requiring `#text` do not round-trip yet.
+  // Covers an attribute+text element (StsRsnInf), whose text the frontend
+  // schema declares as '#text'. Numeric leaves are left out: xml2js yields
+  // text as strings, so frontend schemas typing them `number` do not
+  // round-trip yet.
   const xmlPayload = `<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.002.001.12">
   <FIToFIPmtSts>
     <GrpHdr>
@@ -296,12 +331,13 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
     <TxInfAndSts>
       <OrgnlEndToEndId>e2e-1</OrgnlEndToEndId>
       <TxSts>ACCC</TxSts>
+      <StsRsnInf Cd="AC01">Incorrect account</StsRsnInf>
     </TxInfAndSts>
   </FIToFIPmtSts>
 </Document>`;
 
-  // Shape the frontend generator produces for XML: attributes such as xmlns
-  // become plain properties, which cleanSchemaForXML strips.
+  // Shape the frontend generator produces for XML: attributes become plain
+  // properties (xmlns is stripped by cleanSchemaForXML), element text '#text'.
   const xmlSchema = {
     type: 'object',
     properties: {
@@ -325,8 +361,16 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
                 properties: {
                   OrgnlEndToEndId: { type: 'string' },
                   TxSts: { type: 'string' },
+                  StsRsnInf: {
+                    type: 'object',
+                    properties: {
+                      Cd: { type: 'string' },
+                      '#text': { type: 'string' },
+                    },
+                    required: ['Cd', '#text'],
+                  },
                 },
-                required: ['OrgnlEndToEndId', 'TxSts'],
+                required: ['OrgnlEndToEndId', 'TxSts', 'StsRsnInf'],
               },
             },
             required: ['GrpHdr', 'TxInfAndSts'],
@@ -411,6 +455,56 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
       expect(
         (await createConfig(drifted, xmlSchema, ContentType.XML)).success,
       ).toBe(false);
+    });
+
+    it('both entry points reject an XML payload with an element the schema does not describe', async () => {
+      const created = await createConfig(
+        xmlPayload,
+        xmlSchema,
+        ContentType.XML,
+      );
+      expect(created.success).toBe(true);
+
+      const extended = xmlPayload.replace(
+        '<TxSts>ACCC</TxSts>',
+        '<TxSts>ACCC</TxSts><Unexpected>x</Unexpected>',
+      );
+
+      const result = await simulate(
+        created.config!.id,
+        extended,
+        'application/xml',
+      );
+      expect(schemaStage(result)?.status).toBe('FAILED');
+
+      const creationVerdict = await createConfig(
+        extended,
+        xmlSchema,
+        ContentType.XML,
+      );
+      expect(creationVerdict.success).toBe(false);
+      expect(creationVerdict.message).toContain(
+        "must NOT have additional properties 'Unexpected'",
+      );
+    });
+
+    it('rejects an XML payload whose root the schema does not describe (TCS-ISSUE-007)', async () => {
+      const created = await createConfig(
+        '<root><name>John</name></root>',
+        {
+          type: 'object',
+          required: ['DifferentRoot'],
+          additionalProperties: false,
+          properties: { DifferentRoot: { type: 'object' } },
+        },
+        ContentType.XML,
+      );
+
+      expect(created.success).toBe(false);
+      expect(created.message).toContain(
+        "must NOT have additional properties 'root'",
+      );
+      expect(store.size).toBe(0);
     });
   });
 });

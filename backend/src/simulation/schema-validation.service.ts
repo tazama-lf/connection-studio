@@ -1,9 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as xml2js from 'xml2js';
-import Ajv from 'ajv';
+import Ajv, { type ErrorObject } from 'ajv';
 import * as _ from 'lodash';
 import type { Config } from '../config/config.interfaces';
 import type { SimulationError } from './dto/simulation.dto';
+
+/** Ajv's message, naming the offending key for additionalProperties errors. */
+function describeAjvError(error: ErrorObject): string {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || to handle empty strings
+  const message = error.message || 'Schema validation failed';
+  const { additionalProperty } = error.params as {
+    additionalProperty?: string;
+  };
+  return additionalProperty ? `${message} '${additionalProperty}'` : message;
+}
 
 /**
  * Payload parsing, XML normalization and Ajv schema validation shared by
@@ -373,6 +383,14 @@ export class SchemaValidationService {
       return errors;
     }
 
+    if (typeof schema !== 'object' || !('type' in schema)) {
+      errors.push({
+        field: 'schema',
+        message: 'Schema must declare a type',
+      });
+      return errors;
+    }
+
     try {
       const normalizedPayload = this.normalizePayloadForValidation(
         payload as Record<string, unknown>,
@@ -436,8 +454,7 @@ export class SchemaValidationService {
 
           errors.push({
             field: error.instancePath || 'root',
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || to handle empty strings
-            message: error.message || 'Schema validation failed',
+            message: describeAjvError(error),
             path: error.instancePath,
             value: _.get(
               normalizedPayload,
@@ -489,7 +506,7 @@ export class SchemaValidationService {
 
           const items = strictSchema.items as Record<string, unknown>;
           if (items.type === 'object') {
-            items.additionalProperties = true;
+            items.additionalProperties = false;
           }
         }
       }
@@ -497,7 +514,7 @@ export class SchemaValidationService {
     }
 
     if (strictSchema.type === 'object') {
-      strictSchema.additionalProperties = true;
+      strictSchema.additionalProperties = false;
     }
 
     strictSchema.properties &&= Object.keys(strictSchema.properties).reduce<

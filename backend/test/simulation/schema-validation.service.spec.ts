@@ -97,6 +97,77 @@ describe('SchemaValidationService', () => {
       ).resolves.toEqual([]);
     });
 
+    it('rejects a payload field the schema does not describe, naming it', async () => {
+      const errors = await validator.validateSchemaMatchesPayload(
+        { name: 'John', age: 25 },
+        { type: 'object', properties: { name: { type: 'string' } } },
+        'application/json',
+      );
+
+      expect(errors).toEqual([
+        expect.objectContaining({
+          field: 'root',
+          message: "must NOT have additional properties 'age'",
+        }),
+      ]);
+    });
+
+    it('rejects an undescribed field inside an array item', async () => {
+      const errors = await validator.validateSchemaMatchesPayload(
+        { list: [{ id: 'a', extra: true }] },
+        {
+          type: 'object',
+          properties: {
+            list: {
+              type: 'array',
+              items: { type: 'object', properties: { id: { type: 'string' } } },
+            },
+          },
+        },
+        'application/json',
+      );
+
+      expect(errors).toEqual([
+        expect.objectContaining({
+          field: '/list/0',
+          message: "must NOT have additional properties 'extra'",
+        }),
+      ]);
+    });
+
+    it('rejects a schema that declares no type', async () => {
+      await expect(
+        validator.validateSchemaMatchesPayload(payload, {}, 'application/json'),
+      ).resolves.toEqual([
+        { field: 'schema', message: 'Schema must declare a type' },
+      ]);
+    });
+
+    it('rejects an XML element the schema does not describe', async () => {
+      const errors = await validator.validateSchemaMatchesPayload(
+        '<Document><MsgId>abc</MsgId><Extra>x</Extra></Document>',
+        {
+          type: 'object',
+          properties: {
+            Document: {
+              type: 'object',
+              properties: { MsgId: { type: 'string' } },
+              required: ['MsgId'],
+            },
+          },
+          required: ['Document'],
+        },
+        'application/xml',
+      );
+
+      expect(errors).toEqual([
+        expect.objectContaining({
+          field: '/Document',
+          message: "must NOT have additional properties 'Extra'",
+        }),
+      ]);
+    });
+
     it('reports unparseable payloads as a payload error', async () => {
       const errors = await validator.validateSchemaMatchesPayload(
         '{not json',

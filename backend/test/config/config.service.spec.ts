@@ -144,7 +144,7 @@ describe('ConfigService', () => {
         msgFam: 'iso',
         transactionType: 'pacs.008',
         version: '1.0.0',
-        schema: {},
+        schema: { type: 'object', properties: { sample: { type: 'string' } } },
         payload: { sample: 'value' },
         contentType: ContentType.JSON,
       } as any,
@@ -387,7 +387,7 @@ describe('ConfigService', () => {
       msgFam: 'iso',
       transactionType: 'pacs',
       version: '1.0.0',
-      schema: {},
+      schema: { type: 'object', properties: { sample: { type: 'string' } } },
       payload: { sample: 'value' },
     };
 
@@ -2109,7 +2109,7 @@ describe('ConfigService', () => {
       {
         transactionType: 'pacs.008',
         version: '1.0.0',
-        schema: {},
+        schema: { type: 'object', properties: { sample: { type: 'string' } } },
         payload: { sample: 'value' },
       } as any,
       user,

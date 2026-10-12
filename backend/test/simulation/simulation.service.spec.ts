@@ -2079,7 +2079,7 @@ describe('SimulationService', () => {
       jest.spyOn(adminServiceClientMock, 'getConfigById').mockResolvedValue({
         endpointPath: '/test/path',
         mapping: [{ source: 'test', destination: 'out' }],
-        schema: { type: 'object' },
+        schema: { type: 'object', properties: { test: { type: 'string' } } },
       } as any);
 
       const dto: SimulatePayloadDto = {
