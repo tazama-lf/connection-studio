@@ -29,6 +29,7 @@ import {
   CreateConfigDto,
   WorkflowAction,
 } from './config.interfaces';
+import type { CloneConfigDto } from './dto/clone-config.dto';
 import { ConfigRepository } from './config.repository';
 import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 
@@ -132,6 +133,24 @@ export class ConfigService {
     dto: CreateConfigDto,
     user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    return await this.saveNewConfig(dto, user);
+  }
+
+  async cloneConfig(
+    dto: CloneConfigDto,
+    user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return await this.saveNewConfig(dto as unknown as CreateConfigDto, user);
+  }
+
+  // NOTE: `CreateConfigDto` here is the @tazama-lf/tcs-lib interface re-exported
+  // by ./config.interfaces, and it declares `mapping?`. It is NOT the validated
+  // class of the same name in ./dto/create-config.dto.ts that POST /config binds
+  // to, which has no `mapping`. Only the clone path (CloneConfigDto) can carry one.
+  private async saveNewConfig(
+    dto: CreateConfigDto,
+    user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
     const { tenantId, userId, token } = {
       tenantId: user.tenantId,
       userId: user.userId,
@@ -192,6 +211,7 @@ export class ConfigService {
         payload: payloadValue as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
         functions: dto.functions,
+        mapping: dto.mapping,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
