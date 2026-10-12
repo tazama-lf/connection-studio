@@ -91,5 +91,17 @@ describe('config/dto', () => {
         ),
       ).toHaveLength(0);
     });
+
+    it.each(['transactionType', 'msgFam'] as const)(
+      'rejects an explicit null %s',
+      async (field) => {
+        const dto = plainToInstance(UpdateConfigDto, { [field]: null });
+
+        const errors = await validate(dto);
+        const fieldError = errors.find((e) => e.property === field);
+
+        expect(fieldError).toBeDefined();
+      },
+    );
   });
 });
