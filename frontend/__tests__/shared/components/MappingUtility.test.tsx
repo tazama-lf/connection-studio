@@ -350,6 +350,57 @@ jest.mock('react-json-view', () => {
         >
           Mock Whitespace Field Value
         </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  '{"a":1}': 'orphaned',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock JSON-Object-Shaped Field Key
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  '["a"]': 'orphaned',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock JSON-Array-Shaped Field Key
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  '42': 'orphaned',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock Numeric-String Field Key
+        </button>
       </div>
     );
   };
@@ -3491,6 +3542,66 @@ describe('MappingUtility', () => {
 
       fireEvent.click(
         screen.getByRole('button', { name: /mock whitespace field value/i }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/empty field name or value/i),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).not.toBeDisabled();
+      });
+    });
+
+    it('rejects a JSON-object-shaped field key', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /mock json-object-shaped field key/i,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/empty field name or value/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
+    });
+
+    it('rejects a JSON-array-shaped field key', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /mock json-array-shaped field key/i,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/empty field name or value/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
+    });
+
+    it('accepts a numeric-string field key', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /mock numeric-string field key/i,
+        }),
       );
 
       await waitFor(() => {

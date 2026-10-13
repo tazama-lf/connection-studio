@@ -1609,10 +1609,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       return true;
     }
     try {
-      // A key that parses as JSON (object, array, number, boolean, or
-      // quoted string) is not a plain field name, so reject it.
-      JSON.parse(key);
-      return true;
+      const parsed = JSON.parse(key);
+      return typeof parsed === 'object' && parsed !== null;
     } catch {
       return false;
     }
@@ -1730,7 +1728,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     if (invalidField) {
       return {
         valid: false,
-        error: `JSON contains one or more empty field name or value. Please provide a name and value for every field before saving.`,
+        error: `JSON contains one or more invalid field name or value. Please provide a valid name and value for every field before saving.`,
       };
     }
 

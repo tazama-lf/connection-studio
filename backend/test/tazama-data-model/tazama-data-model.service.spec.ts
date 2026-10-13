@@ -166,6 +166,7 @@ describe('TazamaDataModelService', () => {
       ['an empty key', { '': 'value' }],
       ['a whitespace-only key', { '   ': 'value' }],
       ['a JSON-object-shaped key', { '{"a":1}': 'value' }],
+      ['a JSON-array-shaped key', { '["a"]': 'value' }],
       ['a null value nested one level deep', { redis: { amount: null } }],
       [
         'a null value nested inside an array',
@@ -198,6 +199,9 @@ describe('TazamaDataModelService', () => {
       ['a non-empty array', { tags: ['a', 'b'] }],
       ['an empty string value', { model: '' }],
       ['a whitespace-only value', { model: '   ' }],
+      ['a numeric-string key', { '42': 'value' }],
+      ['a boolean-string key', { true: 'value' }],
+      ['a quoted-string key', { '"a"': 'value' }],
     ])(
       'should accept data model JSON with %s',
       async (_description, dataModelJson) => {
