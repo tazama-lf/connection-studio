@@ -163,6 +163,10 @@ describe('TazamaDataModelService', () => {
     it.each([
       ['a null value', { model: null }],
       ['an undefined value', { model: undefined }],
+      [
+        'a null value for redis (no longer treated as "unset")',
+        { redis: null },
+      ],
       ['an empty key', { '': 'value' }],
       ['a whitespace-only key', { '   ': 'value' }],
       ['a JSON-object-shaped key', { '{"a":1}': 'value' }],
@@ -198,6 +202,7 @@ describe('TazamaDataModelService', () => {
       ['an empty object as a value', { redis: {} }],
       ['a non-empty array', { tags: ['a', 'b'] }],
       ['an empty string value', { model: '' }],
+      ['a whitespace-only value', { model: '   ' }],
       ['a numeric-string key', { '42': 'value' }],
       ['a boolean-string key', { true: 'value' }],
       ['a quoted-string key', { '"a"': 'value' }],
