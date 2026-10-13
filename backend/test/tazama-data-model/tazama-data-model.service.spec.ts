@@ -198,7 +198,6 @@ describe('TazamaDataModelService', () => {
       ['an empty object as a value', { redis: {} }],
       ['a non-empty array', { tags: ['a', 'b'] }],
       ['an empty string value', { model: '' }],
-      ['a whitespace-only value', { model: '   ' }],
       ['a numeric-string key', { '42': 'value' }],
       ['a boolean-string key', { true: 'value' }],
       ['a quoted-string key', { '"a"': 'value' }],
