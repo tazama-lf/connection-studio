@@ -1,4 +1,5 @@
 export * from './create-config.dto';
+export * from './clone-config.dto';
 export * from './update-config.dto';
 export * from './add-mapping.dto';
 export * from './add-function.dto';

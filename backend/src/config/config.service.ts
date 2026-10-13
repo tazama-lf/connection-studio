@@ -29,6 +29,7 @@ import {
   CreateConfigDto,
   WorkflowAction,
 } from './config.interfaces';
+import type { CloneConfigDto } from './dto/clone-config.dto';
 import { ConfigRepository } from './config.repository';
 import { SftpConfigDataDto, WorkflowActionDto } from './dto';
 
@@ -132,6 +133,24 @@ export class ConfigService {
     dto: CreateConfigDto,
     user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    return await this.saveNewConfig(dto, user);
+  }
+
+  async cloneConfig(
+    dto: CloneConfigDto,
+    user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return await this.saveNewConfig(dto as unknown as CreateConfigDto, user);
+  }
+
+  // NOTE: `CreateConfigDto` here is the @tazama-lf/tcs-lib interface re-exported
+  // by ./config.interfaces, and it declares `mapping?`. It is NOT the validated
+  // class of the same name in ./dto/create-config.dto.ts that POST /config binds
+  // to, which has no `mapping`. Only the clone path (CloneConfigDto) can carry one.
+  private async saveNewConfig(
+    dto: CreateConfigDto,
+    user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
     const { tenantId, userId, token } = {
       tenantId: user.tenantId,
       userId: user.userId,
@@ -192,6 +211,7 @@ export class ConfigService {
         payload: payloadValue as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
         functions: dto.functions,
+        mapping: dto.mapping,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
@@ -692,6 +712,9 @@ export class ConfigService {
       );
     }
 
+    // DEMS notify is best-effort — the DB update above is authoritative.
+    // Log failures instead of throwing so a DEMS outage doesn't roll back a
+    // publishing-status change that has already been persisted.
     try {
       await this.demsClient.notifyDems(
         id.toString(),
@@ -701,10 +724,11 @@ export class ConfigService {
       );
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
+      const action =
+        publishingStatus === 'active' ? 'activation' : 'deactivation';
       this.logger.error(
-        `Failed to send NATS notification for config ${id}: ${errMsg}`,
+        `DEMS notification failed for config ${id} on ${action}. DB update succeeded; DEMS may be out of sync until reconciliation. Error: ${errMsg}`,
       );
-      throw new BadRequestException(`Failed to activate config: ${errMsg}`);
     }
     if (result.config) {
       const { config } = result;
@@ -897,8 +921,69 @@ export class ConfigService {
   async addFunctionViaService(
     id: number,
     functionData: Record<string, unknown>,
+    user: AuthenticatedUser,
     token: string,
   ): Promise<unknown> {
+    const config = await this.getConfigOrThrow(id, user.tenantId, token);
+
+    const existingFunctions = (config.functions ?? []) as unknown as Array<{
+      functionName: string;
+      tableName?: string;
+      params?: string[];
+    }>;
+
+    const newFunctionName = functionData.functionName as string;
+
+    if (newFunctionName === 'saveTransactionDetails') {
+      const hasExisting = existingFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'saveTransactionDetails',
+      );
+      if (hasExisting) {
+        throw new BadRequestException(
+          'Save Transaction Details can only be added once. Remove the existing one first to change its parameters.',
+        );
+      }
+    } else if (newFunctionName === 'addDataModelTable') {
+      const newTableName = (
+        (functionData.tableName as string | undefined) ?? ''
+      )
+        .trim()
+        .toLowerCase();
+      const isDuplicateTable = existingFunctions.some(
+        (existingFunction) =>
+          existingFunction.functionName === 'addDataModelTable' &&
+          (existingFunction.tableName ?? '').trim().toLowerCase() ===
+            newTableName,
+      );
+      if (isDuplicateTable) {
+        throw new BadRequestException(
+          `A data model table named "${functionData.tableName as string}" already exists on this configuration.`,
+        );
+      }
+    } else {
+      const newParams = ((functionData.params as string[] | undefined) ?? [])
+        .slice()
+        .sort();
+      const isDuplicate = existingFunctions.some((existingFunction) => {
+        if (existingFunction.functionName !== newFunctionName) {
+          return false;
+        }
+        const existingParams = (existingFunction.params ?? []).slice().sort();
+        if (existingParams.length !== newParams.length) {
+          return false;
+        }
+        return existingParams.every(
+          (param, index) => param === newParams[index],
+        );
+      });
+      if (isDuplicate) {
+        throw new BadRequestException(
+          'This function with the same parameters already exists on this configuration.',
+        );
+      }
+    }
+
     const result = await this.configRepository.addFunction(
       id,
       functionData,

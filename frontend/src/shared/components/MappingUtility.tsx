@@ -1041,7 +1041,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             .includes(node.path.join('.'));
 
         const nodeType = node.id.startsWith('redis') ? 'redis' : type;
-  
+
         if (isSection) {
           return (
             <div key={node.id} data-id="element-section">
@@ -1601,14 +1601,72 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return maxDepth;
   };
 
+  const isEmptyFieldValue = (value: unknown): boolean =>
+    value === null || value === undefined;
+
+  const isInvalidFieldKey = (key: string): boolean => {
+    if (key.trim() === '') {
+      return true;
+    }
+    try {
+      const parsed = JSON.parse(key);
+      return typeof parsed === 'object' && parsed !== null;
+    } catch {
+      return false;
+    }
+  };
+
+  const findInvalidField = (json: unknown, path = ''): string | null => {
+    if (Array.isArray(json)) {
+      for (let index = 0; index < json.length; index++) {
+        const item = json[index];
+        const itemPath = `${path}[${index}]`;
+        if (isEmptyFieldValue(item)) {
+          return itemPath;
+        }
+        const nestedInvalid = findInvalidField(item, itemPath);
+        if (nestedInvalid) {
+          return nestedInvalid;
+        }
+      }
+      return null;
+    }
+
+    if (!json || typeof json !== 'object') {
+      return null;
+    }
+
+    for (const [key, value] of Object.entries(
+      json as Record<string, unknown>,
+    )) {
+      const fieldPath = path ? `${path}.${key}` : key;
+
+      if (isInvalidFieldKey(key)) {
+        return path ? `${path}.<empty key>` : '<empty key>';
+      }
+
+      if (value && typeof value === 'object') {
+        const nestedInvalid = findInvalidField(value, fieldPath);
+        if (nestedInvalid) {
+          return nestedInvalid;
+        }
+      } else if (isEmptyFieldValue(value)) {
+        return fieldPath;
+      }
+    }
+
+    return null;
+  };
+
   const validateDestinationJson = (
-    json: any,
+    json: unknown,
   ): { valid: boolean; error?: string } => {
     if (!json || typeof json !== 'object') {
       return { valid: false, error: 'Invalid JSON structure' };
     }
 
-    const rootKeys = Object.keys(json);
+    const record = json as Record<string, unknown>;
+    const rootKeys = Object.keys(record);
 
     if (!rootKeys.includes('transactionDetails')) {
       return {
@@ -1637,7 +1695,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       };
     }
 
-    if (json.transactionDetails && hasNestedObjects(json.transactionDetails)) {
+    if (
+      record.transactionDetails &&
+      hasNestedObjects(record.transactionDetails)
+    ) {
       return {
         valid: false,
         error:
@@ -1645,8 +1706,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       };
     }
 
-    if (json.redis) {
-      const redisDepth = getMaxNestingDepth(json.redis, 0);
+    if (record.redis) {
+      const redisDepth = getMaxNestingDepth(record.redis, 0);
       if (redisDepth > 1) {
         return {
           valid: false,
@@ -1660,13 +1721,21 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         continue;
       }
 
-      const depth = getMaxNestingDepth(json[key], 0);
+      const depth = getMaxNestingDepth(record[key], 0);
       if (depth > MAX_NESTING_DEPTH) {
         return {
           valid: false,
           error: `Object "${key}" has ${depth} levels of nesting. Maximum allowed nesting depth is ${MAX_NESTING_DEPTH} level. Please reduce the nesting depth.`,
         };
       }
+    }
+
+    const invalidField = findInvalidField(json);
+    if (invalidField) {
+      return {
+        valid: false,
+        error: `JSON contains one or more invalid field name or value. Please provide a valid name and value for every field before saving.`,
+      };
     }
 
     return { valid: true };
@@ -1714,6 +1783,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
       if (tempEditedJson.redis) {
         reorderedJson.redis = tempEditedJson.redis;
+      }
+
+      const finalValidation = validateDestinationJson(reorderedJson);
+      if (!finalValidation.valid) {
+        setValidationError(
+          finalValidation.error ?? 'Invalid JSON structure',
+        );
+        return;
       }
 
       try {

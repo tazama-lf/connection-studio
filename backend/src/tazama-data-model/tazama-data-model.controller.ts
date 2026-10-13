@@ -6,6 +6,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 
 import { TazamaDataModelService } from './tazama-data-model.service';
 import { Audit } from 'src/decorators/audit.decorator';
+import { DataModelDto } from './dto/data-model.dto';
 
 @Controller('tazama-data-model')
 @UseGuards(TazamaAuthGuard)
@@ -56,7 +57,7 @@ export class TazamaDataModelController {
   )
   @Audit()
   async putDataModelJson(
-    @Body() body: { data_model_json: Record<string, unknown> },
+    @Body() body: DataModelDto,
     @User() user: AuthenticatedUser,
   ): Promise<{
     success: boolean;

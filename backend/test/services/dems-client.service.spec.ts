@@ -117,9 +117,9 @@ describe('DemsClient', () => {
     it('should throw an error when DEMS_URL is not set', () => {
       const mockConfig = { get: jest.fn().mockReturnValue(undefined) } as any;
 
-      expect(() => new DemsClient(loggerService, mockConfig, httpService)).toThrow(
-        'DEMS_URL configuration is missing',
-      );
+      expect(
+        () => new DemsClient(loggerService, mockConfig, httpService),
+      ).toThrow('DEMS_URL configuration is missing');
 
       expect(httpService.patch).not.toHaveBeenCalled();
     });
