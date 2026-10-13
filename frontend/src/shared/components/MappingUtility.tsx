@@ -1601,7 +1601,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return maxDepth;
   };
 
-  const isEmptyFieldValue = (value: any): boolean =>
+  const isEmptyFieldValue = (value: unknown): boolean =>
     value === null || value === undefined;
 
   const isInvalidFieldKey = (key: string): boolean => {
@@ -1616,7 +1616,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
   };
 
-  const findInvalidField = (json: any, path = ''): string | null => {
+  const findInvalidField = (json: unknown, path = ''): string | null => {
     if (Array.isArray(json)) {
       for (let index = 0; index < json.length; index++) {
         const item = json[index];
@@ -1636,7 +1636,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       return null;
     }
 
-    for (const [key, value] of Object.entries(json)) {
+    for (const [key, value] of Object.entries(
+      json as Record<string, unknown>,
+    )) {
       const fieldPath = path ? `${path}.${key}` : key;
 
       if (isInvalidFieldKey(key)) {
@@ -1657,13 +1659,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   };
 
   const validateDestinationJson = (
-    json: any,
+    json: unknown,
   ): { valid: boolean; error?: string } => {
     if (!json || typeof json !== 'object') {
       return { valid: false, error: 'Invalid JSON structure' };
     }
 
-    const rootKeys = Object.keys(json);
+    const record = json as Record<string, unknown>;
+    const rootKeys = Object.keys(record);
 
     if (!rootKeys.includes('transactionDetails')) {
       return {
@@ -1692,7 +1695,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       };
     }
 
-    if (json.transactionDetails && hasNestedObjects(json.transactionDetails)) {
+    if (
+      record.transactionDetails &&
+      hasNestedObjects(record.transactionDetails)
+    ) {
       return {
         valid: false,
         error:
@@ -1700,8 +1706,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       };
     }
 
-    if (json.redis) {
-      const redisDepth = getMaxNestingDepth(json.redis, 0);
+    if (record.redis) {
+      const redisDepth = getMaxNestingDepth(record.redis, 0);
       if (redisDepth > 1) {
         return {
           valid: false,
@@ -1715,7 +1721,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         continue;
       }
 
-      const depth = getMaxNestingDepth(json[key], 0);
+      const depth = getMaxNestingDepth(record[key], 0);
       if (depth > MAX_NESTING_DEPTH) {
         return {
           valid: false,
