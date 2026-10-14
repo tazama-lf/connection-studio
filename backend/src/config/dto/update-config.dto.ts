@@ -8,6 +8,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
+import { IsValidPayload } from '../../decorators/is-valid-payload.decorator';
 
 export class UpdateConfigDto {
   @IsString()
@@ -41,10 +42,7 @@ export class UpdateConfigDto {
   schema?: Record<string, unknown>;
 
   @ValidateIf((o) => o.payload !== undefined)
-  @ValidateIf((o) => typeof o.payload === 'string')
-  @IsString()
-  @ValidateIf((o) => typeof o.payload === 'object')
-  @IsObject()
+  @IsValidPayload()
   payload?: string | Record<string, unknown>;
 
   @IsString()
