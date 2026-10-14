@@ -1,8 +1,8 @@
 import {
   IsString,
-  IsOptional,
   IsEnum,
   IsObject,
+  IsNotEmpty,
   ValidateIf,
   MinLength,
   MaxLength,
@@ -23,29 +23,32 @@ export class UpdateConfigDto {
   transactionType?: string;
 
   @IsString()
-  @IsOptional()
+  @ValidateIf((o) => o.tableName !== undefined)
+  @IsNotEmpty()
   tableName?: string;
 
   @IsString()
-  @IsOptional()
+  @ValidateIf((o) => o.endpointPath !== undefined)
+  @IsNotEmpty()
   endpointPath?: string;
 
   @IsEnum(ContentType)
-  @IsOptional()
+  @ValidateIf((o) => o.contentType !== undefined)
   contentType?: ContentType;
 
   @IsObject()
-  @IsOptional()
+  @ValidateIf((o) => o.schema !== undefined)
   schema?: Record<string, unknown>;
 
+  @ValidateIf((o) => o.payload !== undefined)
   @ValidateIf((o) => typeof o.payload === 'string')
   @IsString()
   @ValidateIf((o) => typeof o.payload === 'object')
   @IsObject()
-  @IsOptional()
   payload?: string | Record<string, unknown>;
 
   @IsString()
-  @IsOptional()
+  @ValidateIf((o) => o.related_transaction !== undefined)
+  @IsNotEmpty()
   related_transaction?: string;
 }
