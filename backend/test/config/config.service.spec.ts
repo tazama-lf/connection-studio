@@ -15,7 +15,7 @@ import { ConfigStatus, ContentType } from '../../src/config/config.interfaces';
 import { EventType } from '../../src/enums/events.enum';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
 import { TazamaDataModelService } from '../../src/tazama-data-model/tazama-data-model.service';
-import { SchemaValidationService } from '../../src/simulation/schema-validation.service';
+import { SchemaValidationService } from '../../src/schemaValidation/schema-validation.service';
 
 describe('ConfigService', () => {
   let service: ConfigService;

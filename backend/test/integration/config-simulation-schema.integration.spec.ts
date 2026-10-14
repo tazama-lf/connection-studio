@@ -8,7 +8,7 @@ import { DemsClient } from '../../src/services/dems-client.service';
 import { NotificationService } from '../../src/notification/notification.service';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
 import { TazamaDataModelService } from '../../src/tazama-data-model/tazama-data-model.service';
-import { SchemaValidationService } from '../../src/simulation/schema-validation.service';
+import { SchemaValidationService } from '../../src/schemaValidation/schema-validation.service';
 import { SimulationService } from '../../src/simulation/simulation.service';
 import { Config, ContentType } from '../../src/config/config.interfaces';
 

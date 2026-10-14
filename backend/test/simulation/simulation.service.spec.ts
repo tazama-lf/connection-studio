@@ -4,7 +4,7 @@ import {
   SimulatePayloadDto,
 } from '../../src/simulation/simulation.service';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
-import { SchemaValidationService } from '../../src/simulation/schema-validation.service';
+import { SchemaValidationService } from '../../src/schemaValidation/schema-validation.service';
 
 jest.mock('@tazama-lf/tcs-lib', () => ({
   processMappings: jest.fn().mockResolvedValue({

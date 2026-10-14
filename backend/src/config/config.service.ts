@@ -13,7 +13,7 @@ import { AdminServiceClient } from '../services/admin-service-client.service';
 import { DemsClient } from '../services/dems-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
-import { SchemaValidationService } from '../simulation/schema-validation.service';
+import { SchemaValidationService } from '../schemaValidation/schema-validation.service';
 import { validatePayloadContent } from '../utils/helpers';
 import {
   validateMappingDestinations,

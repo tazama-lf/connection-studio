@@ -3,7 +3,7 @@ import * as xml2js from 'xml2js';
 import Ajv, { type ErrorObject } from 'ajv';
 import * as _ from 'lodash';
 import type { Config } from '../config/config.interfaces';
-import type { SimulationError } from './dto/simulation.dto';
+import type { SimulationError } from '../simulation/dto/simulation.dto';
 
 /** Ajv's message, naming the offending key for additionalProperties errors. */
 function describeAjvError(error: ErrorObject): string {

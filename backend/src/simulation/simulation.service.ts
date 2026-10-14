@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
-import { SchemaValidationService } from './schema-validation.service';
+import { SchemaValidationService } from '../schemaValidation/schema-validation.service';
 import { Config } from '../config/config.interfaces';
 import {
   processMappings,
