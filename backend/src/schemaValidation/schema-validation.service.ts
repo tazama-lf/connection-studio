@@ -46,10 +46,12 @@ export class SchemaValidationService {
       ];
     }
 
+    const isXml = contentType === 'application/xml';
     return this.validatePayloadAgainstSchema(
       parsedPayload,
-      this.cleanSchemaForXML(schema),
+      isXml ? this.cleanSchemaForXML(schema) : schema,
       { schema } as unknown as Config,
+      isXml,
     );
   }
 
@@ -126,7 +128,13 @@ export class SchemaValidationService {
   normalizePayloadForValidation(
     payload: Record<string, unknown>,
     config?: Config,
+    isXml = false,
   ): Record<string, unknown> {
+    // XML clean-up (attribute/namespace stripping, root wrapping) must never
+    // touch JSON payloads, which are validated exactly as sent.
+    if (!isXml) {
+      return payload;
+    }
     if (this.isXmlParsedObject(payload)) {
       const normalized = this.normalizeXmlParsedObjectWithSchema(
         payload,
@@ -170,7 +178,7 @@ export class SchemaValidationService {
       const originalRequired = cleanedSchema.required as string[];
       cleanedSchema.required = (cleanedSchema.required as string[]).filter(
         (field: string) =>
-          !field.startsWith('xmlns') && field !== '$' && field !== '@',
+          !field.startsWith('xmlns') && !field.startsWith('@') && field !== '$',
       );
 
       if (
@@ -372,6 +380,7 @@ export class SchemaValidationService {
     payload: unknown,
     schema: unknown,
     config?: Config,
+    isXml = false,
   ): SimulationError[] {
     const errors: SimulationError[] = [];
 
@@ -395,6 +404,7 @@ export class SchemaValidationService {
       const normalizedPayload = this.normalizePayloadForValidation(
         payload as Record<string, unknown>,
         config,
+        isXml,
       );
 
       const ajv = new Ajv({

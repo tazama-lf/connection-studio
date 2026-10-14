@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SchemaValidationService } from '../schemaValidation/schema-validation.service';
-import { Config } from '../config/config.interfaces';
+import { Config, ContentType } from '../config/config.interfaces';
 import {
   processMappings,
   iMappingConfiguration,
@@ -130,15 +130,19 @@ export class SimulationService {
       };
       const { parsedPayload } = parseDetails;
 
-      const cleanedSchema = this.schemaValidationService.cleanSchemaForXML(
-        config.schema,
-      );
+      // The UI sends XML test payloads pre-converted to JSON, so the config's
+      // content type (not dto.payloadType) decides whether XML rules apply.
+      const isXml = config.contentType === ContentType.XML;
+      const cleanedSchema = isXml
+        ? this.schemaValidationService.cleanSchemaForXML(config.schema)
+        : config.schema;
 
       //third stage
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
         cleanedSchema as Record<string, unknown>,
         config,
+        isXml,
       );
 
       stages.push(schemaStage);
@@ -340,11 +344,13 @@ export class SimulationService {
     payload: Record<string, unknown>,
     schema: Record<string, unknown>,
     config?: Config,
+    isXml = false,
   ): ValidationStage {
     const errors = this.schemaValidationService.validatePayloadAgainstSchema(
       payload,
       schema,
       config,
+      isXml,
     );
 
     if (errors.length > 0) {

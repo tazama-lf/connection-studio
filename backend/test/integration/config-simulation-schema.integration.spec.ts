@@ -507,4 +507,187 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
       expect(store.size).toBe(0);
     });
   });
+
+  // XML-only clean-up (root wrapping, @/xmlns stripping, schema cleaning)
+  // must not apply to JSON payloads.
+  describe('XML rules are not applied to JSON', () => {
+    const grpHdrSchema = {
+      type: 'object',
+      required: ['MsgId'],
+      properties: { MsgId: { type: 'string' } },
+    };
+
+    it('rejects a JSON payload missing the single schema root instead of wrapping it', async () => {
+      const created = await createConfig(
+        { GrpHdr: { MsgId: 'x' } },
+        {
+          type: 'object',
+          required: ['FIToFIPmtSts'],
+          properties: {
+            FIToFIPmtSts: {
+              type: 'object',
+              required: ['GrpHdr'],
+              properties: { GrpHdr: grpHdrSchema },
+            },
+          },
+        },
+        ContentType.JSON,
+      );
+
+      expect(created.success).toBe(false);
+      expect(created.message).toContain(
+        "must have required property 'FIToFIPmtSts'",
+      );
+      expect(created.message).toContain(
+        "must NOT have additional properties 'GrpHdr'",
+      );
+      expect(store.size).toBe(0);
+    });
+
+    it.each(['xmlns', 'xmlns:xsi', '@type', '$'])(
+      'rejects an undeclared %s key in a JSON payload',
+      async (key) => {
+        const created = await createConfig(
+          { GrpHdr: { MsgId: 'x' }, [key]: 'urn:x' },
+          {
+            type: 'object',
+            required: ['GrpHdr'],
+            properties: { GrpHdr: grpHdrSchema },
+          },
+          ContentType.JSON,
+        );
+
+        expect(created.success).toBe(false);
+        expect(created.message).toContain(
+          `must NOT have additional properties '${key}'`,
+        );
+        expect(store.size).toBe(0);
+      },
+    );
+
+    it('accepts a JSON payload whose schema requires an @-prefixed key, at both entry points', async () => {
+      const payload = { '@type': 'Foo', name: 'John' };
+      const created = await createConfig(
+        payload,
+        {
+          type: 'object',
+          required: ['@type', 'name'],
+          properties: {
+            '@type': { type: 'string' },
+            name: { type: 'string' },
+          },
+        },
+        ContentType.JSON,
+      );
+      expect(created.success).toBe(true);
+
+      const result = await simulate(
+        created.config!.id,
+        payload,
+        'application/json',
+      );
+      expect(schemaStage(result)?.status).toBe('PASSED');
+    });
+
+    it('rejects a JSON payload that omits a required @-prefixed key', async () => {
+      const created = await createConfig(
+        { name: 'John' },
+        {
+          type: 'object',
+          required: ['@type', 'name'],
+          properties: {
+            '@type': { type: 'string' },
+            name: { type: 'string' },
+          },
+        },
+        ContentType.JSON,
+      );
+
+      expect(created.success).toBe(false);
+      expect(created.message).toContain("must have required property '@type'");
+    });
+  });
+
+  describe('XML rules still apply to XML configs', () => {
+    it('ignores a namespace declaration the schema does not describe', async () => {
+      const created = await createConfig(
+        '<root xmlns="urn:x"><name>John</name></root>',
+        {
+          type: 'object',
+          required: ['root'],
+          properties: {
+            root: {
+              type: 'object',
+              required: ['name'],
+              properties: { name: { type: 'string' } },
+            },
+          },
+        },
+        ContentType.XML,
+      );
+
+      expect(created.success).toBe(true);
+    });
+
+    it('does not crash when an XML schema requires an @-prefixed key', async () => {
+      const created = await createConfig(
+        '<root><name>John</name></root>',
+        {
+          type: 'object',
+          required: ['root'],
+          properties: {
+            root: {
+              type: 'object',
+              required: ['@id', 'name'],
+              properties: {
+                '@id': { type: 'string' },
+                name: { type: 'string' },
+              },
+            },
+          },
+        },
+        ContentType.XML,
+      );
+
+      expect(created.success).toBe(true);
+    });
+
+    it('applies XML rules in simulation when the UI sends the XML payload pre-converted to JSON', async () => {
+      // Schema without the namespace: the UI payload below only passes if
+      // simulation strips xmlns, i.e. XML rules come from the config's
+      // content type rather than the request's payloadType.
+      const schemaWithoutXmlns = structuredClone(xmlSchema) as any;
+      delete schemaWithoutXmlns.properties.Document.properties.xmlns;
+      schemaWithoutXmlns.properties.Document.required = ['FIToFIPmtSts'];
+
+      const created = await createConfig(
+        xmlPayload,
+        schemaWithoutXmlns,
+        ContentType.XML,
+      );
+      expect(created.success).toBe(true);
+
+      // What SimulationPanel sends: fast-xml-parser output, payloadType json.
+      const uiConverted = {
+        Document: {
+          xmlns: 'urn:iso:std:iso:20022:tech:xsd:pacs.002.001.12',
+          FIToFIPmtSts: {
+            GrpHdr: { MsgId: 'msg_id', CreDtTm: '2023-02-03T09:53:58.069Z' },
+            TxInfAndSts: {
+              OrgnlEndToEndId: 'e2e-1',
+              TxSts: 'ACCC',
+              StsRsnInf: { Cd: 'AC01', '#text': 'Incorrect account' },
+            },
+          },
+        },
+      };
+      const result = await simulate(
+        created.config!.id,
+        uiConverted,
+        'application/json',
+      );
+
+      expect(schemaStage(result)?.status).toBe('PASSED');
+    });
+  });
 });

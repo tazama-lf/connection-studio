@@ -981,6 +981,7 @@ describe('SchemaValidationService', () => {
     const result = (validator as any).normalizePayloadForValidation(
       payload,
       config,
+      true,
     );
     expect(result).toBeDefined();
     expect(result.Document).toBeDefined();
@@ -1296,6 +1297,7 @@ describe('SchemaValidationService', () => {
     const normalized = (validator as any).normalizePayloadForValidation(
       parsed,
       { schema },
+      true,
     );
     expect(normalized.Doc.Items.Item).toEqual([
       { '#text': 100, Ccy: 'USD' },
@@ -1306,6 +1308,7 @@ describe('SchemaValidationService', () => {
       parsed,
       (validator as any).cleanSchemaForXML(schema),
       { schema },
+      true,
     );
     expect(errors).toEqual([]);
   });

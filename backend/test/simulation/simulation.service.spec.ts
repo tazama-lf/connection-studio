@@ -14,6 +14,7 @@ jest.mock('@tazama-lf/tcs-lib', () => ({
   }),
   iMappingConfiguration: {},
   iMappingResult: {},
+  ContentType: { JSON: 'application/json', XML: 'application/xml' },
 }));
 
 jest.mock('xml2js', () => ({
