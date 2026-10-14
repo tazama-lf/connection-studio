@@ -103,5 +103,48 @@ describe('config/dto', () => {
         expect(fieldError).toBeDefined();
       },
     );
+
+    it.each([
+      'tableName',
+      'endpointPath',
+      'contentType',
+      'schema',
+      'payload',
+      'related_transaction',
+    ] as const)('rejects an explicit null %s', async (field) => {
+      const dto = plainToInstance(UpdateConfigDto, { [field]: null });
+
+      const errors = await validate(dto);
+      const fieldError = errors.find((e) => e.property === field);
+
+      expect(fieldError).toBeDefined();
+    });
+
+    it.each(['tableName', 'endpointPath', 'related_transaction'] as const)(
+      'rejects an empty string %s',
+      async (field) => {
+        const dto = plainToInstance(UpdateConfigDto, { [field]: '' });
+
+        const errors = await validate(dto);
+        const fieldError = errors.find((e) => e.property === field);
+
+        expect(fieldError).toBeDefined();
+      },
+    );
+
+    it.each([
+      'tableName',
+      'endpointPath',
+      'contentType',
+      'schema',
+      'payload',
+      'related_transaction',
+    ] as const)('allows omitting %s entirely', async (field) => {
+      const dto = plainToInstance(UpdateConfigDto, {});
+
+      const errors = await validate(dto);
+
+      expect(errors.find((e) => e.property === field)).toBeUndefined();
+    });
   });
 });
