@@ -300,6 +300,107 @@ jest.mock('react-json-view', () => {
         >
           Mock Null Redis Value
         </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  note: '',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock Empty Field Value
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  '': 'orphaned',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock Empty Field Key
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                },
+                redis: {
+                  cacheKey: { value: '   ' },
+                },
+              },
+            })
+          }
+        >
+          Mock Whitespace Field Value
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  '{"a":1}': 'orphaned',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock JSON-Object-Shaped Field Key
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  '["a"]': 'orphaned',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock JSON-Array-Shaped Field Key
+        </button>
+        <button
+          onClick={() =>
+            props.onEdit?.({
+              updated_src: {
+                transactionDetails: {
+                  amount: 0,
+                  '42': 'orphaned',
+                },
+                redis: {
+                  cacheKey: { value: 'abc' },
+                },
+              },
+            })
+          }
+        >
+          Mock Numeric-String Field Key
+        </button>
       </div>
     );
   };
@@ -3396,6 +3497,136 @@ describe('MappingUtility', () => {
         expect(
           screen.getByRole('button', { name: /save changes/i }),
         ).toBeDisabled();
+      });
+    });
+
+    it('accepts an empty string field value', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /mock empty field value/i }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/invalid field name or value/i),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).not.toBeDisabled();
+      });
+    });
+
+    it('rejects an empty field key', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /mock empty field key/i }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/invalid field name or value/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
+    });
+
+    it('accepts a whitespace-only field value', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /mock whitespace field value/i }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/invalid field name or value/i),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).not.toBeDisabled();
+      });
+    });
+
+    it('rejects a JSON-object-shaped field key', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /mock json-object-shaped field key/i,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/invalid field name or value/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
+    });
+
+    it('rejects a JSON-array-shaped field key', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /mock json-array-shaped field key/i,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/invalid field name or value/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
+    });
+
+    it('accepts a numeric-string field key', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /mock numeric-string field key/i,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/invalid field name or value/i),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).not.toBeDisabled();
+      });
+    });
+
+    it('accepts a well-formed edit with no empty fields', async () => {
+      renderComponent();
+      await openEditFieldsModal();
+
+      fireEvent.click(screen.getByRole('button', { name: /mock edit json/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/invalid field name or value/i),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).not.toBeDisabled();
       });
     });
   });
@@ -6589,43 +6820,26 @@ describe('MappingUtility', () => {
       });
     });
 
-    it('handles redis as null (covers json.redis falsy branch)', async () => {
+    it('rejects redis as null (null values are not allowed)', async () => {
       renderComponent();
       await openEditFieldsModal();
 
-      // redis is null - key exists but value is falsy
-      // validateDestinationJson: json.redis → falsy → skip nesting check
+      // redis: null is an empty/invalid value and should be rejected,
+      // same as any other null field value.
       fireEvent.click(
         screen.getByRole('button', { name: /mock null redis value/i }),
       );
 
-      // Null redis should not trigger nesting error (check skipped)
       await waitFor(() => {
         expect(
-          screen.queryByText(/Maximum allowed nesting depth for redis/i),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    it('saves successfully when redis is null (covers reorder redis falsy branch)', async () => {
-      renderComponent();
-      await openEditFieldsModal();
-
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock null redis value/i }),
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
-
-      await waitFor(() => {
-        expect(mockDataModelApi.updateDestinationFieldsJson).toHaveBeenCalled();
+          screen.getByText(/invalid field name or value/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
       });
 
-      const callArg = (
-        mockDataModelApi.updateDestinationFieldsJson as jest.Mock
-      ).mock.calls[0][0];
-      // redis should NOT be in reorderedJson since it's null
-      expect(callArg.redis).toBeUndefined();
+      expect(mockDataModelApi.updateDestinationFieldsJson).not.toHaveBeenCalled();
     });
 
     it('shows fallback error when save fails without message property', async () => {

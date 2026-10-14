@@ -242,6 +242,59 @@ describe('shared/components/PayloadEditor.tsx', () => {
     expect(onValidationErrorsChange).toHaveBeenCalled();
   });
 
+  it('caps Version, Event Type, and Transaction Type inputs at 50 characters', () => {
+    renderEditor();
+
+    const versionInput = screen.getByLabelText('Version *') as HTMLInputElement;
+    const eventTypeInput = screen.getByLabelText(
+      'Event Type *',
+    ) as HTMLInputElement;
+    const txTypeInput = screen.getByLabelText(
+      'Transaction Type (TxTp)*',
+    ) as HTMLInputElement;
+
+    expect(versionInput).toHaveAttribute('maxLength', '50');
+    expect(eventTypeInput).toHaveAttribute('maxLength', '50');
+    expect(txTypeInput).toHaveAttribute('maxLength', '50');
+
+    fireEvent.change(versionInput, { target: { value: '1'.repeat(60) } });
+    fireEvent.change(eventTypeInput, { target: { value: 'a'.repeat(60) } });
+    fireEvent.change(txTypeInput, { target: { value: 'b'.repeat(60) } });
+
+    expect(versionInput.value).toHaveLength(50);
+    expect(eventTypeInput.value).toHaveLength(50);
+    expect(txTypeInput.value).toHaveLength(50);
+  });
+
+  it('rejects Version and Transaction Type values over 50 characters on validation', () => {
+    const ref = React.createRef<PayloadEditorRef>();
+    const onValidationErrorsChange = jest.fn();
+    renderEditor({
+      ref,
+      onValidationErrorsChange,
+      endpointData: {
+        version: `1.0.${'0'.repeat(50)}`,
+        transactionType: 'a'.repeat(51),
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    let isValid = true;
+    act(() => {
+      isValid = Boolean(ref.current?.validateAllFields());
+    });
+
+    expect(isValid).toBe(false);
+    expect(onValidationErrorsChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        version: expect.stringContaining('50 characters'),
+        transactionType: expect.stringContaining('50 characters'),
+      }),
+    );
+  });
+
   it('loads XML sample payload when content type is XML', () => {
     const onChange = jest.fn();
     renderEditor({
@@ -830,6 +883,36 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.click(screen.getByTestId('rjv-delete'));
 
     expect(onChange).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps the JSON preview read-only when cloning in read-only mode (CodeRabbit PR #145 finding)', async () => {
+    const onChange = jest.fn();
+    renderEditor({
+      onChange,
+      isCloning: true,
+      isEditMode: true,
+      shouldCreateNew: false,
+      readOnly: true,
+      value: '{"key":"value"}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('react-json-view')).toBeInTheDocument();
+    });
+
+    // The mock only renders these buttons when onEdit/onAdd/onDelete are
+    // truthy — their absence proves readOnly disabled them.
+    expect(screen.queryByTestId('rjv-edit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rjv-add')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rjv-delete')).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('blocks invalid key presses on version input', () => {
@@ -1435,6 +1518,33 @@ describe('shared/components/PayloadEditor.tsx', () => {
     await waitFor(() => {
       expect(screen.getByText(/Endpoint Path Preview/i)).toBeInTheDocument();
     });
+  });
+
+  it('shows the raw payload textarea and Generate Fields when cloning, even though isEditMode is true (issue #136 clone-payload regression)', async () => {
+    // A real "Clone" action always passes a real source endpointId, so
+    // EditEndpointModal derives isEditMode={!isNewEndpoint} = true for
+    // clone too — isCloning must still be enough to show this section on
+    // its own, independent of isEditMode.
+    renderEditor({
+      shouldCreateNew: false,
+      isCloning: true,
+      isEditMode: true,
+      value: '{"x":1}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/Enter your JSON payload/i),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Raw Input/i)).toBeInTheDocument();
   });
 
   it('endpoint path preview shows v1 fallback when version is empty (covers version || v1)', async () => {

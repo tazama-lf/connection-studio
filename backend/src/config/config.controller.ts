@@ -22,6 +22,7 @@ import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
   CreateConfigDto,
+  CloneConfigDto,
   UpdateConfigDto,
   SubmitForApprovalDto,
   ApprovalDto,
@@ -107,6 +108,23 @@ export class ConfigController {
       throw new BadRequestException(
         result.message || 'Failed to create config',
       );
+    }
+
+    return result;
+  }
+
+  @Post('clone')
+  @RequireClaims(TazamaClaims.EDITOR)
+  @Audit()
+  @HttpCode(HttpStatus.CREATED)
+  async cloneConfig(
+    @Body() dto: CloneConfigDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    const result = await this.configService.cloneConfig(dto, user);
+
+    if (!result.success) {
+      throw new BadRequestException(result.message || 'Failed to clone config');
     }
 
     return result;

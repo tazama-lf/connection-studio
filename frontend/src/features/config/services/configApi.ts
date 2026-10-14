@@ -23,6 +23,18 @@ export interface CloneConfigRequest {
   newMsgFam?: string;
 }
 
+// Mirrors the backend CloneConfigDto: these four fields are required there and
+// fieldAdjustments is not an accepted property (forbidNonWhitelisted).
+export interface CloneConfigWithDataRequest extends Omit<
+  CreateConfigRequest,
+  'msgFam' | 'version' | 'schema' | 'payload' | 'fieldAdjustments'
+> {
+  msgFam: string;
+  version: string;
+  schema: NonNullable<CreateConfigRequest['schema']>;
+  payload: NonNullable<CreateConfigRequest['payload']>;
+}
+
 export interface FieldMapping {
   source?: string | string[]; // string[] for CONCAT/SUM transformations
   destination?: string | string[]; // string[] for SPLIT transformation
@@ -157,6 +169,19 @@ export class ConfigApiService {
   }
 
   async cloneConfig(data: CloneConfigRequest): Promise<ConfigResponse> {
+    const response = await fetch(`${this.baseURL}/config/clone`, {
+      method: 'POST',
+      headers: ConfigApiService.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
+  }
+
+  async cloneConfigWithData(
+    data: CloneConfigWithDataRequest,
+  ): Promise<ConfigResponse> {
     const response = await fetch(`${this.baseURL}/config/clone`, {
       method: 'POST',
       headers: ConfigApiService.getAuthHeaders(),
