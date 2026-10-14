@@ -1439,7 +1439,10 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: {
+          type: 'object',
+          properties: { someData: { type: 'string' } },
+        },
         payloads: [
           {
             contentType: 'application/json',
@@ -1479,7 +1482,13 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: {
+          type: 'object',
+          properties: {
+            field1: { type: 'string' },
+            field2: { type: 'string' },
+          },
+        },
         payloads: [
           {
             contentType: 'application/json',
@@ -1519,7 +1528,10 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: {
+          type: 'object',
+          properties: { someData: { type: 'string' } },
+        },
         payloads: [
           {
             contentType: 'application/json',
@@ -1560,7 +1572,15 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: {
+          type: 'object',
+          properties: {
+            root: {
+              type: 'object',
+              properties: { missingField: { type: 'string' } },
+            },
+          },
+        },
         payloads: [
           {
             contentType: 'application/json',
@@ -1604,7 +1624,7 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: { type: 'object', properties: { field1: { type: 'string' } } },
         payloads: [
           {
             contentType: 'application/json',
@@ -1839,7 +1859,18 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: { value: { type: 'string' } },
+              },
+            },
+          },
+        },
         payloads: [
           {
             contentType: 'application/json',
@@ -1881,7 +1912,10 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: {
+          type: 'object',
+          properties: { someData: { type: 'string' } },
+        },
         payloads: [
           {
             contentType: 'application/json',
@@ -1975,7 +2009,7 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: { type: 'object', properties: { field1: { type: 'string' } } },
         payloads: [
           {
             contentType: 'application/json',
@@ -2027,7 +2061,7 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: { type: 'object', properties: { field1: { type: 'string' } } },
         payloads: [
           {
             contentType: 'application/json',
@@ -2165,7 +2199,10 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: {
+          type: 'object',
+          properties: { singleField: { type: 'string' } },
+        },
         payloads: [
           {
             contentType: 'application/json',
@@ -3595,7 +3632,7 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: { type: 'object', properties: { field1: { type: 'string' } } },
         payloads: [
           { contentType: 'application/json', schema: { type: 'object' } },
         ],
@@ -3641,7 +3678,7 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: { type: 'object', properties: { field1: { type: 'string' } } },
         payloads: [
           { contentType: 'application/json', schema: { type: 'object' } },
         ],
@@ -3691,7 +3728,7 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        schema: { type: 'object' },
+        schema: { type: 'object', properties: { field1: { type: 'string' } } },
         payloads: [
           { contentType: 'application/json', schema: { type: 'object' } },
         ],
