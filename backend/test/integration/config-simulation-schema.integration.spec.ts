@@ -220,8 +220,8 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
       expect(store.size).toBe(0);
     });
 
-    // enforceStrictSchema closes every object (additionalProperties: false),
-    // so a field the schema does not describe is rejected at both entry points.
+    // enforceStrictSchema closes every object that does not set
+    // additionalProperties itself, so a field the schema does not describe is rejected at both entry points.
     it('both entry points reject a payload with a field the schema does not describe', async () => {
       const created = await createConfig(
         jsonPayload,
@@ -746,6 +746,287 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
       );
 
       expect(schemaStage(result)?.status).toBe('PASSED');
+    });
+  });
+
+  describe('explicit additionalProperties is respected', () => {
+    // Creates the config, then simulates `probe` against it.
+    const createThenSimulate = async (
+      schema: Record<string, unknown>,
+      payload: unknown,
+      probe: unknown,
+    ) => {
+      const created = await createConfig(payload, schema, ContentType.JSON);
+      expect(created.success).toBe(true);
+      return simulate(created.config!.id, probe, 'application/json');
+    };
+
+    it('accepts extra root keys at both entry points when the root sets additionalProperties: true', async () => {
+      const schema = {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id'],
+        additionalProperties: true,
+      };
+
+      const result = await createThenSimulate(
+        schema,
+        { id: 'a', extra: 1 },
+        { id: 'b', other: { deep: true } },
+      );
+      expect(schemaStage(result)?.status).toBe('PASSED');
+    });
+
+    it('still enforces declared properties and required fields of an open object', async () => {
+      const schema = {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        required: ['id'],
+        additionalProperties: true,
+      };
+
+      const missing = await createConfig(
+        { extra: 1 },
+        schema,
+        ContentType.JSON,
+      );
+      expect(missing.success).toBe(false);
+      expect(missing.message).toContain("must have required property 'id'");
+
+      const wrongType = await createConfig(
+        { id: 5, extra: 1 },
+        schema,
+        ContentType.JSON,
+      );
+      expect(wrongType.success).toBe(false);
+      expect(wrongType.message).toContain('must be string');
+      expect(store.size).toBe(0);
+    });
+
+    it('opens only the object that sets additionalProperties: true; siblings and parents stay closed', async () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          metadata: { type: 'object', additionalProperties: true },
+          details: {
+            type: 'object',
+            properties: { name: { type: 'string' } },
+          },
+        },
+        required: ['id', 'metadata', 'details'],
+      };
+      const payload = {
+        id: 'a',
+        metadata: { anything: 1, goes: ['here'] },
+        details: { name: 'n' },
+      };
+
+      const accepted = await createThenSimulate(schema, payload, {
+        ...payload,
+        metadata: { different: 'keys' },
+      });
+      expect(schemaStage(accepted)?.status).toBe('PASSED');
+
+      const extraInSibling = await createConfig(
+        { ...payload, details: { name: 'n', extra: 1 } },
+        schema,
+        ContentType.JSON,
+      );
+      expect(extraInSibling.success).toBe(false);
+      expect(extraInSibling.message).toContain(
+        "/details: must NOT have additional properties 'extra'",
+      );
+
+      const extraAtRoot = await createConfig(
+        { ...payload, extra: 1 },
+        schema,
+        ContentType.JSON,
+      );
+      expect(extraAtRoot.success).toBe(false);
+      expect(extraAtRoot.message).toContain(
+        "must NOT have additional properties 'extra'",
+      );
+      expect(store.size).toBe(1);
+    });
+
+    it('does not open objects nested inside an open object', async () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          inner: {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+          },
+        },
+        additionalProperties: true,
+      };
+
+      const created = await createConfig(
+        { inner: { a: 'x', extra: 1 } },
+        schema,
+        ContentType.JSON,
+      );
+      expect(created.success).toBe(false);
+      expect(created.message).toContain(
+        "/inner: must NOT have additional properties 'extra'",
+      );
+    });
+
+    it('respects additionalProperties: true on array items, at both entry points', async () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          list: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { id: { type: 'string' } },
+              additionalProperties: true,
+            },
+          },
+        },
+      };
+
+      const result = await createThenSimulate(
+        schema,
+        { list: [{ id: 'a', extra: 1 }] },
+        { list: [{ id: 'b', other: 2 }, { id: 'c' }] },
+      );
+      expect(schemaStage(result)?.status).toBe('PASSED');
+    });
+
+    it('keeps array item objects closed when they do not set additionalProperties', async () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          list: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { id: { type: 'string' } },
+            },
+          },
+        },
+      };
+
+      const created = await createConfig(
+        { list: [{ id: 'a', extra: 1 }] },
+        schema,
+        ContentType.JSON,
+      );
+      expect(created.success).toBe(false);
+      expect(created.message).toContain(
+        "/list/0: must NOT have additional properties 'extra'",
+      );
+    });
+
+    it('applies an additionalProperties schema to extra keys', async () => {
+      const schema = {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        additionalProperties: { type: 'string' },
+      };
+
+      const result = await createThenSimulate(
+        schema,
+        { id: 'a', note: 'text' },
+        { id: 'b', other: 'also text' },
+      );
+      expect(schemaStage(result)?.status).toBe('PASSED');
+
+      const created = await createConfig(
+        { id: 'a', note: 5 },
+        schema,
+        ContentType.JSON,
+      );
+      expect(created.success).toBe(false);
+      expect(created.message).toContain('/note: must be string');
+    });
+
+    it('rejects extra keys at both entry points when additionalProperties: false is explicit', async () => {
+      const schema = {
+        type: 'object',
+        properties: { id: { type: 'string' } },
+        additionalProperties: false,
+      };
+
+      const created = await createConfig({ id: 'a' }, schema, ContentType.JSON);
+      expect(created.success).toBe(true);
+
+      const result = await simulate(
+        created.config!.id,
+        { id: 'b', extra: 1 },
+        'application/json',
+      );
+      expect(schemaStage(result)?.status).toBe('FAILED');
+      expect(JSON.stringify(schemaStage(result)?.errors)).toContain(
+        "must NOT have additional properties 'extra'",
+      );
+    });
+
+    // A bare object schema is not treated as open: #135 requires the
+    // payload to match the schema exactly.
+    it('rejects extra keys for a bare { type: "object" } schema at both entry points', async () => {
+      const created = await createConfig(
+        { anything: 1 },
+        { type: 'object' },
+        ContentType.JSON,
+      );
+      expect(created.success).toBe(false);
+      expect(created.message).toBe(
+        "Schema does not match payload: root: must NOT have additional properties 'anything'",
+      );
+
+      const accepted = await createConfig(
+        {},
+        { type: 'object' },
+        ContentType.JSON,
+      );
+      expect(accepted.success).toBe(true);
+
+      const result = await simulate(
+        accepted.config!.id,
+        { anything: 1 },
+        'application/json',
+      );
+      expect(schemaStage(result)?.status).toBe('FAILED');
+    });
+
+    it('respects additionalProperties: true on an XML element', async () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          Document: {
+            type: 'object',
+            properties: { MsgId: { type: 'string' } },
+            required: ['MsgId'],
+            additionalProperties: true,
+          },
+        },
+        required: ['Document'],
+      };
+
+      const created = await createConfig(
+        '<Document><MsgId>abc</MsgId><Extra>x</Extra></Document>',
+        schema,
+        ContentType.XML,
+      );
+      expect(created.success).toBe(true);
+
+      const result = await simulate(
+        created.config!.id,
+        '<Document><MsgId>def</MsgId><Other>y</Other></Document>',
+        'application/xml',
+      );
+      expect(schemaStage(result)?.status).toBe('PASSED');
+
+      const wrongRoot = await createConfig(
+        '<Other><MsgId>abc</MsgId></Other>',
+        schema,
+        ContentType.XML,
+      );
+      expect(wrongRoot.success).toBe(false);
     });
   });
 });

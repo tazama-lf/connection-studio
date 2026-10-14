@@ -489,21 +489,24 @@ export class SchemaValidationService {
     if (strictSchema.type === 'array') {
       if (strictSchema.items) {
         if (typeof strictSchema.items === 'object') {
+          // The recursive call closes item objects the same way as any other
+          // object, respecting an explicit additionalProperties.
           strictSchema.items = this.enforceStrictSchema(
             strictSchema.items,
             config,
           );
-
-          const items = strictSchema.items as Record<string, unknown>;
-          if (items.type === 'object') {
-            items.additionalProperties = false;
-          }
         }
       }
       return strictSchema;
     }
 
-    if (strictSchema.type === 'object') {
+    // Objects are closed by default so the payload must match the schema
+    // exactly, but an explicit additionalProperties from the schema author
+    // (e.g. true for a free-form object) is respected.
+    if (
+      strictSchema.type === 'object' &&
+      strictSchema.additionalProperties === undefined
+    ) {
       strictSchema.additionalProperties = false;
     }
 
