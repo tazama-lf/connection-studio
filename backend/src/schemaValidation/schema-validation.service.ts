@@ -130,38 +130,18 @@ export class SchemaValidationService {
     config?: Config,
     isXml = false,
   ): Record<string, unknown> {
-    // XML clean-up (attribute/namespace stripping, root wrapping) must never
-    // touch JSON payloads, which are validated exactly as sent.
+    // XML clean-up (attribute/namespace stripping) must never touch JSON
+    // payloads, which are validated exactly as sent. Parsed XML always keeps
+    // its document root, so the payload is never wrapped in the schema's
+    // root: a document with a different root must fail validation.
     if (!isXml) {
       return payload;
     }
     if (this.isXmlParsedObject(payload)) {
-      const normalized = this.normalizeXmlParsedObjectWithSchema(
+      return this.normalizeXmlParsedObjectWithSchema(
         payload,
         config?.schema,
-      );
-      if (config?.schema) {
-        const schemaProperties = config.schema.properties;
-        if (schemaProperties) {
-          const schemaRootKeys = Object.keys(schemaProperties);
-          const payloadRootKeys = Object.keys(
-            normalized as Record<string, unknown>,
-          );
-
-          if (
-            schemaRootKeys.length === 1 &&
-            !payloadRootKeys.includes(schemaRootKeys[0])
-          ) {
-            const [rootKey] = schemaRootKeys;
-            this.logger.debug(
-              `Wrapping payload with schema root element: ${rootKey}`,
-            );
-            return { [rootKey]: normalized };
-          }
-        }
-      }
-
-      return normalized as Record<string, unknown>;
+      ) as Record<string, unknown>;
     }
 
     return payload;

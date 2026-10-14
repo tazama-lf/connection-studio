@@ -609,6 +609,64 @@ describe('Config creation ↔ simulation schema parity (issue #135)', () => {
   });
 
   describe('XML rules still apply to XML configs', () => {
+    const documentSchema = {
+      type: 'object',
+      required: ['Document'],
+      properties: {
+        Document: {
+          type: 'object',
+          required: ['GrpHdr'],
+          properties: {
+            GrpHdr: {
+              type: 'object',
+              required: ['MsgId'],
+              properties: { MsgId: { type: 'string' } },
+            },
+          },
+        },
+      },
+    };
+
+    it('rejects an XML document whose root differs from the schema root instead of wrapping it', async () => {
+      const created = await createConfig(
+        '<GrpHdr><MsgId>abc</MsgId></GrpHdr>',
+        documentSchema,
+        ContentType.XML,
+      );
+
+      expect(created.success).toBe(false);
+      expect(created.message).toContain(
+        "must have required property 'Document'",
+      );
+      expect(created.message).toContain(
+        "must NOT have additional properties 'GrpHdr'",
+      );
+      expect(store.size).toBe(0);
+    });
+
+    it('rejects a wrong document root in simulation, raw XML and UI-converted', async () => {
+      const created = await createConfig(
+        '<Document><GrpHdr><MsgId>abc</MsgId></GrpHdr></Document>',
+        documentSchema,
+        ContentType.XML,
+      );
+      expect(created.success).toBe(true);
+
+      const raw = await simulate(
+        created.config!.id,
+        '<GrpHdr><MsgId>abc</MsgId></GrpHdr>',
+        'application/xml',
+      );
+      expect(schemaStage(raw)?.status).toBe('FAILED');
+
+      const uiConverted = await simulate(
+        created.config!.id,
+        { GrpHdr: { MsgId: 'abc' } },
+        'application/json',
+      );
+      expect(schemaStage(uiConverted)?.status).toBe('FAILED');
+    });
+
     it('ignores a namespace declaration the schema does not describe', async () => {
       const created = await createConfig(
         '<root xmlns="urn:x"><name>John</name></root>',

@@ -962,7 +962,7 @@ describe('SchemaValidationService', () => {
     expect(result.parent.child).toBeDefined();
   });
 
-  it('should cover normalizePayloadForValidation wrapping with root element', async () => {
+  it('should not wrap an XML payload in the schema root element', async () => {
     const config = {
       schema: {
         type: 'object',
@@ -983,8 +983,8 @@ describe('SchemaValidationService', () => {
       config,
       true,
     );
-    expect(result).toBeDefined();
-    expect(result.Document).toBeDefined();
+    expect(result).toEqual({ field: 'value' });
+    expect(result.Document).toBeUndefined();
   });
 
   it('should cover cleanSchemaForXML removing XML attributes from required', async () => {
