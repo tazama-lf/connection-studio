@@ -502,12 +502,21 @@ export class SchemaValidationService {
 
     // Objects are closed by default so the payload must match the schema
     // exactly, but an explicit additionalProperties from the schema author
-    // (e.g. true for a free-form object) is respected.
+    // (e.g. true for a free-form object) is respected. A schema-valued
+    // additionalProperties gets the same strict default as any other schema.
     if (
       strictSchema.type === 'object' &&
       strictSchema.additionalProperties === undefined
     ) {
       strictSchema.additionalProperties = false;
+    } else if (
+      strictSchema.additionalProperties &&
+      typeof strictSchema.additionalProperties === 'object'
+    ) {
+      strictSchema.additionalProperties = this.enforceStrictSchema(
+        strictSchema.additionalProperties,
+        config,
+      );
     }
 
     strictSchema.properties &&= Object.keys(strictSchema.properties).reduce<

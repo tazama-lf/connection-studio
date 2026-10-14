@@ -135,6 +135,48 @@ describe('SchemaValidationService', () => {
       ]);
     });
 
+    it('rejects an undescribed field inside a schema-valued additionalProperties', async () => {
+      const errors = await validator.validateSchemaMatchesPayload(
+        { entry: { id: 'a', unexpected: 1 } },
+        {
+          type: 'object',
+          additionalProperties: {
+            type: 'object',
+            properties: { id: { type: 'string' } },
+          },
+        },
+        'application/json',
+      );
+
+      expect(errors).toEqual([
+        expect.objectContaining({
+          field: '/entry',
+          message: "must NOT have additional properties 'unexpected'",
+        }),
+      ]);
+    });
+
+    it('respects an explicit additionalProperties true or false', async () => {
+      await expect(
+        validator.validateSchemaMatchesPayload(
+          { anything: 1 },
+          { type: 'object', additionalProperties: true },
+          'application/json',
+        ),
+      ).resolves.toEqual([]);
+
+      const errors = await validator.validateSchemaMatchesPayload(
+        { anything: 1 },
+        { type: 'object', additionalProperties: false },
+        'application/json',
+      );
+      expect(errors).toEqual([
+        expect.objectContaining({
+          message: "must NOT have additional properties 'anything'",
+        }),
+      ]);
+    });
+
     it('rejects a schema that declares no type', async () => {
       await expect(
         validator.validateSchemaMatchesPayload(payload, {}, 'application/json'),
