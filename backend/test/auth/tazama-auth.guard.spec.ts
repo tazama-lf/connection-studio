@@ -252,5 +252,14 @@ describe('TazamaAuthGuard', () => {
     });
 
     expect(guard.canActivate(context)).toBe(true);
+    expect(mockJwtDecode).toHaveBeenCalledTimes(2);
+
+    const request = context.switchToHttp().getRequest() as unknown as {
+      user: Record<string, unknown>;
+    };
+    expect(request.user).toMatchObject({
+      tenantId: 'tenant123',
+      userId: 'client123',
+    });
   });
 });

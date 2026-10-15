@@ -14,7 +14,8 @@ describe('User decorator', () => {
       TestController,
       'handler',
     );
-    const key = Object.keys(args).find((k) => k.includes(':0'));
+    const key = Object.keys(args).find((k) => k.endsWith(':0'));
+    expect(key).toBeDefined();
     const factory = args[key as string].factory as (
       data: unknown,
       ctx: ExecutionContext,

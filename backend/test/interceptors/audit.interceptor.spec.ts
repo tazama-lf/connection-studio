@@ -296,6 +296,14 @@ describe('AuditInterceptor', () => {
 
   it('logs "Unknown error" when the audit logger rejects with a non-Error value', async () => {
     auditService.log.mockRejectedValue('backend unavailable');
+    const loggerErrorSpy = jest.spyOn(
+      (
+        interceptor as unknown as {
+          logger: { error: (...args: unknown[]) => void };
+        }
+      ).logger,
+      'error',
+    );
     const request = {
       method: 'GET',
       url: '/jobs',
@@ -308,6 +316,11 @@ describe('AuditInterceptor', () => {
 
     await firstValueFrom(interceptor.intercept(context, buildNext()));
     await new Promise((resolve) => setImmediate(resolve));
+
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'Audit logging failed',
+      expect.objectContaining({ error: 'Unknown error' }),
+    );
   });
 
   it('returns an undefined resource id when neither request nor response carry one', async () => {
