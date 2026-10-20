@@ -1,14 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
-import { Config } from '../config/config.interfaces';
+import { SchemaValidationService } from '../schemaValidation/schema-validation.service';
+import { Config, ContentType } from '../config/config.interfaces';
 import {
   processMappings,
   iMappingConfiguration,
   iMappingResult,
 } from '@tazama-lf/tcs-lib';
-import * as xml2js from 'xml2js';
-import Ajv from 'ajv';
-import * as _ from 'lodash';
 import { getFieldValue, validateMappings } from '../utils/mapping-validation';
 
 import type {
@@ -25,7 +23,10 @@ export class SimulationService {
   private readonly logger = new Logger(SimulationService.name);
 
   /* c8 ignore start */
-  constructor(private readonly adminServiceClient: AdminServiceClient) {}
+  constructor(
+    private readonly adminServiceClient: AdminServiceClient,
+    private readonly schemaValidationService: SchemaValidationService,
+  ) {}
   /* c8 ignore stop */
 
   async simulateMapping(
@@ -129,13 +130,19 @@ export class SimulationService {
       };
       const { parsedPayload } = parseDetails;
 
-      const cleanedSchema = this.cleanSchemaForXML(config.schema);
+      // The UI sends XML test payloads pre-converted to JSON, so the config's
+      // content type (not dto.payloadType) decides whether XML rules apply.
+      const isXml = config.contentType === ContentType.XML;
+      const cleanedSchema = isXml
+        ? this.schemaValidationService.cleanSchemaForXML(config.schema)
+        : config.schema;
 
       //third stage
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
         cleanedSchema as Record<string, unknown>,
         config,
+        isXml,
       );
 
       stages.push(schemaStage);
@@ -310,7 +317,10 @@ export class SimulationService {
     payloadType: string,
   ): Promise<ValidationStage> {
     try {
-      const parsedPayload = await this.parsePayload(payload, payloadType);
+      const parsedPayload = await this.schemaValidationService.parsePayload(
+        payload,
+        payloadType,
+      );
 
       return {
         name: '2. Parse Payload',
@@ -334,8 +344,14 @@ export class SimulationService {
     payload: Record<string, unknown>,
     schema: Record<string, unknown>,
     config?: Config,
+    isXml = false,
   ): ValidationStage {
-    const errors = this.validatePayloadAgainstSchema(payload, schema, config);
+    const errors = this.schemaValidationService.validatePayloadAgainstSchema(
+      payload,
+      schema,
+      config,
+      isXml,
+    );
 
     if (errors.length > 0) {
       return {
@@ -492,321 +508,6 @@ export class SimulationService {
     };
   }
 
-  private async parsePayload(
-    payload: unknown,
-    payloadType: string,
-  ): Promise<Record<string, unknown>> {
-    if (!payloadType) {
-      throw new Error(
-        'payloadType is required. Must be either "application/json" or "application/xml"',
-      );
-    }
-
-    if (payloadType === 'application/xml') {
-      const xmlString =
-        typeof payload === 'string' ? payload : JSON.stringify(payload);
-
-      if (!xmlString || xmlString.trim().length === 0) {
-        throw new Error('XML payload cannot be empty');
-      }
-
-      const parser = new xml2js.Parser({
-        explicitArray: false,
-        ignoreAttrs: false,
-        mergeAttrs: true,
-        trim: true,
-        normalize: true,
-        normalizeTags: false,
-        attrkey: '@',
-        charkey: '#text',
-        explicitCharkey: false,
-        attrNameProcessors: undefined,
-        attrValueProcessors: undefined,
-        tagNameProcessors: undefined,
-        valueProcessors: undefined,
-      });
-
-      try {
-        const result = await parser.parseStringPromise(xmlString);
-        this.logger.debug(
-          `XML parsed successfully: ${JSON.stringify(result).substring(0, 200)}...`,
-        );
-        return result;
-      } catch (xmlError: unknown) {
-        const errorMessage =
-          xmlError instanceof Error ? xmlError.message : 'Unknown error';
-        this.logger.error(`XML parsing failed: ${errorMessage}`);
-        throw new Error(`Invalid XML payload: ${errorMessage}`, {
-          cause: xmlError,
-        });
-      }
-    }
-
-    if (payloadType === 'application/json') {
-      if (typeof payload === 'string') {
-        try {
-          return JSON.parse(payload);
-        } catch (jsonError: unknown) {
-          const errorMessage =
-            jsonError instanceof Error ? jsonError.message : 'Unknown error';
-          throw new Error(`Invalid JSON payload: ${errorMessage}`, {
-            cause: jsonError,
-          });
-        }
-      }
-      return payload as Record<string, unknown>;
-    }
-
-    throw new Error(
-      `Unsupported payload type: "${payloadType}". Must be either "application/json" or "application/xml"`,
-    );
-  }
-
-  private normalizePayloadForValidation(
-    payload: Record<string, unknown>,
-    config?: Config,
-  ): Record<string, unknown> {
-    if (this.isXmlParsedObject(payload)) {
-      const normalized = this.normalizeXmlParsedObjectWithSchema(
-        payload,
-        config?.schema,
-      );
-      if (config?.schema) {
-        const schemaProperties = config.schema.properties;
-        if (schemaProperties) {
-          const schemaRootKeys = Object.keys(schemaProperties);
-          const payloadRootKeys = Object.keys(
-            normalized as Record<string, unknown>,
-          );
-
-          if (
-            schemaRootKeys.length === 1 &&
-            !payloadRootKeys.includes(schemaRootKeys[0])
-          ) {
-            const [rootKey] = schemaRootKeys;
-            this.logger.debug(
-              `Wrapping payload with schema root element: ${rootKey}`,
-            );
-            return { [rootKey]: normalized };
-          }
-        }
-      }
-
-      return normalized as Record<string, unknown>;
-    }
-
-    return payload;
-  }
-
-  private cleanSchemaForXML(schema: unknown): unknown {
-    if (!schema || typeof schema !== 'object') {
-      return schema;
-    }
-
-    const cleanedSchema: Record<string, unknown> = { ...schema };
-
-    if (cleanedSchema.required && Array.isArray(cleanedSchema.required)) {
-      const originalRequired = cleanedSchema.required as string[];
-      cleanedSchema.required = (cleanedSchema.required as string[]).filter(
-        (field: string) =>
-          !field.startsWith('xmlns') && field !== '$' && field !== '@',
-      );
-
-      if (
-        originalRequired.length !== (cleanedSchema.required as string[]).length
-      ) {
-        this.logger.debug(
-          `Removed ${originalRequired.length - (cleanedSchema.required as string[]).length} XML attributes from required fields`,
-        );
-      }
-    }
-    if (
-      cleanedSchema.properties &&
-      typeof cleanedSchema.properties === 'object'
-    ) {
-      const cleanedProperties: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(cleanedSchema.properties)) {
-        if (key.startsWith('xmlns') || key.startsWith('@') || key === '$') {
-          this.logger.debug(`Skipping XML attribute property: ${key}`);
-          continue;
-        }
-        if (value && typeof value === 'object') {
-          cleanedProperties[key] = this.cleanSchemaForXML(value);
-        } else {
-          cleanedProperties[key] = value;
-        }
-      }
-      cleanedSchema.properties = cleanedProperties;
-    }
-
-    return cleanedSchema;
-  }
-
-  private isXmlParsedObject(obj: unknown): boolean {
-    if (!obj || typeof obj !== 'object') {
-      return false;
-    }
-    const hasXmlAttributes = Object.keys(obj).some((key) =>
-      key.startsWith('@'),
-    );
-    const hasTextContent = Object.prototype.hasOwnProperty.call(obj, '#text');
-    const hasNestedStructure = Object.values(obj).some(
-      (val) =>
-        val !== null &&
-        val !== undefined &&
-        typeof val === 'object' &&
-        !Array.isArray(val),
-    );
-
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Boolean OR logic, not nullish coalescing
-    return hasXmlAttributes || hasTextContent || hasNestedStructure;
-  }
-
-  private normalizeXmlParsedObjectWithSchema(
-    obj: unknown,
-    schema?: unknown,
-    path = '',
-    rootSchema: unknown = schema,
-  ): unknown {
-    if (!obj || typeof obj !== 'object') {
-      return obj;
-    }
-    if (Array.isArray(obj)) {
-      const itemSchema = (schema as Record<string, unknown> | undefined)?.items;
-      return obj.map((item) =>
-        this.normalizeXmlParsedObjectWithSchema(
-          item,
-          itemSchema,
-          path,
-          rootSchema,
-        ),
-      );
-    }
-
-    const normalized: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(obj)) {
-      if (key.startsWith('@') || key.startsWith('xmlns') || key === '$') {
-        continue;
-      }
-      if (key === '#text') {
-        const schemaProperties = (schema as Record<string, unknown> | undefined)
-          ?.properties as Record<string, unknown> | undefined;
-        if (schemaProperties && '#text' in schemaProperties) {
-          const textSchema = schemaProperties['#text'] as
-            | Record<string, unknown>
-            | undefined;
-          const expectedTextType = textSchema?.type as string | undefined;
-          normalized['#text'] =
-            typeof value === 'string' &&
-            (expectedTextType === 'number' || expectedTextType === 'integer') &&
-            value.trim() !== '' &&
-            !Number.isNaN(Number(value))
-              ? Number(value)
-              : value;
-          continue;
-        }
-
-        const hasAttributes = Object.keys(obj).some(
-          (k) => k !== '#text' && !k.startsWith('@'),
-        );
-        const hasOnlyTextAndAttributes = Object.keys(obj).every(
-          (k) => k === '#text' || k.startsWith('@'),
-        );
-
-        const expectedType = this.getSchemaTypeAtPath(rootSchema, path);
-
-        if (expectedType === 'string' && hasAttributes) {
-          return value;
-        }
-
-        if (Object.keys(obj).length === 1 || hasOnlyTextAndAttributes) {
-          return value;
-        }
-        normalized.textContent = value;
-        continue;
-      }
-      const currentPath = path ? `${path}.${key}` : key;
-
-      const fieldSchema = this.getSchemaAtPath(rootSchema, currentPath);
-
-      if (value && typeof value === 'object') {
-        const normalizedValue = this.normalizeXmlParsedObjectWithSchema(
-          value,
-          fieldSchema,
-          currentPath,
-          rootSchema,
-        );
-        if (
-          fieldSchema?.type === 'string' &&
-          typeof normalizedValue === 'object' &&
-          normalizedValue !== null &&
-          ((normalizedValue as Record<string, unknown>).textContent !==
-            undefined ||
-            (normalizedValue as Record<string, unknown>)['#text'] !== undefined)
-        ) {
-          normalized[key] =
-            (normalizedValue as Record<string, unknown>).textContent ??
-            (normalizedValue as Record<string, unknown>)['#text'];
-        } else {
-          normalized[key] = normalizedValue;
-        }
-      } else {
-        normalized[key] = value;
-      }
-    }
-
-    return normalized;
-  }
-
-  private getSchemaTypeAtPath(schema: unknown, path: string): string | null {
-    if (!schema || !path) return null;
-
-    const parts = path.split('.');
-    let current = schema as Record<string, unknown>;
-
-    for (const part of parts) {
-      if (current.type === 'array' && current.items) {
-        current = current.items as Record<string, unknown>;
-      }
-      const props = current.properties as Record<string, unknown> | undefined;
-      if (props?.[part]) {
-        current = props[part] as Record<string, unknown>;
-      } else {
-        return null;
-      }
-    }
-
-    if (current.type === null || current.type === undefined) {
-      return null;
-    }
-    return current.type as string;
-  }
-
-  private getSchemaAtPath(
-    schema: unknown,
-    path: string,
-  ): Record<string, unknown> | null {
-    if (!schema || !path) return null;
-
-    const parts = path.split('.');
-    let current = schema as Record<string, unknown>;
-
-    for (const part of parts) {
-      if (current.type === 'array' && current.items) {
-        current = current.items as Record<string, unknown>;
-      }
-      const props = current.properties as Record<string, unknown> | undefined;
-      if (props?.[part]) {
-        current = props[part] as Record<string, unknown>;
-      } else {
-        return null;
-      }
-    }
-
-    return current;
-  }
-
   private normalizeXmlParsedObject(obj: unknown): unknown {
     if (!obj || typeof obj !== 'object') {
       return obj;
@@ -840,107 +541,6 @@ export class SimulationService {
     return normalized;
   }
 
-  private validatePayloadAgainstSchema(
-    payload: unknown,
-    schema: unknown,
-    config?: Config,
-  ): SimulationError[] {
-    const errors: SimulationError[] = [];
-
-    if (!schema) {
-      errors.push({
-        field: 'schema',
-        message: 'No schema defined in configuration',
-      });
-      return errors;
-    }
-
-    try {
-      const normalizedPayload = this.normalizePayloadForValidation(
-        payload as Record<string, unknown>,
-        config,
-      );
-
-      const ajv = new Ajv({
-        allErrors: true,
-        strict: false,
-        strictSchema: false,
-        strictNumbers: true,
-        strictTypes: false,
-        strictRequired: true,
-        allowUnionTypes: true,
-        validateFormats: false,
-      });
-
-      const schemaWithStrict = this.enforceStrictSchema(schema, config);
-
-      const validate = ajv.compile(schemaWithStrict as Record<string, unknown>);
-
-      const valid = validate(normalizedPayload);
-
-      this.logger.debug(`Schema validation result: ${valid}`);
-      this.logger.debug(
-        `Payload type: ${Array.isArray(normalizedPayload) ? 'array' : typeof normalizedPayload}`,
-      );
-
-      if (!valid && validate.errors) {
-        this.logger.warn(
-          `Schema validation errors: ${JSON.stringify(validate.errors)}`,
-        );
-
-        for (const error of validate.errors) {
-          if (
-            error.keyword === 'type' &&
-            error.instancePath &&
-            error.instancePath.includes('/')
-          ) {
-            const pathSegments = error.instancePath.split('/');
-            const isArrayElement = pathSegments.some((segment) =>
-              /^\d+$/.test(segment),
-            );
-
-            if (isArrayElement) {
-              this.logger.debug(
-                `Array element type mismatch at ${error.instancePath}: expected ${String(error.schema)}, got ${typeof error.data}`,
-              );
-              const friendlyPath = error.instancePath
-                .replace(/^\//, '')
-                .replace(/\//g, '.');
-              errors.push({
-                field: friendlyPath,
-                message: `Array element at ${friendlyPath}: expected ${String(error.schema)}, got ${typeof error.data}`,
-                path: error.instancePath,
-                value: error.data,
-              });
-              continue;
-            }
-          }
-
-          errors.push({
-            field: error.instancePath || 'root',
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || to handle empty strings
-            message: error.message || 'Schema validation failed',
-            path: error.instancePath,
-            value: _.get(
-              normalizedPayload,
-              error.instancePath.replace(/^\//, '').replace(/\//g, '.'),
-            ),
-          });
-        }
-      }
-    } catch (schemaError: unknown) {
-      const errorMessage =
-        schemaError instanceof Error ? schemaError.message : 'Unknown error';
-      this.logger.error(`Schema validation error: ${errorMessage}`);
-      errors.push({
-        field: 'schema',
-        message: 'Schema validation error: ' + errorMessage,
-      });
-    }
-
-    return errors;
-  }
-
   private isArrayPath(obj: unknown, path: string): boolean {
     if (!path) return false;
     const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
@@ -967,74 +567,6 @@ export class SimulationService {
 
   private getFieldValue(obj: unknown, path: string): unknown {
     return getFieldValue(obj, path);
-  }
-
-  private enforceStrictSchema(schema: unknown, config?: Config): unknown {
-    if (!schema || typeof schema !== 'object') {
-      return schema;
-    }
-
-    const strictSchema: Record<string, unknown> = {
-      ...(schema as Record<string, unknown>),
-    };
-
-    const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
-
-    if (strictSchema.required && Array.isArray(strictSchema.required)) {
-      strictSchema.required = (strictSchema.required as string[]).filter(
-        (field: string) => !runtimeContextFields.includes(field),
-      );
-      if ((strictSchema.required as string[]).length === 0) {
-        delete strictSchema.required;
-      }
-    }
-
-    if (strictSchema.type === 'array') {
-      if (strictSchema.items) {
-        if (typeof strictSchema.items === 'object') {
-          strictSchema.items = this.enforceStrictSchema(
-            strictSchema.items,
-            config,
-          );
-
-          const items = strictSchema.items as Record<string, unknown>;
-          if (items.type === 'object') {
-            items.additionalProperties = true;
-          }
-        }
-      }
-      return strictSchema;
-    }
-
-    if (strictSchema.type === 'object') {
-      strictSchema.additionalProperties = true;
-    }
-
-    strictSchema.properties &&= Object.keys(strictSchema.properties).reduce<
-      Record<string, unknown>
-    >((acc, key) => {
-      const updatedAcc = { ...acc };
-      updatedAcc[key] = this.enforceStrictSchema(
-        (strictSchema.properties as Record<string, unknown>)[key],
-        config,
-      );
-      return updatedAcc;
-    }, {});
-
-    if (strictSchema.items && strictSchema.type !== 'array') {
-      strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
-    }
-    strictSchema.oneOf &&= (strictSchema.oneOf as unknown[]).map((s: unknown) =>
-      this.enforceStrictSchema(s, config),
-    );
-    strictSchema.anyOf &&= (strictSchema.anyOf as unknown[]).map((s: unknown) =>
-      this.enforceStrictSchema(s, config),
-    );
-    strictSchema.allOf &&= (strictSchema.allOf as unknown[]).map((s: unknown) =>
-      this.enforceStrictSchema(s, config),
-    );
-
-    return strictSchema;
   }
 
   extractTransactionType = (url: string): string => {
