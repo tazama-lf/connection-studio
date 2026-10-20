@@ -159,5 +159,98 @@ describe('TazamaDataModelService', () => {
         'Failed to save data model JSON: Unknown error',
       );
     });
+
+    it.each([
+      ['a null value', { model: null }],
+      ['an undefined value', { model: undefined }],
+      [
+        'a null value for redis (no longer treated as "unset")',
+        { redis: null },
+      ],
+      ['an empty key', { '': 'value' }],
+      ['a whitespace-only key', { '   ': 'value' }],
+      ['a JSON-object-shaped key', { '{"a":1}': 'value' }],
+      ['a JSON-array-shaped key', { '["a"]': 'value' }],
+      ['a null value nested one level deep', { redis: { amount: null } }],
+      [
+        'a null value nested inside an array',
+        { transactionDetails: [{ amt: null }] },
+      ],
+      ['a null value inside an array', { tags: ['ok', null] }],
+    ])(
+      'should reject data model JSON with %s',
+      async (_description, dataModelJson) => {
+        const tenantId = 'tenant123';
+        const token = 'token123';
+
+        await expect(
+          service.putDataModelJson(tenantId, dataModelJson, token),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(repository.putDataModelJson).not.toHaveBeenCalled();
+        expect(service['logger'].error).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `Rejected data model JSON with invalid field`,
+          ),
+        );
+      },
+    );
+
+    it.each([
+      ['primitive values only', { amount: 0, active: false, name: 'ok' }],
+      ['a non-empty nested object', { redis: { amount: 100 } }],
+      ['an empty object as a value', { redis: {} }],
+      ['a non-empty array', { tags: ['a', 'b'] }],
+      ['an empty string value', { model: '' }],
+      ['a whitespace-only value', { model: '   ' }],
+      ['a numeric-string key', { '42': 'value' }],
+      ['a boolean-string key', { true: 'value' }],
+      ['a quoted-string key', { '"a"': 'value' }],
+    ])(
+      'should accept data model JSON with %s',
+      async (_description, dataModelJson) => {
+        const tenantId = 'tenant123';
+        const token = 'token123';
+        const mockResult = {
+          tenant_id: tenantId,
+          updated_at: '2023-01-01T00:00:00Z',
+        };
+
+        jest
+          .spyOn(repository, 'putDataModelJson')
+          .mockResolvedValue(mockResult);
+
+        const result = await service.putDataModelJson(
+          tenantId,
+          dataModelJson,
+          token,
+        );
+
+        expect(result).toEqual(mockResult);
+        expect(repository.putDataModelJson).toHaveBeenCalledWith(
+          tenantId,
+          dataModelJson,
+          token,
+        );
+      },
+    );
+
+    it('rejects a non-object payload (e.g. an array)', async () => {
+      const tenantId = 'tenant123';
+      const token = 'token123';
+
+      await expect(
+        service.putDataModelJson(
+          tenantId,
+          [] as unknown as Record<string, unknown>,
+          token,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(repository.putDataModelJson).not.toHaveBeenCalled();
+      expect(service['logger'].error).toHaveBeenCalledWith(
+        expect.stringContaining('Rejected invalid data model JSON'),
+      );
+    });
   });
 });

@@ -5,7 +5,8 @@ import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 import { TazamaDataModelService } from './tazama-data-model.service';
-import { Audit } from 'src/decorators/audit.decorator';
+import { Audit } from '../decorators/audit.decorator';
+import { DataModelDto } from './dto/data-model.dto';
 
 @Controller('tazama-data-model')
 @UseGuards(TazamaAuthGuard)
@@ -25,26 +26,15 @@ export class TazamaDataModelController {
   async getDataModelJson(@User() user: AuthenticatedUser): Promise<{
     success: boolean;
     data: Record<string, unknown> | null;
-    message?: string;
   }> {
-    try {
-      const data = await this.tazamaDataModelService.getDataModelJson(
-        user.tenantId,
-        user.token.tokenString,
-      );
-      return {
-        success: true,
-        data,
-      };
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        data: null,
-        message: errorMessage,
-      };
-    }
+    const data = await this.tazamaDataModelService.getDataModelJson(
+      user.tenantId,
+      user.token.tokenString,
+    );
+    return {
+      success: true,
+      data,
+    };
   }
 
   @Put('json')
@@ -56,32 +46,22 @@ export class TazamaDataModelController {
   )
   @Audit()
   async putDataModelJson(
-    @Body() body: { data_model_json: Record<string, unknown> },
+    @Body() body: DataModelDto,
     @User() user: AuthenticatedUser,
   ): Promise<{
     success: boolean;
     message: string;
-    data: { tenant_id: string; updated_at: string } | null;
+    data: { tenant_id: string; updated_at: string };
   }> {
-    try {
-      const data = await this.tazamaDataModelService.putDataModelJson(
-        user.tenantId,
-        body.data_model_json,
-        user.token.tokenString,
-      );
-      return {
-        success: true,
-        message: `Data model JSON saved for tenant: ${user.tenantId}`,
-        data,
-      };
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        message: errorMessage,
-        data: null,
-      };
-    }
+    const data = await this.tazamaDataModelService.putDataModelJson(
+      user.tenantId,
+      body.data_model_json,
+      user.token.tokenString,
+    );
+    return {
+      success: true,
+      message: `Data model JSON saved for tenant: ${user.tenantId}`,
+      data,
+    };
   }
 }
