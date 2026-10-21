@@ -15,6 +15,7 @@ import { ConfigStatus, ContentType } from '../../src/config/config.interfaces';
 import { EventType } from '../../src/enums/events.enum';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
 import { TazamaDataModelService } from '../../src/tazama-data-model/tazama-data-model.service';
+import { SchemaValidationService } from '../../src/schemaValidation/schema-validation.service';
 
 describe('ConfigService', () => {
   let service: ConfigService;
@@ -106,6 +107,7 @@ describe('ConfigService', () => {
           provide: TazamaDataModelService,
           useValue: mockTazamaDataModelService,
         },
+        SchemaValidationService,
         { provide: 'AUDIT_LOGGER', useValue: mockAuditLogger },
       ],
     }).compile();
@@ -142,7 +144,7 @@ describe('ConfigService', () => {
         msgFam: 'iso',
         transactionType: 'pacs.008',
         version: '1.0.0',
-        schema: {},
+        schema: { type: 'object', properties: { sample: { type: 'string' } } },
         payload: { sample: 'value' },
         contentType: ContentType.JSON,
       } as any,
@@ -169,7 +171,11 @@ describe('ConfigService', () => {
         msgFam: 'iso',
         transactionType: 'pacs.008',
         version: '1.0.0',
-        schema: {},
+        schema: {
+          type: 'object',
+          properties: { sample: { type: 'string' } },
+          required: ['sample'],
+        },
         payload: { sample: 'value' },
         contentType: ContentType.JSON,
         mapping: clonedMapping,
@@ -197,7 +203,11 @@ describe('ConfigService', () => {
         msgFam: 'iso',
         transactionType: 'pacs.008',
         version: '1.0.0',
-        schema: {},
+        schema: {
+          type: 'object',
+          properties: { sample: { type: 'string' } },
+          required: ['sample'],
+        },
         payload: { sample: 'value' },
         contentType: ContentType.JSON,
       } as any,
@@ -217,6 +227,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs',
         version: '1',
         payload: { sample: 'value' },
+        schema: { type: 'object', properties: { sample: { type: 'string' } } },
       } as any,
       user,
     );
@@ -439,7 +450,7 @@ describe('ConfigService', () => {
       msgFam: 'iso',
       transactionType: 'pacs',
       version: '1.0.0',
-      schema: {},
+      schema: { type: 'object', properties: { sample: { type: 'string' } } },
       payload: { sample: 'value' },
     };
 
@@ -2196,7 +2207,7 @@ describe('ConfigService', () => {
       {
         transactionType: 'pacs.008',
         version: '1.0.0',
-        schema: {},
+        schema: { type: 'object', properties: { sample: { type: 'string' } } },
         payload: { sample: 'value' },
       } as any,
       user,
@@ -2346,6 +2357,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs',
         version: '1',
         payload: { sample: 'value' },
+        schema: { type: 'object', properties: { sample: { type: 'string' } } },
       } as any,
       user,
     );
@@ -2368,5 +2380,67 @@ describe('ConfigService', () => {
 
     const result = service.getConfigStatus(user);
     expect(result).toEqual([]);
+  });
+  describe('createConfig schema/payload check (issue #135)', () => {
+    const payload = { FIToFIPmtSts: { GrpHdr: { MsgId: 'abc' } } };
+
+    it('rejects a schema that does not match the payload', async () => {
+      const res = await service.createConfig(
+        {
+          msgFam: 'iso',
+          transactionType: 'pacs.002',
+          version: '1.0.0',
+          payload,
+          schema: {
+            type: 'object',
+            properties: { CompletelyDifferentField: { type: 'string' } },
+          },
+        } as any,
+        user,
+      );
+
+      expect(res.success).toBe(false);
+      expect(res.message).toMatch(/^Schema does not match payload: /);
+      expect(
+        mockRepo.findConfigByMsgFamVersionAndTransactionType,
+      ).not.toHaveBeenCalled();
+      expect(mockRepo.createConfig).not.toHaveBeenCalled();
+    });
+
+    it('creates the config when the schema matches the payload', async () => {
+      mockRepo.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      );
+      mockUtils.generateEndpointPath.mockReturnValue('/path');
+      mockRepo.createConfig.mockResolvedValue(1);
+      mockRepo.findConfigById.mockResolvedValue({ id: 1 });
+
+      const res = await service.createConfig(
+        {
+          msgFam: 'iso',
+          transactionType: 'pacs.002',
+          version: '1.0.0',
+          payload,
+          schema: {
+            type: 'object',
+            properties: {
+              FIToFIPmtSts: {
+                type: 'object',
+                properties: {
+                  GrpHdr: {
+                    type: 'object',
+                    properties: { MsgId: { type: 'string' } },
+                  },
+                },
+              },
+            },
+          },
+        } as any,
+        user,
+      );
+
+      expect(res.success).toBe(true);
+      expect(mockRepo.createConfig).toHaveBeenCalled();
+    });
   });
 });
