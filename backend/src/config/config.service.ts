@@ -970,6 +970,11 @@ export class ConfigService {
       )
         .trim()
         .toLowerCase();
+      if (!newTableName) {
+        throw new BadRequestException(
+          'A table name is required for the Add Data Model Table function.',
+        );
+      }
       const isDuplicateTable = existingFunctions.some(
         (existingFunction) =>
           existingFunction.functionName === 'addDataModelTable' &&

@@ -1079,6 +1079,41 @@ describe('ConfigService', () => {
     expect(mockRepo.addFunction).not.toHaveBeenCalled();
   });
 
+  it('rejects adding a data model table with a missing tableName', async () => {
+    const functionData = {
+      functionName: 'addDataModelTable',
+      columns: [{ name: 'id', type: 'text' }],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({ id: 1, functions: [] });
+    mockRepo.addFunction = jest.fn();
+
+    await expect(
+      service.addFunctionViaService(1, functionData, user, token),
+    ).rejects.toThrow(
+      'A table name is required for the Add Data Model Table function.',
+    );
+    expect(mockRepo.addFunction).not.toHaveBeenCalled();
+  });
+
+  it('rejects adding a data model table with a whitespace-only tableName', async () => {
+    const functionData = {
+      functionName: 'addDataModelTable',
+      tableName: '   ',
+      columns: [{ name: 'id', type: 'text' }],
+    };
+
+    mockRepo.findConfigById.mockResolvedValue({ id: 1, functions: [] });
+    mockRepo.addFunction = jest.fn();
+
+    await expect(
+      service.addFunctionViaService(1, functionData, user, token),
+    ).rejects.toThrow(
+      'A table name is required for the Add Data Model Table function.',
+    );
+    expect(mockRepo.addFunction).not.toHaveBeenCalled();
+  });
+
   it('rejects adding a duplicate function with the same params', async () => {
     const functionData = {
       functionName: 'addAccount',

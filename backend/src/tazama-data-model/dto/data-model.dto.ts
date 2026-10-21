@@ -1,6 +1,7 @@
-import { IsValidPayload } from '../../decorators/is-valid-payload.decorator';
+import { IsObject, IsNotEmptyObject } from 'class-validator';
 
 export class DataModelDto {
-  @IsValidPayload()
+  @IsObject()
+  @IsNotEmptyObject()
   data_model_json!: Record<string, unknown>;
 }

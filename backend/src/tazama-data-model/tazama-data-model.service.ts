@@ -58,8 +58,12 @@ export class TazamaDataModelService {
     )) {
       const fieldPath = path ? `${path}.${key}` : key;
 
-      if (this.isInvalidKey(key)) {
+      if (key.trim() === '') {
         return path ? `${path}.<empty key>` : '<empty key>';
+      }
+
+      if (this.isInvalidKey(key)) {
+        return fieldPath;
       }
 
       if (value && typeof value === 'object') {
