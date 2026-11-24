@@ -1,5 +1,5 @@
 # Development Dockerfile with hot reload
-FROM node:20-alpine
+FROM node:24-alpine
 # Set working directory
 WORKDIR /app
 # Install dependencies for better Docker layer caching
